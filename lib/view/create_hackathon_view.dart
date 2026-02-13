@@ -19,7 +19,8 @@ class _CreateHackathonViewState extends State<CreateHackathonView> {
   final TextEditingController teamSizeController = TextEditingController();
   final TextEditingController cityController = TextEditingController();
   final TextEditingController locationController = TextEditingController();
-  final TextEditingController rolesController = TextEditingController();
+  final TextEditingController otherDomainController = TextEditingController();
+  final TextEditingController otherRoleController = TextEditingController();
 
   // Dropdown values
   String? selectedMode;
@@ -45,6 +46,7 @@ class _CreateHackathonViewState extends State<CreateHackathonView> {
     'Sustainability & Social Good',
     'Gaming & Entertainment',
     'General',
+    'Other' ,
   ];
 
   final List<String> modes = const [
@@ -60,6 +62,17 @@ class _CreateHackathonViewState extends State<CreateHackathonView> {
     'Professionals',
   ];
 
+  List<String> selectedRoles = [];
+
+  final List<String> availableRoles = [
+    'Designer',
+    'Flutter Developer',
+    'Backend Developer',
+    'UI/UX',
+    'Data Analyst',
+    'Other' ,
+  ];
+
   @override
   void dispose() {
     nameController.dispose();
@@ -67,7 +80,8 @@ class _CreateHackathonViewState extends State<CreateHackathonView> {
     teamSizeController.dispose();
     cityController.dispose();
     locationController.dispose();
-    rolesController.dispose();
+    otherDomainController.dispose();
+    otherRoleController.dispose();
     super.dispose();
   }
 
@@ -137,19 +151,23 @@ class _CreateHackathonViewState extends State<CreateHackathonView> {
 
     setState(() => isSubmitting = true);
 
+    if (selectedRoles.isEmpty) return;
+
     final hackathon = Hackathon(
       name: nameController.text.trim(),
       description: descriptionController.text.trim(),
-      domain: selectedDomain!.trim(),
+      domain: selectedDomain == 'Other'
+          ? otherDomainController.text.trim()
+          : selectedDomain!.trim(),
       teamSize: int.tryParse(teamSizeController.text.trim()) ?? 0,
       city: cityController.text.trim(),
       location: locationController.text.trim(),
       mode: selectedMode!.trim(),
-      rolesNeeded: rolesController.text
-          .split(',')
-          .map((e) => e.trim())
-          .where((e) => e.isNotEmpty)
-          .toList(),
+      rolesNeeded: [
+        ...selectedRoles.where((r) => r != "Other"),
+        if (selectedRoles.contains("Other"))
+          otherRoleController.text.trim(),
+      ],
       educationCriteria: selectedEducation!.trim(),
       startDate: startDate!,
       endDate: endDate!,
@@ -170,7 +188,7 @@ class _CreateHackathonViewState extends State<CreateHackathonView> {
       teamSizeController.clear();
       cityController.clear();
       locationController.clear();
-      rolesController.clear();
+      otherRoleController.clear();
 
       setState(() {
         selectedMode = null;
@@ -218,12 +236,22 @@ class _CreateHackathonViewState extends State<CreateHackathonView> {
                   controller: nameController,
                   label: "Hackathon Name",
                   icon: Icons.flag_outlined,
+                  validator: (v) {
+                    if (v == null || v.trim().isEmpty) return "Required";
+                    if (v.trim().length < 5) return "Minimum 5 characters";
+                    return null;
+                  },
                 ),
                 _textField(
                   controller: descriptionController,
                   label: "Description",
                   icon: Icons.description_outlined,
                   maxLines: 3,
+                  validator: (v) {
+                    if (v == null || v.trim().isEmpty) return "Required";
+                    if (v.trim().length < 20) return "Minimum 20 characters";
+                    return null;
+                  },
                 ),
                 _dropdownField(
                   label: "Domain",
@@ -232,6 +260,12 @@ class _CreateHackathonViewState extends State<CreateHackathonView> {
                   items: domains,
                   onChanged: (v) => setState(() => selectedDomain = v),
                 ),
+                if (selectedDomain == 'Other')
+                  _textField(
+                    controller: otherDomainController,
+                    label: "Specify Domain",
+                    icon: Icons.edit_outlined,
+                  ),
                 const SizedBox(height: 14),
 
                 _sectionTitle("Details"),
@@ -273,13 +307,89 @@ class _CreateHackathonViewState extends State<CreateHackathonView> {
                   label: "Location (e.g., Venue / Address)",
                   icon: Icons.place_outlined,
                 ),
-                _textField(
-                  controller: rolesController,
-                  label: "Roles Needed (comma separated)",
-                  hint: "Designer, Flutter Dev, Backend, ...",
-                  icon: Icons.work_outline,
-                  validator: (v) =>
-                  (v == null || v.trim().isEmpty) ? "Required" : null,
+                Padding(
+                  padding: const EdgeInsets.only(bottom: 12),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+
+                      InkWell(
+                        onTap: () async {
+                          final result = await showDialog<List<String>>(
+                            context: context,
+                            builder: (context) {
+                              List<String> tempSelected = List.from(selectedRoles);
+
+                              return StatefulBuilder(
+                                builder: (context, setDialogState) {
+                                  return AlertDialog(
+                                    title: const Text("Select Roles"),
+                                    content: SingleChildScrollView(
+                                      child: Column(
+                                        children: availableRoles.map((role) {
+                                          return CheckboxListTile(
+                                            value: tempSelected.contains(role),
+                                            title: Text(role),
+                                            onChanged: (checked) {
+                                              setDialogState(() {
+                                                if (checked == true) {
+                                                  tempSelected.add(role);
+                                                } else {
+                                                  tempSelected.remove(role);
+                                                }
+                                              });
+                                            },
+                                          );
+                                        }).toList(),
+                                      ),
+                                    ),
+                                    actions: [
+                                      TextButton(
+                                        onPressed: () => Navigator.pop(context),
+                                        child: const Text("Cancel"),
+                                      ),
+                                      ElevatedButton(
+                                        onPressed: () =>
+                                            Navigator.pop(context, tempSelected),
+                                        child: const Text("Done"),
+                                      ),
+                                    ],
+                                  );
+                                },
+                              );
+                            },
+                          );
+
+                          if (result != null) {
+                            setState(() {
+                              selectedRoles = result;
+                            });
+                          }
+                        },
+                        child: InputDecorator(
+                          decoration: const InputDecoration(
+                            labelText: "Roles Needed",
+                            border: OutlineInputBorder(),
+                          ),
+                          child: Text(
+                            selectedRoles.isEmpty
+                                ? "Select roles"
+                                : selectedRoles.join(", "),
+                          ),
+                        ),
+                      ),
+
+                      if (selectedRoles.contains("Other"))
+                        Padding(
+                          padding: const EdgeInsets.only(top: 8),
+                          child: _textField(
+                            controller: otherRoleController,
+                            label: "Specify Other Role",
+                            icon: Icons.edit_outlined,
+                          ),
+                        ),
+                    ],
+                  ),
                 ),
                 _dropdownField(
                   label: "Education Criteria",

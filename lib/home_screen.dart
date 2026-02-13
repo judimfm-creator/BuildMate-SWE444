@@ -1,38 +1,50 @@
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
-
 import 'auth/select_role_screen.dart';
 
-class HomeScreen extends StatelessWidget {
+class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
 
   @override
+  State<HomeScreen> createState() => _HomeScreenState();
+}
+
+class _HomeScreenState extends State<HomeScreen> {
+
+  int _selectedIndex = 0;
+
+  Future<void> logout() async {
+    await FirebaseAuth.instance.signOut();
+
+    if (!mounted) return;
+
+    Navigator.pushAndRemoveUntil(
+      context,
+      MaterialPageRoute(builder: (_) => const SelectRoleScreen()),
+          (route) => false,
+    );
+  }
+
+  final List<Widget> _pages = [
+    const Center(child: Text("Home")),
+    const Center(child: Text("Hackathons")),
+    const Center(child: Text("Teams")),
+    const Center(child: Text("Profile")),
+  ];
+
+  void _onItemTapped(int index) {
+    setState(() {
+      _selectedIndex = index;
+    });
+  }
+
+  @override
   Widget build(BuildContext context) {
-    const purple = Color(0xFF6D56B3);
-    const lightPurple = Color(0xFFB8A8E6);
-    const orange = Color(0xFFFF9F2E);
-
-    Future<void> logout() async {
-      await FirebaseAuth.instance.signOut();
-
-      if (!context.mounted) return;
-
-      Navigator.pushAndRemoveUntil(
-        context,
-        MaterialPageRoute(builder: (_) => const SelectRoleScreen()),
-        (route) => false,
-      );
-    }
+    const orange = Color(0xFFFFA726);
 
     return Scaffold(
-      backgroundColor: purple,
       appBar: AppBar(
-        backgroundColor: purple,
-        elevation: 0,
-        title: const Text(
-          "BuildMate",
-          style: TextStyle(fontWeight: FontWeight.w600),
-        ),
+        title: const Text("BuildMate"),
         actions: [
           IconButton(
             icon: const Icon(Icons.logout),
@@ -40,47 +52,46 @@ class HomeScreen extends StatelessWidget {
           )
         ],
       ),
-      body: Center(
-        child: Container(
-          margin: const EdgeInsets.symmetric(horizontal: 24),
-          padding: const EdgeInsets.all(24),
-          decoration: BoxDecoration(
-            color: lightPurple.withOpacity(0.4),
-            borderRadius: BorderRadius.circular(20),
+      body: _pages[_selectedIndex],
+
+      bottomNavigationBar: Container(
+        height: 75,
+        decoration: const BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.vertical(
+            top: Radius.circular(25),
           ),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              const Icon(
-                Icons.emoji_events,
-                size: 60,
-                color: Colors.white,
-              ),
-              const SizedBox(height: 20),
-              const Text(
-                "Welcome 👋",
-                style: TextStyle(
-                  fontSize: 26,
-                  fontWeight: FontWeight.bold,
-                  color: Colors.white,
-                ),
-              ),
-              const SizedBox(height: 25),
-              SizedBox(
-                width: double.infinity,
-                child: ElevatedButton(
-                  onPressed: logout,
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: orange,
-                    shape: const StadiumBorder(),
-                  ),
-                  child: const Text("Logout"),
-                ),
-              ),
-            ],
-          ),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black12,
+              blurRadius: 10,
+            ),
+          ],
+        ),
+        child: Row(
+          mainAxisAlignment: MainAxisAlignment.spaceAround,
+          children: [
+
+            _navItem(Icons.home_outlined, 0),
+            _navItem(Icons.campaign_outlined, 1),
+            _navItem(Icons.groups_outlined, 2),
+            _navItem(Icons.person_outline, 3),
+
+          ],
         ),
       ),
+    );
+  }
+
+  Widget _navItem(IconData icon, int index) {
+    const orange = Color(0xFFFFA726);
+
+    return IconButton(
+      icon: Icon(
+        icon,
+        color: _selectedIndex == index ? orange : Colors.grey,
+      ),
+      onPressed: () => _onItemTapped(index),
     );
   }
 }

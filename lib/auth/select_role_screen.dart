@@ -35,7 +35,7 @@ class SelectRoleScreen extends StatelessWidget {
                       textColor: purple,
                       textOffset: const Offset(40, 40),
                       onTap: () {
-                        Navigator.push(
+                        Navigator.pushReplacement(
                           context,
                           MaterialPageRoute(builder: (_) => const LoginScreen()),
                         );
@@ -54,7 +54,7 @@ class SelectRoleScreen extends StatelessWidget {
                       textColor: Colors.white,
                       textOffset: const Offset(-40, -40),
                       onTap: () {
-                        Navigator.push(
+                        Navigator.pushReplacement(
                           context,
                           MaterialPageRoute(builder: (_) => const OrgLoginScreen()),
                         );

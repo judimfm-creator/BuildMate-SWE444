@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 
-import '../home_screen.dart';
+import '../org_home_screen.dart';
 import 'register_screen.dart';
 
 class OrgLoginScreen extends StatefulWidget {
@@ -52,7 +52,7 @@ class _OrgLoginScreenState extends State<OrgLoginScreen> {
 
       Navigator.pushReplacement(
         context,
-        MaterialPageRoute(builder: (_) => const HomeScreen()),
+        MaterialPageRoute(builder: (_) => const InstitutionHomeScreen()),
       );
     } on FirebaseAuthException catch (e) {
       String msg = "Login failed";
@@ -235,6 +235,7 @@ class _OrgLoginScreenState extends State<OrgLoginScreen> {
           ),
         ),
       ),
+
     );
   }
 }
