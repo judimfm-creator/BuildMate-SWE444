@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'auth/select_role_screen.dart';
+import 'widgets/user_nav_bar.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -40,9 +41,10 @@ class _HomeScreenState extends State<HomeScreen> {
 
   @override
   Widget build(BuildContext context) {
-    const orange = Color(0xFFFFA726);
+    const purple = Color(0xFF6D56B3);
 
     return Scaffold(
+      backgroundColor: purple,
       appBar: AppBar(
         title: const Text("BuildMate"),
         actions: [
@@ -54,44 +56,10 @@ class _HomeScreenState extends State<HomeScreen> {
       ),
       body: _pages[_selectedIndex],
 
-      bottomNavigationBar: Container(
-        height: 75,
-        decoration: const BoxDecoration(
-          color: Colors.white,
-          borderRadius: BorderRadius.vertical(
-            top: Radius.circular(25),
-          ),
-          boxShadow: [
-            BoxShadow(
-              color: Colors.black12,
-              blurRadius: 10,
-            ),
-          ],
-        ),
-        child: Row(
-          mainAxisAlignment: MainAxisAlignment.spaceAround,
-          children: [
-
-            _navItem(Icons.home_outlined, 0),
-            _navItem(Icons.campaign_outlined, 1),
-            _navItem(Icons.groups_outlined, 2),
-            _navItem(Icons.person_outline, 3),
-
-          ],
-        ),
-      ),
-    );
-  }
-
-  Widget _navItem(IconData icon, int index) {
-    const orange = Color(0xFFFFA726);
-
-    return IconButton(
-      icon: Icon(
-        icon,
-        color: _selectedIndex == index ? orange : Colors.grey,
-      ),
-      onPressed: () => _onItemTapped(index),
+      bottomNavigationBar: UserNavBar(
+      currentIndex: _selectedIndex,
+      onTap: _onItemTapped,
+    ),
     );
   }
 }
