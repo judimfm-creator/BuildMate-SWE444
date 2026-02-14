@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'auth/select_role_screen.dart';
 import 'widgets/user_nav_bar.dart';
+import 'widgets/buildmate_app_bar.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -45,14 +46,8 @@ class _HomeScreenState extends State<HomeScreen> {
 
     return Scaffold(
       backgroundColor: purple,
-      appBar: AppBar(
-        title: const Text("BuildMate"),
-        actions: [
-          IconButton(
-            icon: const Icon(Icons.logout),
-            onPressed: logout,
-          )
-        ],
+      appBar: BuildMateAppBar(
+        onLogout: logout,
       ),
       body: _pages[_selectedIndex],
 
