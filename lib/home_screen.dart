@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
-import 'auth/select_role_screen.dart';
+import 'package:provider/provider.dart'; // أضفنا البروفايدر
+import 'viewmodel/register_view_model.dart'; // استدعاء الـ ViewModel
 import 'widgets/user_nav_bar.dart';
 import 'widgets/buildmate_app_bar.dart';
 
@@ -12,19 +13,12 @@ class HomeScreen extends StatefulWidget {
 }
 
 class _HomeScreenState extends State<HomeScreen> {
-
   int _selectedIndex = 0;
 
-  Future<void> logout() async {
-    await FirebaseAuth.instance.signOut();
-
-    if (!mounted) return;
-
-    Navigator.pushAndRemoveUntil(
-      context,
-      MaterialPageRoute(builder: (_) => const SelectRoleScreen()),
-          (route) => false,
-    );
+  // التعديل هنا: استدعاء دالة الخروج من الـ ViewModel لضمان المسارات الصحيحة
+  Future<void> _handleLogout() async {
+    // نستخدم الـ ViewModel اللي برمجنا فيه العودة لـ /loginUser
+    await Provider.of<RegisterViewModel>(context, listen: false).logout(context);
   }
 
   final List<Widget> _pages = [
@@ -45,16 +39,15 @@ class _HomeScreenState extends State<HomeScreen> {
     const purple = Color(0xFF6D56B3);
 
     return Scaffold(
-      backgroundColor: purple,
+      backgroundColor: Colors.white, // يفضل خلفية بيضاء للمحتوى داخل الـ Scaffold
       appBar: BuildMateAppBar(
-        onLogout: logout,
+        onLogout: _handleLogout, // نمرر الدالة الجديدة
       ),
       body: _pages[_selectedIndex],
-
       bottomNavigationBar: UserNavBar(
-      currentIndex: _selectedIndex,
-      onTap: _onItemTapped,
-    ),
+        currentIndex: _selectedIndex,
+        onTap: _onItemTapped,
+      ),
     );
   }
 }

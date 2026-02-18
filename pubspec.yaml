@@ -5,15 +5,20 @@ publish_to: 'none'
 version: 1.0.0+1
 
 environment:
-  sdk: ^3.10.8
+  sdk: '>=3.1.0 <4.0.0'
 
 dependencies:
   flutter:
     sdk: flutter
 
+  # مكتبة اختيار الصور من الاستوديو
+  image_picker: ^1.0.7
+
+  # المكتبات الأساسية
+  provider: ^6.1.1
   cupertino_icons: ^1.0.8
 
-  # Firebase
+  # مكتبات Firebase المحدثة
   firebase_core: ^2.25.4
   firebase_auth: ^4.17.4
   cloud_firestore: ^4.15.4
@@ -21,11 +26,9 @@ dependencies:
 dev_dependencies:
   flutter_test:
     sdk: flutter
-
-  flutter_lints: ^6.0.0
+  flutter_lints: ^3.0.0
 
 flutter:
   uses-material-design: true
-
   assets:
     - assets/images/

@@ -1,8 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 
-import '../org_home_screen.dart';
-import 'register_screen.dart';
+// تم تحديث المسارات لتناسب المجلدات الجديدة
+import '../view/register_org_view.dart'; 
+// تأكدي من أن اسم الملف في هذا المسار صحيح (org_home_screen.dart)
+import '../org_home_screen.dart'; 
 
 class OrgLoginScreen extends StatefulWidget {
   const OrgLoginScreen({super.key});
@@ -36,7 +38,7 @@ class _OrgLoginScreenState extends State<OrgLoginScreen> {
     final pass = _passwordController.text.trim();
 
     if (email.isEmpty || pass.isEmpty) {
-      _toast("Please enter username and password");
+      _toast("Please enter email and password");
       return;
     }
 
@@ -50,6 +52,7 @@ class _OrgLoginScreenState extends State<OrgLoginScreen> {
 
       if (!mounted) return;
 
+      // التأكد من أن اسم الـ Home Screen صحيح
       Navigator.pushReplacement(
         context,
         MaterialPageRoute(builder: (_) => const InstitutionHomeScreen()),
@@ -82,7 +85,6 @@ class _OrgLoginScreenState extends State<OrgLoginScreen> {
       _toast("Reset email sent ✅ Check your inbox");
     } on FirebaseAuthException catch (e) {
       String msg = "Failed to send reset email";
-      if (e.code == 'invalid-email') msg = "Invalid email";
       if (e.code == 'user-not-found') msg = "No user found for this email";
       _toast(msg);
     } catch (_) {
@@ -121,7 +123,7 @@ class _OrgLoginScreenState extends State<OrgLoginScreen> {
                 enabled: !_loading,
                 style: const TextStyle(color: Colors.white),
                 decoration: InputDecoration(
-                  hintText: "username",
+                  hintText: "Email",
                   hintStyle: const TextStyle(color: Colors.white70),
                   filled: true,
                   fillColor: fieldFill.withOpacity(0.55),
@@ -216,7 +218,7 @@ class _OrgLoginScreenState extends State<OrgLoginScreen> {
                         : () {
                             Navigator.push(
                               context,
-                              MaterialPageRoute(builder: (_) => const RegisterScreen()),
+                              MaterialPageRoute(builder: (_) => const RegisterOrgView()),
                             );
                           },
                     child: const Text(
@@ -235,7 +237,6 @@ class _OrgLoginScreenState extends State<OrgLoginScreen> {
           ),
         ),
       ),
-
     );
   }
 }

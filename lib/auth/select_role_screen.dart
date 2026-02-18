@@ -1,8 +1,12 @@
 import 'dart:math' as math;
 import 'package:flutter/material.dart';
 
-import 'login_screen.dart';
-import 'org_login_screen.dart';
+// استخدام الـ Package import هو الحل الأمثل لتفادي مشاكل المجلدات
+// استبدلي 'buildmate' باسم مشروعك كما هو موجود في ملف pubspec.yaml
+import 'package:buildmate/auth/login_screen.dart';
+import 'package:buildmate/auth/org_login_screen.dart';
+import 'package:buildmate/view/register_user_view.dart';
+import 'package:buildmate/view/register_org_view.dart';
 
 class SelectRoleScreen extends StatelessWidget {
   const SelectRoleScreen({super.key});
@@ -24,7 +28,7 @@ class SelectRoleScreen extends StatelessWidget {
               color: bgTeal,
               child: Stack(
                 children: [
-                  // دائرة اليوزر
+                  // دائرة اليوزر (المتسابق) - تفتح صفحة تسجيل المتسابق
                   Positioned(
                     top: -80,
                     left: -80,
@@ -35,15 +39,15 @@ class SelectRoleScreen extends StatelessWidget {
                       textColor: purple,
                       textOffset: const Offset(40, 40),
                       onTap: () {
-                        Navigator.pushReplacement(
+                        Navigator.push(
                           context,
-                          MaterialPageRoute(builder: (_) => const LoginScreen()),
+                          MaterialPageRoute(builder: (_) => const RegisterUserView()),
                         );
                       },
                     ),
                   ),
 
-                  // دائرة الأورقنايزيشن
+                  // دائرة المنظمة - تفتح صفحة تسجيل المنظمة
                   Positioned(
                     bottom: -80,
                     right: -80,
@@ -54,15 +58,15 @@ class SelectRoleScreen extends StatelessWidget {
                       textColor: Colors.white,
                       textOffset: const Offset(-40, -40),
                       onTap: () {
-                        Navigator.pushReplacement(
+                        Navigator.push(
                           context,
-                          MaterialPageRoute(builder: (_) => const OrgLoginScreen()),
+                          MaterialPageRoute(builder: (_) => const RegisterOrgView()),
                         );
                       },
                     ),
                   ),
 
-                  // اللوقو بالنص
+                  // اللوجو بالنص
                   Center(
                     child: Image.asset(
                       'assets/images/logo.png',
@@ -119,8 +123,8 @@ class _RoleCircle extends StatelessWidget {
                 child: Text(
                   text,
                   style: TextStyle(
-                    fontSize: 30,
-                    fontWeight: FontWeight.w600,
+                    fontSize: 32,
+                    fontWeight: FontWeight.bold,
                     color: textColor,
                   ),
                 ),

@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:provider/provider.dart'; // ضروري لاستدعاء الـ ViewModel
+import '../viewmodel/register_view_model.dart'; // تأكدي من المسار الصحيح
 import 'auth/select_role_screen.dart';
 import 'view/create_hackathon_view.dart';
 import 'widgets/org_nav_bar.dart';
@@ -18,16 +20,10 @@ class _InstitutionHomeScreenState
 
   int _selectedIndex = 0;
 
+  // --- التعديل الجوهري هنا ---
   Future<void> logout() async {
-    await FirebaseAuth.instance.signOut();
-
-    if (!mounted) return;
-
-    Navigator.pushAndRemoveUntil(
-      context,
-      MaterialPageRoute(builder: (_) => const SelectRoleScreen()),
-          (route) => false,
-    );
+    // بدلاً من التوجيه اليدوي للدوائر، نستدعي دالة الـ ViewModel الموحدة
+    await Provider.of<RegisterViewModel>(context, listen: false).logout(context);
   }
 
   final List<Widget> _pages = [
@@ -50,9 +46,8 @@ class _InstitutionHomeScreenState
 
     return Scaffold(
       backgroundColor: purple,
-
       appBar: BuildMateAppBar(
-        onLogout: logout,
+        onLogout: logout, // ستعمل الدالة المعدلة الآن وتوجهك للوجن
         titleText: _selectedIndex == 2 ? "Create Hackathon" : null,
         showBack: _selectedIndex == 2,
         onBack: () {
@@ -60,11 +55,10 @@ class _InstitutionHomeScreenState
         },
       ),
       body: _pages[_selectedIndex],
-
       bottomNavigationBar: OrgNavBar(
-      selectedIndex: _selectedIndex,
-      onTap: _onItemTapped,
-    ),
+        selectedIndex: _selectedIndex,
+        onTap: _onItemTapped,
+      ),
     );
   }
 }
