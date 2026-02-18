@@ -24,6 +24,17 @@ class _RegisterUserViewState extends State<RegisterUserView> {
   final Color purple = const Color(0xFF6D56B3);
 
   @override
+  void dispose() {
+    _fullNameController.dispose();
+    _usernameController.dispose();
+    _emailController.dispose();
+    _phoneController.dispose();
+    _passwordController.dispose();
+    _confirmPasswordController.dispose();
+    super.dispose();
+  }
+
+  @override
   Widget build(BuildContext context) {
     final vm = context.watch<RegisterViewModel>();
 
@@ -35,10 +46,20 @@ class _RegisterUserViewState extends State<RegisterUserView> {
           key: _formKey,
           child: Column(
             children: [
-              _buildField(_fullNameController, "Full Name", Icons.badge_outlined, (v) => v!.isEmpty ? "Required" : null),
-              _buildField(_usernameController, "Username", Icons.person_outline, (v) => v!.length < 3 ? "Too short" : null),
+              // حقل الاسم الكامل مع شرط الـ 3 أسماء
+              _buildField(_fullNameController, "Full Name", Icons.badge_outlined, (v) {
+                if (v == null || v.trim().isEmpty) return "Full name is required";
+                List<String> parts = v.trim().split(RegExp(r'\s+'));
+                if (parts.length < 3) {
+                  return "Please enter at least 3 names";
+                }
+                return null;
+              }),
               
-              // Email مع الـ Regex المرن والـ Trim
+              _buildField(_usernameController, "Username", Icons.person_outline, 
+                (v) => v!.trim().length < 3 ? "At least 3 characters" : null),
+              
+              // حقل الإيميل مع الـ Regex القوي والـ Trim
               TextFormField(
                 controller: _emailController,
                 keyboardType: TextInputType.emailAddress,
@@ -48,27 +69,36 @@ class _RegisterUserViewState extends State<RegisterUserView> {
                   border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
                 ),
                 validator: (v) {
-                  final regex = RegExp(r"^[a-zA-Z0-9.]+@[a-zA-Z0-9]+\.[a-zA-Z]+");
-                  if (!regex.hasMatch(v!.trim())) return "Invalid email";
+                  if (v == null || v.trim().isEmpty) return "Email is required";
+                  final regex = RegExp(r"^[a-zA-Z0-9.a-zA-Z0-9.!#$%&'*+-/=?^_`{|}~]+@[a-zA-Z0-9]+\.[a-zA-Z]+");
+                  if (!regex.hasMatch(v.trim())) return "Enter a valid email address";
                   return null;
                 },
               ),
               const SizedBox(height: 16),
 
-              _buildField(_phoneController, "Phone", Icons.phone_android, (v) => !RegExp(r'^05\d{8}$').hasMatch(v!) ? "Invalid Saudi phone" : null),
+              // حقل الهاتف (الجوال السعودي)
+              _buildField(_phoneController, "Phone (05xxxxxxxx)", Icons.phone_android, (v) {
+                final regex = RegExp(r'^05\d{8}$');
+                return !regex.hasMatch(v!.trim()) ? "Must be 10 digits starting with 05" : null;
+              }, type: TextInputType.phone),
 
-              // كلمة المرور بشروط القوة
-              _buildPassField(_passwordController, "Password", _isPasswordVisible, () => setState(() => _isPasswordVisible = !_isPasswordVisible), 
+              // كلمة المرور بنفس شروط المنشأة
+              _buildPassField(_passwordController, "Password", _isPasswordVisible, 
+                () => setState(() => _isPasswordVisible = !_isPasswordVisible), 
                 (v) {
-                  if (v!.length < 8) return "Min 8 characters";
-                  if (!v.contains(RegExp(r'[A-Z]'))) return "Add an uppercase letter";
-                  if (!v.contains(RegExp(r'[0-9]'))) return "Add a number";
+                  if (v == null || v.isEmpty) return "Password is required";
+                  if (v.length < 8) return "Min 8 characters";
+                  if (!v.contains(RegExp(r'[A-Z]'))) return "Add one uppercase letter";
+                  if (!v.contains(RegExp(r'[0-9]'))) return "Add one number";
+                  if (!v.contains(RegExp(r'[!@#$%^&*(),.?":{}|<>]'))) return "Add one special character";
                   return null;
                 }
               ),
 
-              _buildPassField(_confirmPasswordController, "Confirm Password", _isConfirmVisible, () => setState(() => _isConfirmVisible = !_isConfirmVisible), 
-                (v) => v != _passwordController.text ? "Not matching" : null
+              _buildPassField(_confirmPasswordController, "Confirm Password", _isConfirmVisible, 
+                () => setState(() => _isConfirmVisible = !_isConfirmVisible), 
+                (v) => v != _passwordController.text ? "Passwords do not match" : null
               ),
 
               const SizedBox(height: 30),
@@ -76,9 +106,14 @@ class _RegisterUserViewState extends State<RegisterUserView> {
                 width: double.infinity,
                 height: 55,
                 child: ElevatedButton(
-                  style: ElevatedButton.styleFrom(backgroundColor: purple, shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12))),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: purple, 
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12))
+                  ),
                   onPressed: vm.isLoading ? null : _submit,
-                  child: vm.isLoading ? const CircularProgressIndicator(color: Colors.white) : const Text("Sign Up", style: TextStyle(color: Colors.white, fontSize: 18)),
+                  child: vm.isLoading 
+                    ? const CircularProgressIndicator(color: Colors.white) 
+                    : const Text("Sign Up", style: TextStyle(color: Colors.white, fontSize: 18)),
                 ),
               ),
             ],
@@ -88,19 +123,22 @@ class _RegisterUserViewState extends State<RegisterUserView> {
     );
   }
 
-  // دالة بناء الحقول
-  Widget _buildField(TextEditingController ctrl, String label, IconData icon, String? Function(String?)? validator) {
+  Widget _buildField(TextEditingController ctrl, String label, IconData icon, String? Function(String?)? validator, {TextInputType type = TextInputType.text}) {
     return Padding(
       padding: const EdgeInsets.only(bottom: 16),
       child: TextFormField(
         controller: ctrl,
-        decoration: InputDecoration(labelText: label, prefixIcon: Icon(icon, color: purple), border: OutlineInputBorder(borderRadius: BorderRadius.circular(12))),
+        keyboardType: type,
+        decoration: InputDecoration(
+          labelText: label, 
+          prefixIcon: Icon(icon, color: purple), 
+          border: OutlineInputBorder(borderRadius: BorderRadius.circular(12))
+        ),
         validator: validator,
       ),
     );
   }
 
-  // دالة بناء حقل الباسورد
   Widget _buildPassField(TextEditingController ctrl, String label, bool visible, VoidCallback toggle, String? Function(String?)? validator) {
     return Padding(
       padding: const EdgeInsets.only(bottom: 16),
@@ -110,7 +148,10 @@ class _RegisterUserViewState extends State<RegisterUserView> {
         decoration: InputDecoration(
           labelText: label,
           prefixIcon: Icon(Icons.lock_outline, color: purple),
-          suffixIcon: IconButton(icon: Icon(visible ? Icons.visibility : Icons.visibility_off), onPressed: toggle),
+          suffixIcon: IconButton(
+            icon: Icon(visible ? Icons.visibility : Icons.visibility_off, color: Colors.grey), 
+            onPressed: toggle
+          ),
           border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
         ),
         validator: validator,

@@ -1,28 +1,20 @@
 import 'package:flutter/material.dart';
-import 'package:firebase_core/firebase_core.dart';
 import 'package:provider/provider.dart';
+import 'package:firebase_core/firebase_core.dart';
 
-import 'viewmodel/register_view_model.dart';
-import 'auth/login_screen.dart';       
-import 'auth/select_role_screen.dart'; 
-import 'view/register_org_view.dart';  
-import 'view/register_user_view.dart'; 
-import 'home_screen.dart';   
-// إذا كان الملف موجوداً في نفس مجلد main
-import 'org_home_screen.dart'; 
+// 1. تأكدي من إضافة هذا السطر لتعريف الصفحة الجديدة
+import 'package:buildmate/view/complete_profile_view.dart'; 
+
+import 'package:buildmate/viewmodel/register_view_model.dart';
+import 'package:buildmate/auth/login_screen.dart';
+import 'package:buildmate/auth/select_role_screen.dart';
+import 'package:buildmate/home_screen.dart';
+import 'package:buildmate/org_home_screen.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   await Firebase.initializeApp();
-
-  runApp(
-    MultiProvider(
-      providers: [
-        ChangeNotifierProvider(create: (_) => RegisterViewModel()),
-      ],
-      child: const MyApp(),
-    ),
-  );
+  runApp(const MyApp());
 }
 
 class MyApp extends StatelessWidget {
@@ -30,32 +22,29 @@ class MyApp extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    const primaryColor = Color(0xFF6D56B3);
-
-    return MaterialApp(
-      debugShowCheckedModeBanner: false,
-      title: 'BuildMate',
-      theme: ThemeData(
-        useMaterial3: true,
-        colorScheme: ColorScheme.fromSeed(seedColor: primaryColor),
-        elevatedButtonTheme: ElevatedButtonThemeData(
-          style: ElevatedButton.styleFrom(
-            backgroundColor: primaryColor,
-            foregroundColor: Colors.white,
-            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-          ),
+    return MultiProvider(
+      providers: [
+        ChangeNotifierProvider(create: (_) => RegisterViewModel()),
+      ],
+      child: MaterialApp(
+        title: 'BuildMate',
+        debugShowCheckedModeBanner: false,
+        theme: ThemeData(
+          primarySwatch: Colors.teal,
+          useMaterial3: true,
         ),
+        // تعريف المسارات (Routes)
+        initialRoute: '/loginUser',
+        routes: {
+          '/loginUser': (context) => const LoginScreen(),
+          '/selectRole': (context) => const SelectRoleScreen(),
+          '/home': (context) => const HomeScreen(),
+          '/orgHome': (context) => const InstitutionHomeScreen(),
+          
+          // 2. هذا هو السطر الذي أضفتيه، والتأكد من وجود الإيمبورت فوق سيحل الإيرور
+          '/completeProfile': (context) => const CompleteProfileView(), 
+        },
       ),
-
-      // نبدأ بصفحة اللوجن مباشرة
-      initialRoute: '/loginUser', 
-
-      routes: {
-  '/loginUser': (context) => const LoginScreen(),
-  '/home': (context) => const HomeScreen(),        // شاشة المتسابق
-  '/orgHome': (context) => const InstitutionHomeScreen(),   // شاشة المنظمة (الملف الجديد في الصورة)
-  '/selectRole': (context) => const SelectRoleScreen(),
-},
     );
   }
 }
