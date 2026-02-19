@@ -29,7 +29,6 @@ class OrgNavBar extends StatelessWidget {
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceAround,
         children: [
-
           _navItem(Icons.home_outlined, 0),
           _navItem(Icons.campaign_outlined, 1),
 
@@ -50,7 +49,21 @@ class OrgNavBar extends StatelessWidget {
           ),
 
           _navItem(Icons.groups_outlined, 3),
-          _navItem(Icons.person_outline, 4),
+
+          // تعديل بسيط هنا لإضافة الانتقال لصفحة البروفايل
+          IconButton(
+            icon: Icon(
+              Icons.person_outline,
+              color: selectedIndex == 4
+                  ? const Color(0xFFFFA726)
+                  : Colors.grey,
+            ),
+            onPressed: () {
+              onTap(4);
+              // هذا السطر هو المسؤول عن فتح صفحتك
+              Navigator.pushNamed(context, '/profile');
+            },
+          ),
         ],
       ),
     );

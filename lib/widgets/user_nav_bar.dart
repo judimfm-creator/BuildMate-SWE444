@@ -1,3 +1,4 @@
+// lib/widgets/user_nav_bar.dart
 import 'package:flutter/material.dart';
 
 class UserNavBar extends StatelessWidget {
@@ -16,15 +17,8 @@ class UserNavBar extends StatelessWidget {
       height: 75,
       decoration: const BoxDecoration(
         color: Colors.white,
-        borderRadius: BorderRadius.vertical(
-          top: Radius.circular(25),
-        ),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black12,
-            blurRadius: 10,
-          ),
-        ],
+        borderRadius: BorderRadius.vertical(top: Radius.circular(25)),
+        boxShadow: [BoxShadow(color: Colors.black12, blurRadius: 10)],
       ),
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceAround,
@@ -32,6 +26,7 @@ class UserNavBar extends StatelessWidget {
           _navItem(Icons.home_outlined, 0),
           _navItem(Icons.campaign_outlined, 1),
           _navItem(Icons.groups_outlined, 2),
+          // أيقونة البروفايل (الرقم 3)
           _navItem(Icons.person_outline, 3),
         ],
       ),
@@ -42,11 +37,10 @@ class UserNavBar extends StatelessWidget {
     return IconButton(
       icon: Icon(
         icon,
-        color: currentIndex == index
-            ? const Color(0xFFFFA726)
-            : Colors.grey,
+        // تغيير اللون ليطابق تصميم BuildMate (البرتقالي للمختار)
+        color: currentIndex == index ? const Color(0xFFFFA726) : Colors.grey,
       ),
-      onPressed: () => onTap(index),
+      onPressed: () => onTap(index), // استدعاء دالة التغيير في الهوم سكرين
     );
   }
 }

@@ -1,20 +1,34 @@
 import 'package:flutter/material.dart';
-import 'package:provider/provider.dart';
 import 'package:firebase_core/firebase_core.dart';
+import 'package:provider/provider.dart';
 
-// 1. تأكدي من إضافة هذا السطر لتعريف الصفحة الجديدة
-import 'package:buildmate/view/complete_profile_view.dart'; 
-
+// ViewModels
 import 'package:buildmate/viewmodel/register_view_model.dart';
+import 'package:buildmate/viewmodel/profile_view_model.dart';
+
+// Screens (تأكدي أن المسارات تطابق مجلدات مشروعك الفعلي)
 import 'package:buildmate/auth/login_screen.dart';
 import 'package:buildmate/auth/select_role_screen.dart';
+import 'package:buildmate/view/register_org_view.dart';
+import 'package:buildmate/view/register_user_view.dart';
 import 'package:buildmate/home_screen.dart';
 import 'package:buildmate/org_home_screen.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   await Firebase.initializeApp();
-  runApp(const MyApp());
+
+  runApp(
+    MultiProvider(
+      providers: [
+        // تعريف الـ ViewModels هنا يضمن وصول كل الصفحات لها
+        ChangeNotifierProvider(create: (_) => RegisterViewModel()),
+        ChangeNotifierProvider(create: (_) => ProfileViewModel()),
+      ],
+      // نمرر الـ MaterialApp كـ child للـ MultiProvider
+      child: const MyApp(),
+    ),
+  );
 }
 
 class MyApp extends StatelessWidget {
@@ -22,29 +36,36 @@ class MyApp extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return MultiProvider(
-      providers: [
-        ChangeNotifierProvider(create: (_) => RegisterViewModel()),
-      ],
-      child: MaterialApp(
-        title: 'BuildMate',
-        debugShowCheckedModeBanner: false,
-        theme: ThemeData(
-          primarySwatch: Colors.teal,
-          useMaterial3: true,
+    // الألوان المعتمدة في شغل البنات
+    const primaryColor = Color(0xFF6D56B3);
+
+    return MaterialApp(
+      debugShowCheckedModeBanner: false,
+      title: 'BuildMate',
+      theme: ThemeData(
+        useMaterial3: true,
+        colorScheme: ColorScheme.fromSeed(seedColor: primaryColor),
+        elevatedButtonTheme: ElevatedButtonThemeData(
+          style: ElevatedButton.styleFrom(
+            backgroundColor: primaryColor,
+            foregroundColor: Colors.white,
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+          ),
         ),
-        // تعريف المسارات (Routes)
-        initialRoute: '/loginUser',
-        routes: {
-          '/loginUser': (context) => const LoginScreen(),
-          '/selectRole': (context) => const SelectRoleScreen(),
-          '/home': (context) => const HomeScreen(),
-          '/orgHome': (context) => const InstitutionHomeScreen(),
-          
-          // 2. هذا هو السطر الذي أضفتيه، والتأكد من وجود الإيمبورت فوق سيحل الإيرور
-          '/completeProfile': (context) => const CompleteProfileView(), 
-        },
       ),
+
+      // نقطة البداية الصحيحة
+      initialRoute: '/loginUser',
+
+      routes: {
+        '/loginUser': (context) => const LoginScreen(),
+        '/selectRole': (context) => const SelectRoleScreen(),
+        '/registerUser': (context) => const RegisterUserView(),
+        '/registerOrg': (context) => const RegisterOrgView(),
+
+        '/home': (context) => const HomeScreen(),
+        '/orgHome': (context) => const InstitutionHomeScreen(),
+      },
     );
   }
 }
