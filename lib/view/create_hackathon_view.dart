@@ -214,11 +214,11 @@ class _CreateHackathonViewState extends State<CreateHackathonView> {
     return Scaffold(
       appBar: AppBar(
         title: const Text("Create Hackathon"),
-        // السهم الذي يوجه لصفحة الهوم مباشرة
+        // السهم الذي يوجه لصفحه سابقه
         leading: IconButton(
           icon: const Icon(Icons.arrow_back_ios_new, color: purple),
           onPressed: () {
-            Navigator.pushReplacementNamed(context, '/orgHome');
+            Navigator.pop(context);
           },
         ),
       ),
