@@ -16,8 +16,12 @@ class BuildMateTheme {
       prefixIcon: Icon(icon, color: const Color(0xFF6D56B3)),
       filled: true,
       fillColor: Colors.white.withOpacity(0.9),
-      enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(15), borderSide: const BorderSide(color: Colors.black12)),
-      focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(15), borderSide: const BorderSide(color: Color(0xFF6D56B3), width: 2)),
+      enabledBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(15),
+          borderSide: const BorderSide(color: Colors.black12)),
+      focusedBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(15),
+          borderSide: const BorderSide(color: Color(0xFF6D56B3), width: 2)),
     );
   }
 }

@@ -31,7 +31,7 @@ class _CreateHackathonViewState extends State<CreateHackathonView> {
   DateTime? startDate;
   DateTime? endDate;
 
-  // Date errors (for showing "Required" under date fields)
+  // Date errors
   String? startDateError;
   String? endDateError;
 
@@ -107,13 +107,9 @@ class _CreateHackathonViewState extends State<CreateHackathonView> {
     setState(() {
       startDate = picked;
       startDateError = null;
-
-      // لو endDate قبل startDate نخليه null
       if (endDate != null && endDate!.isBefore(picked)) {
         endDate = null;
       }
-
-      // ما نخليها Required إلا وقت submit (عشان ما يزعج المستخدم)
       endDateError = null;
     });
   }
@@ -140,12 +136,10 @@ class _CreateHackathonViewState extends State<CreateHackathonView> {
   Future<void> _submit() async{
     final isFormValid = _formKey.currentState!.validate();
 
-
     setState(() {
       startDateError = (startDate == null) ? "Required" : null;
       endDateError = (endDate == null) ? "Required" : null;
     });
-
 
     if (!isFormValid || startDate == null || endDate == null) return;
 
@@ -181,7 +175,6 @@ class _CreateHackathonViewState extends State<CreateHackathonView> {
         const SnackBar(content: Text("Hackathon saved successfully ✅")),
       );
 
-      // Clear form after submit
       _formKey.currentState!.reset();
       nameController.clear();
       descriptionController.clear();
@@ -194,7 +187,6 @@ class _CreateHackathonViewState extends State<CreateHackathonView> {
         selectedMode = null;
         selectedDomain = null;
         selectedEducation = null;
-
         startDate = null;
         endDate = null;
         startDateError = null;
@@ -202,12 +194,10 @@ class _CreateHackathonViewState extends State<CreateHackathonView> {
       });
     } catch (e) {
       if (!mounted) return;
-
       String message = "Something went wrong. Please try again.";
       if (e.toString().contains("TimeoutException")) {
         message = "No internet connection. Please check your network.";
       }
-
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text(message)),
       );
@@ -219,10 +209,18 @@ class _CreateHackathonViewState extends State<CreateHackathonView> {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    const purple = Color(0xFF6D56B3); // اللون المعتمد لمشروعك
 
     return Scaffold(
       appBar: AppBar(
         title: const Text("Create Hackathon"),
+        // السهم الذي يوجه لصفحة الهوم مباشرة
+        leading: IconButton(
+          icon: const Icon(Icons.arrow_back_ios_new, color: purple),
+          onPressed: () {
+            Navigator.pushReplacementNamed(context, '/orgHome');
+          },
+        ),
       ),
       body: SafeArea(
         child: SingleChildScrollView(
@@ -312,14 +310,12 @@ class _CreateHackathonViewState extends State<CreateHackathonView> {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-
                       InkWell(
                         onTap: () async {
                           final result = await showDialog<List<String>>(
                             context: context,
                             builder: (context) {
                               List<String> tempSelected = List.from(selectedRoles);
-
                               return StatefulBuilder(
                                 builder: (context, setDialogState) {
                                   return AlertDialog(
@@ -359,7 +355,6 @@ class _CreateHackathonViewState extends State<CreateHackathonView> {
                               );
                             },
                           );
-
                           if (result != null) {
                             setState(() {
                               selectedRoles = result;
@@ -378,7 +373,6 @@ class _CreateHackathonViewState extends State<CreateHackathonView> {
                           ),
                         ),
                       ),
-
                       if (selectedRoles.contains("Other"))
                         Padding(
                           padding: const EdgeInsets.only(top: 8),
