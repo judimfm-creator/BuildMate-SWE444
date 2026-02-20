@@ -3,6 +3,8 @@ import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:buildmate/model/user_model.dart';
+import 'package:firebase_auth/firebase_auth.dart';
+import 'package:flutter/material.dart';
 
 class ProfileViewModel extends ChangeNotifier {
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
@@ -82,6 +84,62 @@ class ProfileViewModel extends ChangeNotifier {
       }
     } finally {
       _setLoading(false);
+    }
+  }
+
+  Future<void> deleteAccount(
+      BuildContext context,
+      String email,
+      String password,
+      ) async {
+    final user = _auth.currentUser;
+    if (user == null) return;
+
+    try {
+      // Re-authenticate
+      final credential = EmailAuthProvider.credential(email: email, password: password);
+      await user.reauthenticateWithCredential(credential);
+
+      String uid = user.uid;
+
+      // Delete user data from Firestore first
+      await _firestore.collection('users').doc(uid).delete();
+
+      // Delete account from FirebaseAuth
+      await user.delete();
+
+      // Sign out
+      await _auth.signOut();
+
+      // Show message & redirect
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text("Account deleted successfully"),
+            backgroundColor: Colors.green,
+          ),
+        );
+
+        Navigator.pushNamedAndRemoveUntil(context, '/loginUser', (route) => false);
+      }
+    } on FirebaseAuthException catch (e) {
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text("Failed to delete account: ${e.message}"),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    } catch (e) {
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text("An error occurred: $e"),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
     }
   }
 
