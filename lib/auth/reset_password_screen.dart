@@ -9,6 +9,10 @@ class ResetPasswordScreen extends StatefulWidget {
 }
 
 class _ResetPasswordScreenState extends State<ResetPasswordScreen> {
+  // ✅ عدّلي هذي على طول:
+  static const String kResetRedirectUrl = 'https://YOUR_PROJECT.web.app/reset.html';
+  static const String kAndroidPackageName = 'com.example.buildmate';
+
   final _emailController = TextEditingController();
   bool _loading = false;
 
@@ -21,18 +25,25 @@ class _ResetPasswordScreenState extends State<ResetPasswordScreen> {
   }
 
   void _toast(String msg) {
-    ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(msg)));
+    if (!mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text(msg)),
+    );
+  }
+
+  bool _isValidEmail(String email) {
+    // بسيطة ومناسبة
+    return email.contains('@') && email.contains('.');
   }
 
   Future<void> _sendResetLink() async {
     final email = _emailController.text.trim();
 
-    // أنا أحب أتحقق بسرعة قبل ما أرسل
     if (email.isEmpty) {
       _toast("Email is required");
       return;
     }
-    if (!email.contains('@')) {
+    if (!_isValidEmail(email)) {
       _toast("Enter a valid email");
       return;
     }
@@ -40,16 +51,34 @@ class _ResetPasswordScreenState extends State<ResetPasswordScreen> {
     setState(() => _loading = true);
 
     try {
-      await FirebaseAuth.instance.sendPasswordResetEmail(email: email);
+      final settings = ActionCodeSettings(
+        // ✅ لازم HTTPS وموجود ضمن Authorized domains
+        url: kResetRedirectUrl,
+        handleCodeInApp: true,
 
-      if (!mounted) return;
+        // Android
+        androidPackageName: kAndroidPackageName,
+        androidInstallApp: true,
+        androidMinimumVersion: '1',
+      );
+
+      await FirebaseAuth.instance.sendPasswordResetEmail(
+        email: email,
+        actionCodeSettings: settings,
+      );
+
       _toast("Reset link sent ✅ Check your inbox");
-      Navigator.pop(context);
     } on FirebaseAuthException catch (e) {
-      // رسائل واضحة وبسيطة
       String msg = "Failed to send reset email";
+
       if (e.code == 'user-not-found') msg = "No user found for this email";
       if (e.code == 'invalid-email') msg = "Invalid email";
+
+    
+      if (e.code == 'invalid-continue-uri') {
+        msg = "Reset link URL is invalid (must be https + authorized domain)";
+      }
+
       _toast(msg);
     } catch (_) {
       _toast("Something went wrong");
@@ -67,61 +96,88 @@ class _ResetPasswordScreenState extends State<ResetPasswordScreen> {
         foregroundColor: Colors.white,
         title: const Text("Reset Password"),
       ),
-      body: Padding(
-        padding: const EdgeInsets.all(24),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            const SizedBox(height: 14),
+      body: SafeArea(
+        child: SingleChildScrollView(
+          padding: const EdgeInsets.all(24),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              const SizedBox(height: 18),
 
-            const Text(
-              "Type your email and we will send you a reset link.",
-              style: TextStyle(fontSize: 14),
-            ),
-
-            const SizedBox(height: 18),
-
-            TextField(
-              controller: _emailController,
-              keyboardType: TextInputType.emailAddress,
-              enabled: !_loading,
-              decoration: InputDecoration(
-                labelText: "Email",
-                prefixIcon: Icon(Icons.email_outlined, color: purple),
-                border: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(12),
+              // ✅ اللوقو (ضعف الحجم)
+              Center(
+                child: Image.asset(
+                  'assets/images/logo.png',
+                  height: 160, // 
+                  width: 160,
+                  fit: BoxFit.contain,
                 ),
               ),
-            ),
 
-            const SizedBox(height: 18),
+              const SizedBox(height: 18),
 
-            SizedBox(
-              height: 52,
-              child: ElevatedButton(
-                onPressed: _loading ? null : _sendResetLink,
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: purple,
-                  shape: RoundedRectangleBorder(
+              const Text(
+                "Type your email and we will send you a reset link.",
+                style: TextStyle(fontSize: 14),
+                textAlign: TextAlign.center,
+              ),
+
+              const SizedBox(height: 22),
+
+              TextField(
+                controller: _emailController,
+                keyboardType: TextInputType.emailAddress,
+                enabled: !_loading,
+                decoration: InputDecoration(
+                  labelText: "Email",
+                  prefixIcon: Icon(Icons.email_outlined, color: purple),
+                  border: OutlineInputBorder(
                     borderRadius: BorderRadius.circular(12),
                   ),
                 ),
-                child: _loading
-                    ? const SizedBox(
-                        height: 18,
-                        width: 18,
-                        child: CircularProgressIndicator(
-                          strokeWidth: 2,
-                          valueColor: AlwaysStoppedAnimation(Colors.white),
-                        ),
-                      )
-                    : const Text(
-                        "Send reset link",
-                        style: TextStyle(color: Colors.white, fontSize: 16),
-                      ),
               ),
-            ),
-          ],
+
+              const SizedBox(height: 18),
+
+              SizedBox(
+                height: 52,
+                child: ElevatedButton(
+                  onPressed: _loading ? null : _sendResetLink,
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: purple,
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                  ),
+                  child: _loading
+                      ? const SizedBox(
+                          height: 18,
+                          width: 18,
+                          child: CircularProgressIndicator(
+                            strokeWidth: 2,
+                            valueColor: AlwaysStoppedAnimation(Colors.white),
+                          ),
+                        )
+                      : const Text(
+                          "Send reset link",
+                          style: TextStyle(color: Colors.white, fontSize: 16),
+                        ),
+                ),
+              ),
+
+              const SizedBox(height: 12),
+
+              Text(
+                "After you tap the email link, it will open BuildMate directly and continue the reset inside the app.",
+                style: const TextStyle(fontSize: 12, color: Colors.black54),
+                textAlign: TextAlign.center,
+              ),
+
+              const SizedBox(height: 8),
+
+             
+            ],
+          ),
         ),
       ),
     );

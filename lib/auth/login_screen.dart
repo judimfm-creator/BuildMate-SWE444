@@ -58,7 +58,7 @@ class _LoginScreenState extends State<LoginScreen> {
               children: [
                 const SizedBox(height: 50),
 
-                // ✅ كبرت اللوقو مثل ما طلبتي
+                // ✅ كبرت اللوقو  
                 Image.asset(
                   'assets/images/logo.png',
                   height: 180,
