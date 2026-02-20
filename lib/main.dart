@@ -2,8 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:firebase_core/firebase_core.dart';
 
-// 1. تأكدي من إضافة هذا السطر لتعريف الصفحة الجديدة
-import 'package:buildmate/view/complete_profile_view.dart'; 
+import 'package:buildmate/view/complete_profile_view.dart';
+import 'package:buildmate/auth/welcome_screen.dart';
 
 import 'package:buildmate/viewmodel/register_view_model.dart';
 import 'package:buildmate/auth/login_screen.dart';
@@ -33,16 +33,19 @@ class MyApp extends StatelessWidget {
           primarySwatch: Colors.teal,
           useMaterial3: true,
         ),
-        // تعريف المسارات (Routes)
-        initialRoute: '/loginUser',
+
+        // ✅ NEW: خلي البداية من شاشة الترحيب
+        initialRoute: '/welcome',
+
         routes: {
+          // ✅ NEW
+          '/welcome': (context) => const WelcomeScreen(),
+
           '/loginUser': (context) => const LoginScreen(),
           '/selectRole': (context) => const SelectRoleScreen(),
           '/home': (context) => const HomeScreen(),
           '/orgHome': (context) => const InstitutionHomeScreen(),
-          
-          // 2. هذا هو السطر الذي أضفتيه، والتأكد من وجود الإيمبورت فوق سيحل الإيرور
-          '/completeProfile': (context) => const CompleteProfileView(), 
+          '/completeProfile': (context) => const CompleteProfileView(),
         },
       ),
     );

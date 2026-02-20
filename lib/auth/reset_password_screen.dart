@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'paste_reset_code_screen.dart';
 
 class ResetPasswordScreen extends StatefulWidget {
   const ResetPasswordScreen({super.key});
@@ -21,13 +22,14 @@ class _ResetPasswordScreenState extends State<ResetPasswordScreen> {
   }
 
   void _toast(String msg) {
-    ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(msg)));
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text(msg)),
+    );
   }
 
   Future<void> _sendResetLink() async {
     final email = _emailController.text.trim();
 
-    // أنا أحب أتحقق بسرعة قبل ما أرسل
     if (email.isEmpty) {
       _toast("Email is required");
       return;
@@ -40,22 +42,41 @@ class _ResetPasswordScreenState extends State<ResetPasswordScreen> {
     setState(() => _loading = true);
 
     try {
-      await FirebaseAuth.instance.sendPasswordResetEmail(email: email);
+      await FirebaseAuth.instance.sendPasswordResetEmail(
+        email: email,
+        actionCodeSettings: ActionCodeSettings(
+          url: 'buildmate://reset', // ✅ يفتح تطبيقكم
+          handleCodeInApp: true,
+          androidPackageName: 'com.example.buildmate', // ✅ applicationId حقك
+          androidInstallApp: true,
+          androidMinimumVersion: '1',
+        ),
+      );
 
       if (!mounted) return;
       _toast("Reset link sent ✅ Check your inbox");
-      Navigator.pop(context);
+      // نخليها ما تقفل عشان عندك زر إدخال الكود (backup)
+      // Navigator.pop(context);
     } on FirebaseAuthException catch (e) {
-      // رسائل واضحة وبسيطة
       String msg = "Failed to send reset email";
       if (e.code == 'user-not-found') msg = "No user found for this email";
       if (e.code == 'invalid-email') msg = "Invalid email";
+      if (e.code == 'invalid-continue-uri') {
+        msg = "Reset link settings error (invalid continue URL)";
+      }
       _toast(msg);
     } catch (_) {
       _toast("Something went wrong");
     } finally {
       if (mounted) setState(() => _loading = false);
     }
+  }
+
+  void _openCodeScreen() {
+    Navigator.push(
+      context,
+      MaterialPageRoute(builder: (_) => const PasteResetCodeScreen()),
+    );
   }
 
   @override
@@ -73,12 +94,10 @@ class _ResetPasswordScreenState extends State<ResetPasswordScreen> {
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
             const SizedBox(height: 14),
-
             const Text(
               "Type your email and we will send you a reset link.",
               style: TextStyle(fontSize: 14),
             ),
-
             const SizedBox(height: 18),
 
             TextField(
@@ -120,6 +139,24 @@ class _ResetPasswordScreenState extends State<ResetPasswordScreen> {
                         style: TextStyle(color: Colors.white, fontSize: 16),
                       ),
               ),
+            ),
+
+            const SizedBox(height: 10),
+
+            TextButton(
+              onPressed: _loading ? null : _openCodeScreen,
+              child: Text(
+                "I already have a reset code",
+                style: TextStyle(color: purple),
+              ),
+            ),
+
+            const SizedBox(height: 6),
+
+            Text(
+              "Tip: Open the email link, copy the value after oobCode= and paste it here.",
+              style: TextStyle(fontSize: 12, color: Colors.black54),
+              textAlign: TextAlign.center,
             ),
           ],
         ),
