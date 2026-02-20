@@ -29,6 +29,7 @@ class BuildMateAppBar extends StatelessWidget implements PreferredSizeWidget {
       backgroundColor: navLight,
       surfaceTintColor: navLight,
       elevation: 0,
+      automaticallyImplyLeading: false,
 
 
       centerTitle: false,
@@ -58,12 +59,12 @@ class BuildMateAppBar extends StatelessWidget implements PreferredSizeWidget {
 
 
 
-
       actions: [
-        IconButton(
-          icon: const Icon(Icons.logout, color: Colors.black87),
-          onPressed: onLogout,
-        ),
+        if (onLogout != null)
+          IconButton(
+            icon: const Icon(Icons.logout, color: Colors.black87),
+            onPressed: onLogout,
+          ),
       ],
     );
   }
