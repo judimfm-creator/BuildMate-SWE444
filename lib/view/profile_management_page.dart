@@ -5,6 +5,8 @@ import 'package:image_picker/image_picker.dart';
 import 'package:buildmate/model/user_model.dart';
 import 'package:buildmate/viewmodel/profile_view_model.dart';
 import 'package:buildmate/widgets/buildmate_app_bar.dart';
+import 'package:provider/provider.dart';
+import '../viewmodel/register_view_model.dart';
 
 class ProfileManagementPage extends StatefulWidget {
   const ProfileManagementPage({super.key});
@@ -73,7 +75,16 @@ class _ProfileManagementPageState extends State<ProfileManagementPage> {
             titleText: "Profile Management",
             showBack: true,
             onBack: () => Navigator.pop(context),
+            onLogout: () async {
+              await Provider.of<RegisterViewModel>(context, listen: false)
+                  .logout(context);
+            },
           ),
+          /*appBar: BuildMateAppBar(
+            titleText: "Profile Management",
+            showBack: true,
+            onBack: () => Navigator.pop(context),
+          ),*/
           body: Column(
             children: [
               Padding(
