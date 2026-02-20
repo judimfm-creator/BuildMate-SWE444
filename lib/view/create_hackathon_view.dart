@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import '../model/hackathon.dart';
 import '../viewmodel/create_hackathon_controller.dart';
+import '../widgets/buildmate_app_bar.dart';
 
 class CreateHackathonView extends StatefulWidget {
   const CreateHackathonView({super.key});
@@ -46,7 +47,7 @@ class _CreateHackathonViewState extends State<CreateHackathonView> {
     'Sustainability & Social Good',
     'Gaming & Entertainment',
     'General',
-    'Other' ,
+    'Other',
   ];
 
   final List<String> modes = const [
@@ -64,14 +65,16 @@ class _CreateHackathonViewState extends State<CreateHackathonView> {
 
   List<String> selectedRoles = [];
 
-  final List<String> availableRoles = [
+  final List<String> availableRoles = const [
     'Designer',
     'Flutter Developer',
     'Backend Developer',
     'UI/UX',
     'Data Analyst',
-    'Other' ,
+    'Other',
   ];
+
+  static const Color purple = Color(0xFF6D56B3);
 
   @override
   void dispose() {
@@ -85,6 +88,45 @@ class _CreateHackathonViewState extends State<CreateHackathonView> {
     super.dispose();
   }
 
+  // =========================
+  // Styling Helpers (Like Login/Profile)
+  // =========================
+  InputDecoration _fieldDecoration({
+    required String label,
+    required IconData icon,
+    String? hint,
+    String? errorText,
+  }) {
+    return InputDecoration(
+      labelText: label,
+      hintText: hint,
+      prefixIcon: Icon(icon, color: purple),
+      errorText: errorText,
+      contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 14),
+      border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+      enabledBorder: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(12),
+        borderSide: BorderSide(color: Colors.grey.shade400, width: 1),
+      ),
+      focusedBorder: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(12),
+        borderSide: const BorderSide(color: purple, width: 1.6),
+      ),
+    );
+  }
+
+  ButtonStyle _primaryButtonStyle() {
+    return ElevatedButton.styleFrom(
+      backgroundColor: purple,
+      foregroundColor: Colors.white,
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+      elevation: 0,
+    );
+  }
+
+  // =========================
+  // Date Helpers
+  // =========================
   String _formatDate(DateTime? d) {
     if (d == null) return "";
     final y = d.year.toString().padLeft(4, '0');
@@ -107,6 +149,7 @@ class _CreateHackathonViewState extends State<CreateHackathonView> {
     setState(() {
       startDate = picked;
       startDateError = null;
+
       if (endDate != null && endDate!.isBefore(picked)) {
         endDate = null;
       }
@@ -133,7 +176,10 @@ class _CreateHackathonViewState extends State<CreateHackathonView> {
     });
   }
 
-  Future<void> _submit() async{
+  // =========================
+  // Submit
+  // =========================
+  Future<void> _submit() async {
     final isFormValid = _formKey.currentState!.validate();
 
     setState(() {
@@ -143,26 +189,31 @@ class _CreateHackathonViewState extends State<CreateHackathonView> {
 
     if (!isFormValid || startDate == null || endDate == null) return;
 
-    setState(() => isSubmitting = true);
+    // roles required
+    if (selectedRoles.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text("Please select at least one role.")),
+      );
+      return;
+    }
 
-    if (selectedRoles.isEmpty) return;
+    setState(() => isSubmitting = true);
 
     final hackathon = Hackathon(
       name: nameController.text.trim(),
       description: descriptionController.text.trim(),
       domain: selectedDomain == 'Other'
           ? otherDomainController.text.trim()
-          : selectedDomain!.trim(),
+          : (selectedDomain ?? "").trim(),
       teamSize: int.tryParse(teamSizeController.text.trim()) ?? 0,
       city: cityController.text.trim(),
       location: locationController.text.trim(),
-      mode: selectedMode!.trim(),
+      mode: (selectedMode ?? "").trim(),
       rolesNeeded: [
         ...selectedRoles.where((r) => r != "Other"),
-        if (selectedRoles.contains("Other"))
-          otherRoleController.text.trim(),
+        if (selectedRoles.contains("Other")) otherRoleController.text.trim(),
       ],
-      educationCriteria: selectedEducation!.trim(),
+      educationCriteria: (selectedEducation ?? "").trim(),
       startDate: startDate!,
       endDate: endDate!,
     );
@@ -181,12 +232,14 @@ class _CreateHackathonViewState extends State<CreateHackathonView> {
       teamSizeController.clear();
       cityController.clear();
       locationController.clear();
+      otherDomainController.clear();
       otherRoleController.clear();
 
       setState(() {
         selectedMode = null;
         selectedDomain = null;
         selectedEducation = null;
+        selectedRoles = [];
         startDate = null;
         endDate = null;
         startDateError = null;
@@ -194,10 +247,12 @@ class _CreateHackathonViewState extends State<CreateHackathonView> {
       });
     } catch (e) {
       if (!mounted) return;
+
       String message = "Something went wrong. Please try again.";
       if (e.toString().contains("TimeoutException")) {
         message = "No internet connection. Please check your network.";
       }
+
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text(message)),
       );
@@ -206,21 +261,19 @@ class _CreateHackathonViewState extends State<CreateHackathonView> {
     }
   }
 
+  // =========================
+  // UI
+  // =========================
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    const purple = Color(0xFF6D56B3); // اللون المعتمد لمشروعك
 
     return Scaffold(
-      appBar: AppBar(
-        title: const Text("Create Hackathon"),
-        // السهم الذي يوجه لصفحه سابقه
-        leading: IconButton(
-          icon: const Icon(Icons.arrow_back_ios_new, color: purple),
-          onPressed: () {
-            Navigator.pop(context);
-          },
-        ),
+      backgroundColor: Colors.white,
+      appBar: BuildMateAppBar(
+        titleText: "Create Hackathon",
+        showBack: true,
+        onBack: () => Navigator.pop(context),
       ),
       body: SafeArea(
         child: SingleChildScrollView(
@@ -230,6 +283,7 @@ class _CreateHackathonViewState extends State<CreateHackathonView> {
             child: Column(
               children: [
                 _sectionTitle("Basic Info"),
+
                 _textField(
                   controller: nameController,
                   label: "Hackathon Name",
@@ -240,6 +294,7 @@ class _CreateHackathonViewState extends State<CreateHackathonView> {
                     return null;
                   },
                 ),
+
                 _textField(
                   controller: descriptionController,
                   label: "Description",
@@ -251,6 +306,7 @@ class _CreateHackathonViewState extends State<CreateHackathonView> {
                     return null;
                   },
                 ),
+
                 _dropdownField(
                   label: "Domain",
                   icon: Icons.category_outlined,
@@ -258,15 +314,24 @@ class _CreateHackathonViewState extends State<CreateHackathonView> {
                   items: domains,
                   onChanged: (v) => setState(() => selectedDomain = v),
                 ),
+
                 if (selectedDomain == 'Other')
                   _textField(
                     controller: otherDomainController,
                     label: "Specify Domain",
                     icon: Icons.edit_outlined,
+                    validator: (v) {
+                      if (selectedDomain == 'Other' &&
+                          (v == null || v.trim().isEmpty)) {
+                        return "Required";
+                      }
+                      return null;
+                    },
                   ),
-                const SizedBox(height: 14),
 
+                const SizedBox(height: 14),
                 _sectionTitle("Details"),
+
                 Row(
                   children: [
                     Expanded(
@@ -295,16 +360,20 @@ class _CreateHackathonViewState extends State<CreateHackathonView> {
                     ),
                   ],
                 ),
+
                 _textField(
                   controller: cityController,
                   label: "City",
                   icon: Icons.location_city_outlined,
                 ),
+
                 _textField(
                   controller: locationController,
                   label: "Location (e.g., Venue / Address)",
                   icon: Icons.place_outlined,
                 ),
+
+                // Roles
                 Padding(
                   padding: const EdgeInsets.only(bottom: 12),
                   child: Column(
@@ -316,6 +385,7 @@ class _CreateHackathonViewState extends State<CreateHackathonView> {
                             context: context,
                             builder: (context) {
                               List<String> tempSelected = List.from(selectedRoles);
+
                               return StatefulBuilder(
                                 builder: (context, setDialogState) {
                                   return AlertDialog(
@@ -329,7 +399,9 @@ class _CreateHackathonViewState extends State<CreateHackathonView> {
                                             onChanged: (checked) {
                                               setDialogState(() {
                                                 if (checked == true) {
-                                                  tempSelected.add(role);
+                                                  if (!tempSelected.contains(role)) {
+                                                    tempSelected.add(role);
+                                                  }
                                                 } else {
                                                   tempSelected.remove(role);
                                                 }
@@ -347,6 +419,7 @@ class _CreateHackathonViewState extends State<CreateHackathonView> {
                                       ElevatedButton(
                                         onPressed: () =>
                                             Navigator.pop(context, tempSelected),
+                                        style: _primaryButtonStyle(),
                                         child: const Text("Done"),
                                       ),
                                     ],
@@ -355,16 +428,15 @@ class _CreateHackathonViewState extends State<CreateHackathonView> {
                               );
                             },
                           );
+
                           if (result != null) {
-                            setState(() {
-                              selectedRoles = result;
-                            });
+                            setState(() => selectedRoles = result);
                           }
                         },
                         child: InputDecorator(
-                          decoration: const InputDecoration(
-                            labelText: "Roles Needed",
-                            border: OutlineInputBorder(),
+                          decoration: _fieldDecoration(
+                            label: "Roles Needed",
+                            icon: Icons.work_outline,
                           ),
                           child: Text(
                             selectedRoles.isEmpty
@@ -373,6 +445,7 @@ class _CreateHackathonViewState extends State<CreateHackathonView> {
                           ),
                         ),
                       ),
+
                       if (selectedRoles.contains("Other"))
                         Padding(
                           padding: const EdgeInsets.only(top: 8),
@@ -380,11 +453,19 @@ class _CreateHackathonViewState extends State<CreateHackathonView> {
                             controller: otherRoleController,
                             label: "Specify Other Role",
                             icon: Icons.edit_outlined,
+                            validator: (v) {
+                              if (selectedRoles.contains("Other") &&
+                                  (v == null || v.trim().isEmpty)) {
+                                return "Required";
+                              }
+                              return null;
+                            },
                           ),
                         ),
                     ],
                   ),
                 ),
+
                 _dropdownField(
                   label: "Education Criteria",
                   icon: Icons.school_outlined,
@@ -395,6 +476,7 @@ class _CreateHackathonViewState extends State<CreateHackathonView> {
 
                 const SizedBox(height: 14),
                 _sectionTitle("Important Dates"),
+
                 Row(
                   children: [
                     Expanded(
@@ -426,11 +508,15 @@ class _CreateHackathonViewState extends State<CreateHackathonView> {
                   height: 48,
                   child: ElevatedButton.icon(
                     onPressed: isSubmitting ? null : _submit,
+                    style: _primaryButtonStyle(),
                     icon: isSubmitting
                         ? const SizedBox(
                       width: 18,
                       height: 18,
-                      child: CircularProgressIndicator(strokeWidth: 2),
+                      child: CircularProgressIndicator(
+                        strokeWidth: 2,
+                        color: Colors.white,
+                      ),
                     )
                         : const Icon(Icons.check_circle_outline),
                     label: Text(isSubmitting ? "Saving..." : "Submit"),
@@ -450,6 +536,9 @@ class _CreateHackathonViewState extends State<CreateHackathonView> {
     );
   }
 
+  // =========================
+  // Widgets
+  // =========================
   Widget _sectionTitle(String text) {
     return Padding(
       padding: const EdgeInsets.only(bottom: 8, top: 6),
@@ -481,12 +570,7 @@ class _CreateHackathonViewState extends State<CreateHackathonView> {
         textInputAction: TextInputAction.next,
         validator: validator ??
                 (value) => (value == null || value.trim().isEmpty) ? "Required" : null,
-        decoration: InputDecoration(
-          labelText: label,
-          hintText: hint,
-          prefixIcon: Icon(icon),
-          border: const OutlineInputBorder(),
-        ),
+        decoration: _fieldDecoration(label: label, icon: icon, hint: hint),
       ),
     );
   }
@@ -507,11 +591,7 @@ class _CreateHackathonViewState extends State<CreateHackathonView> {
             .toList(),
         onChanged: onChanged,
         validator: (v) => (v == null || v.isEmpty) ? "Required" : null,
-        decoration: InputDecoration(
-          labelText: label,
-          prefixIcon: Icon(icon),
-          border: const OutlineInputBorder(),
-        ),
+        decoration: _fieldDecoration(label: label, icon: icon),
       ),
     );
   }
@@ -528,10 +608,9 @@ class _CreateHackathonViewState extends State<CreateHackathonView> {
       child: InkWell(
         onTap: onTap,
         child: InputDecorator(
-          decoration: InputDecoration(
-            labelText: label,
-            prefixIcon: Icon(icon),
-            border: const OutlineInputBorder(),
+          decoration: _fieldDecoration(
+            label: label,
+            icon: icon,
             errorText: errorText,
           ),
           child: Text(valueText.isEmpty ? "Select date" : valueText),
