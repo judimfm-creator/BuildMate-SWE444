@@ -6,11 +6,13 @@ import 'package:provider/provider.dart';
 import 'package:buildmate/viewmodel/register_view_model.dart';
 import 'package:buildmate/viewmodel/profile_view_model.dart';
 
-// Screens (تأكدي أن المسارات تطابق مجلدات مشروعك الفعلي)
+// Screens
+import 'package:buildmate/auth/welcome_screen.dart'; // صفحة الترحيب
 import 'package:buildmate/auth/login_screen.dart';
 import 'package:buildmate/auth/select_role_screen.dart';
 import 'package:buildmate/view/register_org_view.dart';
 import 'package:buildmate/view/register_user_view.dart';
+import 'package:buildmate/view/complete_profile_view.dart'; // صفحة إكمال البيانات
 import 'package:buildmate/home_screen.dart';
 import 'package:buildmate/org_home_screen.dart';
 
@@ -21,11 +23,9 @@ void main() async {
   runApp(
     MultiProvider(
       providers: [
-        // تعريف الـ ViewModels هنا يضمن وصول كل الصفحات لها
         ChangeNotifierProvider(create: (_) => RegisterViewModel()),
         ChangeNotifierProvider(create: (_) => ProfileViewModel()),
       ],
-      // نمرر الـ MaterialApp كـ child للـ MultiProvider
       child: const MyApp(),
     ),
   );
@@ -36,7 +36,7 @@ class MyApp extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    // الألوان المعتمدة في شغل البنات
+    // اللون البنفسجي المعتمد في المشروع
     const primaryColor = Color(0xFF6D56B3);
 
     return MaterialApp(
@@ -49,22 +49,24 @@ class MyApp extends StatelessWidget {
           style: ElevatedButton.styleFrom(
             backgroundColor: primaryColor,
             foregroundColor: Colors.white,
-            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+            shape:
+                RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
           ),
         ),
       ),
 
-      // نقطة البداية الصحيحة
-      initialRoute: '/loginUser',
+      // ✅ جعلنا نقطة البداية هي صفحة الترحيب (Welcome) كما طلبتِ
+      initialRoute: '/welcome',
 
       routes: {
+        '/welcome': (context) => const WelcomeScreen(),
         '/loginUser': (context) => const LoginScreen(),
         '/selectRole': (context) => const SelectRoleScreen(),
         '/registerUser': (context) => const RegisterUserView(),
         '/registerOrg': (context) => const RegisterOrgView(),
-
         '/home': (context) => const HomeScreen(),
         '/orgHome': (context) => const InstitutionHomeScreen(),
+        '/completeProfile': (context) => const CompleteProfileView(),
       },
     );
   }
