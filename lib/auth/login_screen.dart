@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+
 import '../viewmodel/register_view_model.dart';
+import 'reset_password_screen.dart';
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
@@ -10,84 +12,151 @@ class LoginScreen extends StatefulWidget {
 }
 
 class _LoginScreenState extends State<LoginScreen> {
+  // أنا أحب أخليها فوق واضحة عشان ما أضيع وأنا أعدل
   final _formKey = GlobalKey<FormState>();
   final _emailController = TextEditingController();
   final _passwordController = TextEditingController();
-  
+
   bool _isPasswordVisible = false;
-  final Color purple = const Color(0xFF6D56B3);
+
+  // ألواننا الثابتة
+  static const Color purple = Color(0xFF6D56B3);
 
   @override
   void dispose() {
+    // مهمم جدًا عشان ما يصير memory leak
     _emailController.dispose();
     _passwordController.dispose();
     super.dispose();
   }
 
+  // 👇 هذا هو الصح: الدالة تكون هنا داخل الكلاس (مو داخل build)
+  void _handleLogin() {
+    final authVM = context.read<RegisterViewModel>();
+
+    if (_formKey.currentState!.validate()) {
+      authVM.login(
+        _emailController.text.trim(),
+        _passwordController.text.trim(),
+        context,
+      );
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
-    // استدعاء الـ ViewModel لمراقبة حالة التحميل (Loading)
     final authVM = context.watch<RegisterViewModel>();
 
     return Scaffold(
       backgroundColor: Colors.white,
       body: SafeArea(
         child: SingleChildScrollView(
-          padding: const EdgeInsets.all(24.0),
+          padding: const EdgeInsets.all(24),
           child: Form(
             key: _formKey,
             child: Column(
-              mainAxisAlignment: MainAxisAlignment.center,
               children: [
-                const SizedBox(height: 60),
-                // شعار التطبيق
-                Image.asset('assets/images/logo.png', height: 150),
-                const SizedBox(height: 40),
-                
+                const SizedBox(height: 50),
+
+                // ✅ كبرت اللوقو مثل ما طلبتي
+                Image.asset(
+                  'assets/images/logo.png',
+                  height: 180,
+                  fit: BoxFit.contain,
+                ),
+
+                const SizedBox(height: 28),
+
                 const Text(
                   "Welcome Back!",
-                  style: TextStyle(fontSize: 28, fontWeight: FontWeight.bold),
+                  style: TextStyle(
+                    fontSize: 28,
+                    fontWeight: FontWeight.bold,
+                  ),
                 ),
-                const SizedBox(height: 10),
+                const SizedBox(height: 8),
                 const Text("Login to continue to BuildMate"),
-                const SizedBox(height: 40),
+                const SizedBox(height: 30),
 
-                // حقل الإيميل
+                // Email
                 TextFormField(
                   controller: _emailController,
+                  enabled: !authVM.isLoading,
                   keyboardType: TextInputType.emailAddress,
                   decoration: InputDecoration(
                     labelText: "Email",
-                    prefixIcon: Icon(Icons.email_outlined, color: purple),
-                    border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                    prefixIcon: const Icon(Icons.email_outlined, color: purple),
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(12),
+                    ),
                   ),
                   validator: (v) {
-                    if (v == null || v.trim().isEmpty) return "Email is required";
-                    if (!v.contains('@')) return "Enter a valid email";
+                    final value = v?.trim() ?? '';
+                    if (value.isEmpty) return "Email is required";
+                    if (!value.contains('@')) return "Enter a valid email";
                     return null;
                   },
                 ),
-                const SizedBox(height: 20),
 
-                // حقل الباسورد مع العين
+                const SizedBox(height: 16),
+
+                // Password
                 TextFormField(
                   controller: _passwordController,
+                  enabled: !authVM.isLoading,
                   obscureText: !_isPasswordVisible,
                   decoration: InputDecoration(
                     labelText: "Password",
-                    prefixIcon: Icon(Icons.lock_outline, color: purple),
+                    prefixIcon: const Icon(Icons.lock_outline, color: purple),
                     suffixIcon: IconButton(
-                      icon: Icon(_isPasswordVisible ? Icons.visibility : Icons.visibility_off),
-                      onPressed: () => setState(() => _isPasswordVisible = !_isPasswordVisible),
+                      onPressed: authVM.isLoading
+                          ? null
+                          : () => setState(() {
+                                _isPasswordVisible = !_isPasswordVisible;
+                              }),
+                      icon: Icon(
+                        _isPasswordVisible
+                            ? Icons.visibility
+                            : Icons.visibility_off,
+                      ),
                     ),
-                    border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(12),
+                    ),
                   ),
-                  validator: (v) => v!.isEmpty ? "Password is required" : null,
+                  validator: (v) {
+                    if (v == null || v.isEmpty) return "Password is required";
+                    return null;
+                  },
                 ),
-                
-                const SizedBox(height: 30),
 
-                // زر تسجيل الدخول (يتعطل أثناء التحميل)
+                // ✅ Forgot Password
+                Align(
+                  alignment: Alignment.centerRight,
+                  child: TextButton(
+                    onPressed: authVM.isLoading
+                        ? null
+                        : () {
+                            Navigator.push(
+                              context,
+                              MaterialPageRoute(
+                                builder: (_) => const ResetPasswordScreen(),
+                              ),
+                            );
+                          },
+                    child: const Text(
+                      "Forgot password?",
+                      style: TextStyle(
+                        color: purple,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                  ),
+                ),
+
+                const SizedBox(height: 10),
+
+                // Login button
                 SizedBox(
                   width: double.infinity,
                   height: 55,
@@ -95,26 +164,48 @@ class _LoginScreenState extends State<LoginScreen> {
                     onPressed: authVM.isLoading ? null : _handleLogin,
                     style: ElevatedButton.styleFrom(
                       backgroundColor: purple,
-                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(12),
+                      ),
                     ),
-                    child: authVM.isLoading 
-                      ? const CircularProgressIndicator(color: Colors.white)
-                      : const Text("Login", style: TextStyle(color: Colors.white, fontSize: 18)),
+                    child: authVM.isLoading
+                        ? const SizedBox(
+                            width: 22,
+                            height: 22,
+                            child: CircularProgressIndicator(
+                              color: Colors.white,
+                              strokeWidth: 2.5,
+                            ),
+                          )
+                        : const Text(
+                            "Login",
+                            style: TextStyle(
+                              color: Colors.white,
+                              fontSize: 18,
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
                   ),
                 ),
 
-                const SizedBox(height: 20),
+                const SizedBox(height: 18),
 
-                // الانتقال لصفحة الدوائر عند طلب إنشاء حساب
+                // Create account (Select Role)
                 Row(
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
                     const Text("Don't have an account?"),
                     TextButton(
-                      onPressed: () {
-                        Navigator.pushNamed(context, '/selectRole');
-                      },
-                      child: Text("Create Account", style: TextStyle(color: purple, fontWeight: FontWeight.bold)),
+                      onPressed: authVM.isLoading
+                          ? null
+                          : () => Navigator.pushNamed(context, '/selectRole'),
+                      child: const Text(
+                        "Create Account",
+                        style: TextStyle(
+                          color: purple,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
                     ),
                   ],
                 ),
@@ -124,17 +215,5 @@ class _LoginScreenState extends State<LoginScreen> {
         ),
       ),
     );
-  }
-
-  // --- التعديل الجوهري: ربط الزر بالـ ViewModel فعلياً ---
-  void _handleLogin() {
-    if (_formKey.currentState!.validate()) {
-      // استدعاء دالة تسجيل الدخول الحقيقية من الـ ViewModel
-      context.read<RegisterViewModel>().login(
-        _emailController.text.trim(),
-        _passwordController.text.trim(),
-        context,
-      );
-    }
   }
 }
