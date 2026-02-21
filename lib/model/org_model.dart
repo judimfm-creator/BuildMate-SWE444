@@ -1,32 +1,43 @@
 class OrgModel {
   final String orgName;
-  final String username;
   final String email;
   final String phoneNumber;
-  final String location;
-  final String biography;
   final String? profilePhotoPath;
+  final String? biography;
+  final String? location;
+  final String? username;
 
   OrgModel({
     required this.orgName,
-    required this.username,
     required this.email,
     required this.phoneNumber,
-    required this.location,
-    required this.biography,
     this.profilePhotoPath,
+    this.biography,
+    this.location,
+    this.username,
   });
+
+  factory OrgModel.fromMap(Map<String, dynamic> map) {
+    return OrgModel(
+      orgName: map['orgName'] ?? '',
+      email: map['email'] ?? '',
+      phoneNumber: map['phoneNumber'] ?? '',
+      profilePhotoPath: map['profilePhotoPath'],
+      biography: map['biography'],
+      location: map['location'],
+      username: map['username'],
+    );
+  }
 
   Map<String, dynamic> toMap() {
     return {
       'orgName': orgName,
-      'username': username,
       'email': email,
       'phoneNumber': phoneNumber,
-      'location': location,
-      'biography': biography,
       'profilePhotoPath': profilePhotoPath,
-      'role': 'organization', // إضافة الدور لتمييزه في الفايربيس
+      'biography': biography,
+      'location': location,
+      'username': username,
     };
   }
 }

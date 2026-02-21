@@ -1,7 +1,5 @@
-import 'dart:io'; // إضافة مكتبة الملفات لدعم عرض الصورة المحدثة
+import 'dart:io';
 import 'package:flutter/material.dart';
-import 'package:font_awesome_flutter/font_awesome_flutter.dart';
-import 'package:url_launcher/url_launcher.dart';
 import 'package:buildmate/viewmodel/profile_view_model.dart';
 import 'package:buildmate/model/user_model.dart';
 import 'package:buildmate/view/profile_management_page.dart';
@@ -17,26 +15,14 @@ class _ProfilePageState extends State<ProfilePage> with SingleTickerProviderStat
   late TabController _tabController;
   final ProfileViewModel _viewModel = ProfileViewModel();
 
+  // الألوان المستخدمة في مشروعك
   final Color deepMediumPurple = const Color(0xFF7A62B3);
-  final Color matteOrange = const Color(0xFFD48C5E);
   final Color tealColor = const Color(0xFF63A2A2);
 
   @override
   void initState() {
     super.initState();
     _tabController = TabController(length: 2, vsync: this);
-  }
-
-  Future<void> _launchURL(String? url) async {
-    if (url == null || url.isEmpty) return;
-    final Uri uri = Uri.parse(url);
-    try {
-      if (!await launchUrl(uri, mode: LaunchMode.externalApplication)) {
-        throw Exception('Could not launch $url');
-      }
-    } catch (e) {
-      debugPrint("Error: $e");
-    }
   }
 
   @override
@@ -56,49 +42,41 @@ class _ProfilePageState extends State<ProfilePage> with SingleTickerProviderStat
 
         return Scaffold(
           backgroundColor: Colors.white,
+          appBar: AppBar(
+            backgroundColor: Colors.white,
+            elevation: 0,
+            title: Text(
+              user?.username ?? "username",
+              style: const TextStyle(color: Colors.black, fontWeight: FontWeight.bold),
+            ),
+            centerTitle: true,
+          ),
           body: Column(
             children: [
               Expanded(
                 child: SingleChildScrollView(
                   physics: const BouncingScrollPhysics(),
                   child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start, // لجعل النصوص تبدأ من اليسار/اليمين حسب اللغة
                     children: [
-                      const SizedBox(height: 10),
+                      // 1. قسم الصورة (في المنتصف)
+                      const SizedBox(height: 20),
                       Center(
-                        child: Container(
-                          width: 105,
-                          height: 105,
-                          decoration: BoxDecoration(
-                            shape: BoxShape.circle,
-                            boxShadow: [
-                              BoxShadow(color: tealColor.withOpacity(0.2), blurRadius: 15, offset: const Offset(0, 8))
-                            ],
-                          ),
-                          child: CircleAvatar(
-                            radius: 52,
-                            backgroundColor: tealColor,
-                            // التعديل: دعم عرض الصورة المختارة محلياً أو المحملة من الإنترنت
-                            backgroundImage: (user?.profilePhotoPath != null && user!.profilePhotoPath!.isNotEmpty)
-                                ? (user.profilePhotoPath!.startsWith('http'))
-                                ? NetworkImage(user.profilePhotoPath!) as ImageProvider
-                                : FileImage(File(user.profilePhotoPath!))
-                                : null,
-                            child: (user?.profilePhotoPath == null || user!.profilePhotoPath!.isEmpty)
-                                ? Text(
-                              firstInitial,
-                              style: const TextStyle(fontSize: 44, fontWeight: FontWeight.bold, color: Colors.white),
-                            )
-                                : null,
-                          ),
+                        child: CircleAvatar(
+                          radius: 50,
+                          backgroundColor: Colors.grey.shade200,
+                          backgroundImage: (user?.profilePhotoPath != null && user!.profilePhotoPath!.isNotEmpty)
+                              ? (user.profilePhotoPath!.startsWith('http'))
+                              ? NetworkImage(user.profilePhotoPath!) as ImageProvider
+                              : FileImage(File(user.profilePhotoPath!))
+                              : null,
+                          child: (user?.profilePhotoPath == null || user!.profilePhotoPath!.isEmpty)
+                              ? Text(firstInitial, style: TextStyle(fontSize: 40, color: tealColor))
+                              : null,
                         ),
                       ),
-                      const SizedBox(height: 10),
-                      Text(
-                          "@${user?.username ?? 'username'}",
-                          style: TextStyle(fontSize: 21, fontWeight: FontWeight.w900, color: tealColor.withOpacity(0.9))
-                      ),
-                      const SizedBox(height: 8),
 
+<<<<<<< Updated upstream
                       _buildEnhancedInfoButton(context),
 
                       const SizedBox(height: 25),
@@ -118,37 +96,73 @@ _buildModernSocialCard(FontAwesomeIcons.github, user?.github),
                       Padding(
                         padding: const EdgeInsets.symmetric(horizontal: 35),
                         child: Row(
+=======
+                      // 2. الاسم والبايو (تحت الصورة)
+                      const SizedBox(height: 15),
+                      Center(
+                        child: Column(
+>>>>>>> Stashed changes
                           children: [
-                            Expanded(
-                              child: _buildActionButton(
-                                "Skills",
-                                matteOrange,
-                                Icons.bolt_rounded,
-                                    () {},
-                              ),
+                            Text(
+                              user?.fullName ?? "Full Name",
+                              style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
                             ),
-                            const SizedBox(width: 15),
-                            Expanded(
-                              child: _buildActionButton(
-                                "Requests",
-                                matteOrange,
-                                Icons.near_me_rounded,
-                                    () {},
+                            const SizedBox(height: 4),
+                            Padding(
+                              padding: const EdgeInsets.symmetric(horizontal: 40),
+                              child: Text(
+                                user?.bio ?? "No bio yet...", // تأكدي من وجود bio في الـ UserModel
+                                textAlign: TextAlign.center,
+                                style: const TextStyle(fontSize: 14, color: Colors.black87),
                               ),
                             ),
                           ],
                         ),
                       ),
-                      const SizedBox(height: 40),
 
-                      _buildMinimalTabBar(),
+                      // 3. زر Manage Profile
+                      const SizedBox(height: 20),
+                      Padding(
+                        padding: const EdgeInsets.symmetric(horizontal: 20),
+                        child: SizedBox(
+                          width: double.infinity,
+                          child: OutlinedButton(
+                            onPressed: () => Navigator.push(
+                              context,
+                              MaterialPageRoute(builder: (context) => const ProfileManagementPage()),
+                            ),
+                            style: OutlinedButton.styleFrom(
+                              side: BorderSide(color: Colors.grey.shade300),
+                              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                            ),
+                            child: const Text(
+                              "Manage Profile",
+                              style: TextStyle(color: Colors.black, fontWeight: FontWeight.bold),
+                            ),
+                          ),
+                        ),
+                      ),
+
+                      // 4. قسم المهارات (تصميم الهايلايت)
+                      const SizedBox(height: 25),
+                      const Padding(
+                        padding: EdgeInsets.symmetric(horizontal: 20),
+                        child: Text("Skills", style: TextStyle(fontWeight: FontWeight.bold, fontSize: 15)),
+                      ),
+                      const SizedBox(height: 10),
+                      _buildSkillsHighlights(user?.skills), // نمرر المهارات هنا
+
+                      const SizedBox(height: 20),
+
+                      // 5. التبويبات (الهاكاثونات)
+                      _buildInstagramTabBar(),
                       SizedBox(
-                        height: 300,
+                        height: 400, // يمكن تعديله حسب الحاجة
                         child: TabBarView(
                           controller: _tabController,
                           children: [
-                            _buildEmptyPlaceholder("No ongoing hackathons", Icons.auto_awesome_mosaic),
-                            _buildEmptyPlaceholder("History is empty", Icons.history_rounded),
+                            _buildEmptyPlaceholder("No ongoing hackathons", Icons.grid_on_rounded),
+                            _buildEmptyPlaceholder("History is empty", Icons.assignment_ind_outlined),
                           ],
                         ),
                       ),
@@ -163,83 +177,70 @@ _buildModernSocialCard(FontAwesomeIcons.github, user?.github),
     );
   }
 
-  Widget _buildEnhancedInfoButton(BuildContext context) {
-    return InkWell(
-      onTap: () => Navigator.push(context, MaterialPageRoute(builder: (context) => const ProfileManagementPage())),
-      borderRadius: BorderRadius.circular(30),
-      child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 8),
-        decoration: BoxDecoration(
-          color: Colors.white,
-          borderRadius: BorderRadius.circular(30),
-          border: Border.all(color: deepMediumPurple.withOpacity(0.4)),
-        ),
-        child: Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Icon(Icons.person_pin_rounded, size: 18, color: deepMediumPurple),
-            const SizedBox(width: 8),
-            Text("Profile Information", style: TextStyle(color: deepMediumPurple, fontSize: 13, fontWeight: FontWeight.bold)),
-            const SizedBox(width: 5),
-            Icon(Icons.arrow_forward_ios, size: 10, color: deepMediumPurple),
-          ],
-        ),
+  // مهارات على شكل Highlights
+  Widget _buildSkillsHighlights(String? skillsString) {
+    List<String> skills = skillsString?.split(',').where((s) => s.trim().isNotEmpty).toList() ?? [];
+
+    return SizedBox(
+      height: 100,
+      child: ListView.builder(
+        scrollDirection: Axis.horizontal,
+        padding: const EdgeInsets.symmetric(horizontal: 15),
+        itemCount: skills.length,
+        itemBuilder: (context, index) {
+          return Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 8),
+            child: Column(
+              children: [
+                Container(
+                  padding: const EdgeInsets.all(3),
+                  decoration: BoxDecoration(
+                    shape: BoxShape.circle,
+                    border: Border.all(color: Colors.grey.shade300, width: 1),
+                  ),
+                  child: CircleAvatar(
+                    radius: 30,
+                    backgroundColor: Colors.grey.shade100,
+                    child: Icon(Icons.star_border_rounded, color: deepMediumPurple, size: 25),
+                  ),
+                ),
+                const SizedBox(height: 5),
+                Text(
+                  skills[index].trim(),
+                  style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w500),
+                ),
+              ],
+            ),
+          );
+        },
       ),
     );
   }
 
-  Widget _buildModernSocialCard(IconData icon, String? url) {
-    bool hasUrl = url != null && url.isNotEmpty;
-    return InkWell(
-      onTap: () => _launchURL(url),
-      borderRadius: BorderRadius.circular(16),
-      child: Container(
-        padding: const EdgeInsets.all(14),
-        decoration: BoxDecoration(
-          color: Colors.white,
-          borderRadius: BorderRadius.circular(16),
-          border: Border.all(color: deepMediumPurple.withOpacity(hasUrl ? 0.3 : 0.1)),
-        ),
-        child: FaIcon(icon, color: deepMediumPurple, size: 22),
-      ),
-    );
-  }
-
-  Widget _buildActionButton(String label, Color color, IconData icon, VoidCallback onTap) {
-    return Container(
-      height: 52,
-      decoration: BoxDecoration(color: color, borderRadius: BorderRadius.circular(18)),
-      child: Material(
-          color: Colors.transparent,
-          child: InkWell(
-              onTap: onTap,
-              borderRadius: BorderRadius.circular(18),
-              child: Row(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    Icon(icon, color: Colors.white, size: 18),
-                    const SizedBox(width: 8),
-                    Text(label, style: const TextStyle(color: Colors.white, fontSize: 15, fontWeight: FontWeight.bold))
-                  ]
-              )
-          )
-      ),
-    );
-  }
-
-  Widget _buildMinimalTabBar() {
+  Widget _buildInstagramTabBar() {
     return TabBar(
-        controller: _tabController,
-        labelColor: deepMediumPurple,
-        unselectedLabelColor: Colors.grey.shade400,
-        indicatorColor: deepMediumPurple,
-        indicatorWeight: 3,
-        indicatorSize: TabBarIndicatorSize.label,
-        tabs: const [Tab(text: "Ongoing"), Tab(text: "Previous")]
+      controller: _tabController,
+      indicatorColor: Colors.black,
+      indicatorWeight: 1,
+      labelColor: Colors.black,
+      unselectedLabelColor: Colors.grey,
+      tabs: const [
+        Tab(icon: Icon(Icons.grid_on_rounded)),
+        Tab(icon: Icon(Icons.assignment_ind_outlined)),
+      ],
     );
   }
 
   Widget _buildEmptyPlaceholder(String text, IconData icon) {
-    return Center(child: Column(mainAxisAlignment: MainAxisAlignment.center, children: [Icon(icon, size: 45, color: Colors.grey.shade100), const SizedBox(height: 12), Text(text, style: TextStyle(color: Colors.grey.shade300, fontSize: 14))]));
+    return Center(
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Icon(icon, size: 60, color: Colors.grey.shade300),
+          const SizedBox(height: 10),
+          Text(text, style: TextStyle(color: Colors.grey.shade400)),
+        ],
+      ),
+    );
   }
 }

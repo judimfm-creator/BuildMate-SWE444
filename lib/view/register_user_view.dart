@@ -55,6 +55,7 @@ class _RegisterUserViewState extends State<RegisterUserView> {
           autovalidateMode: AutovalidateMode.onUserInteraction, // الفحص الأحمر التفاعلي
           child: Column(
             children: [
+<<<<<<< Updated upstream
               // حقل الاسم: يرفض أقل من 3 أسماء
               _buildField(
                 _fullNameController, 
@@ -123,6 +124,57 @@ class _RegisterUserViewState extends State<RegisterUserView> {
                 _isConfirmVisible, 
                 () => setState(() => _isConfirmVisible = !_isConfirmVisible),
                 isConfirm: true
+=======
+              _buildField(_fullNameController, "Full Name", Icons.badge_outlined, (v) {
+                if (v == null || v.trim().isEmpty) return "Full name is required";
+                List<String> parts = v.trim().split(RegExp(r'\s+'));
+                if (parts.length < 3) {
+                  return "Please enter at least 3 names";
+                }
+                return null;
+              }),
+
+              _buildField(_usernameController, "Username", Icons.person_outline,
+                      (v) => v!.trim().length < 3 ? "At least 3 characters" : null),
+
+              TextFormField(
+                controller: _emailController,
+                keyboardType: TextInputType.emailAddress,
+                decoration: InputDecoration(
+                  labelText: "Email",
+                  prefixIcon: Icon(Icons.email_outlined, color: purple),
+                  border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                ),
+                validator: (v) {
+                  if (v == null || v.trim().isEmpty) return "Email is required";
+                  final regex = RegExp(r"^[a-zA-Z0-9.a-zA-Z0-9.!#$%&'*+-/=?^_`{|}~]+@[a-zA-Z0-9]+\.[a-zA-Z]+");
+                  if (!regex.hasMatch(v.trim())) return "Enter a valid email address";
+                  return null;
+                },
+              ),
+              const SizedBox(height: 16),
+
+              _buildField(_phoneController, "Phone (05xxxxxxxx)", Icons.phone_android, (v) {
+                final regex = RegExp(r'^05\d{8}$');
+                return !regex.hasMatch(v!.trim()) ? "Must be 10 digits starting with 05" : null;
+              }, type: TextInputType.phone),
+
+              _buildPassField(_passwordController, "Password", _isPasswordVisible,
+                      () => setState(() => _isPasswordVisible = !_isPasswordVisible),
+                      (v) {
+                    if (v == null || v.isEmpty) return "Password is required";
+                    if (v.length < 8) return "Min 8 characters";
+                    if (!v.contains(RegExp(r'[A-Z]'))) return "Add one uppercase letter";
+                    if (!v.contains(RegExp(r'[0-9]'))) return "Add one number";
+                    if (!v.contains(RegExp(r'[!@#$%^&*(),.?":{}|<>]'))) return "Add one special character";
+                    return null;
+                  }
+              ),
+
+              _buildPassField(_confirmPasswordController, "Confirm Password", _isConfirmVisible,
+                      () => setState(() => _isConfirmVisible = !_isConfirmVisible),
+                      (v) => v != _passwordController.text ? "Passwords do not match" : null
+>>>>>>> Stashed changes
               ),
 
               const SizedBox(height: 30),
@@ -132,6 +184,7 @@ class _RegisterUserViewState extends State<RegisterUserView> {
                 height: 55,
                 child: ElevatedButton(
                   style: ElevatedButton.styleFrom(
+<<<<<<< Updated upstream
                     backgroundColor: purple, 
                     shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
                     elevation: 0,
@@ -140,6 +193,15 @@ class _RegisterUserViewState extends State<RegisterUserView> {
                   child: vm.isLoading 
                     ? const CircularProgressIndicator(color: Colors.white) 
                     : const Text("Sign Up", style: TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.bold)),
+=======
+                      backgroundColor: purple,
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12))
+                  ),
+                  onPressed: vm.isLoading ? null : _submit,
+                  child: vm.isLoading
+                      ? const CircularProgressIndicator(color: Colors.white)
+                      : const Text("Sign Up", style: TextStyle(color: Colors.white, fontSize: 18)),
+>>>>>>> Stashed changes
                 ),
               ),
             ],
@@ -157,6 +219,7 @@ class _RegisterUserViewState extends State<RegisterUserView> {
         controller: ctrl,
         keyboardType: type,
         decoration: InputDecoration(
+<<<<<<< Updated upstream
           labelText: label, 
           helperText: helper,
           helperStyle: const TextStyle(fontSize: 11, color: Colors.blueGrey),
@@ -167,6 +230,11 @@ class _RegisterUserViewState extends State<RegisterUserView> {
           errorBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: const BorderSide(color: Colors.red, width: 1.5)),
           focusedErrorBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: const BorderSide(color: Colors.red, width: 2)),
           border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+=======
+            labelText: label,
+            prefixIcon: Icon(icon, color: purple),
+            border: OutlineInputBorder(borderRadius: BorderRadius.circular(12))
+>>>>>>> Stashed changes
         ),
         validator: customValidator,
       ),
@@ -186,11 +254,18 @@ class _RegisterUserViewState extends State<RegisterUserView> {
           helperStyle: const TextStyle(fontSize: 11, color: Colors.blueGrey),
           floatingLabelBehavior: FloatingLabelBehavior.always,
           prefixIcon: Icon(Icons.lock_outline, color: purple),
+<<<<<<< Updated upstream
           suffixIcon: IconButton(icon: Icon(visible ? Icons.visibility : Icons.visibility_off, color: Colors.grey), onPressed: toggle),
           // الإطارات
           enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide(color: Colors.grey.shade300)),
           errorBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: const BorderSide(color: Colors.red, width: 1.5)),
           focusedErrorBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: const BorderSide(color: Colors.red, width: 2)),
+=======
+          suffixIcon: IconButton(
+              icon: Icon(visible ? Icons.visibility : Icons.visibility_off, color: Colors.grey),
+              onPressed: toggle
+          ),
+>>>>>>> Stashed changes
           border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
         ),
         validator: (v) {
@@ -209,7 +284,9 @@ class _RegisterUserViewState extends State<RegisterUserView> {
     );
   }
 
+  // التعديل الجديد: تمرير الصورة من الـ ViewModel
   void _submit() {
+<<<<<<< Updated upstream
   if (_formKey.currentState!.validate()) {
     // ✅ إضافة linkedin و github كقيم فارغة لحل الإيرور
     final user = UserModel(
@@ -223,6 +300,20 @@ class _RegisterUserViewState extends State<RegisterUserView> {
     );
     
     context.read<RegisterViewModel>().registerUser(user, _passwordController.text, context);
+=======
+    if (_formKey.currentState!.validate()) {
+      final vm = context.read<RegisterViewModel>();
+      final user = UserModel(
+        fullName: _fullNameController.text.trim(),
+        username: _usernameController.text.trim(),
+        email: _emailController.text.trim(),
+        phoneNumber: _phoneController.text.trim(),
+        profilePhotoPath: vm.pickedImage?.path, // ربط المسار هنا أيضاً
+      );
+      // تمرير vm.pickedImage لضمان حفظه في قاعدة البيانات
+      vm.registerUser(user, _passwordController.text, vm.pickedImage, context);
+    }
+>>>>>>> Stashed changes
   }
 }
 }

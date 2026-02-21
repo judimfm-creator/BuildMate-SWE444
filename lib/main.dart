@@ -16,6 +16,14 @@ import 'package:buildmate/view/complete_profile_view.dart';
 import 'package:buildmate/home_screen.dart';
 import 'package:buildmate/org_home_screen.dart';
 
+<<<<<<< Updated upstream
+=======
+// ViewModels
+import 'package:buildmate/viewmodel/register_view_model.dart';
+import 'package:buildmate/viewmodel/profile_view_model.dart';
+import 'package:buildmate/viewmodel/org_profile_view_model.dart'; // الإضافة لدعم بروفايل المنظمة
+
+>>>>>>> Stashed changes
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   await Firebase.initializeApp();
@@ -25,6 +33,7 @@ void main() async {
       providers: [
         ChangeNotifierProvider(create: (_) => RegisterViewModel()),
         ChangeNotifierProvider(create: (_) => ProfileViewModel()),
+        ChangeNotifierProvider(create: (_) => OrgProfileViewModel()), // الإضافة هنا
       ],
       child: const MyApp(),
     ),
@@ -54,7 +63,10 @@ class MyApp extends StatelessWidget {
         ),
       ),
 
+<<<<<<< Updated upstream
       // نقطة البداية هي صفحة الترحيب
+=======
+>>>>>>> Stashed changes
       initialRoute: '/welcome',
 
       routes: {
