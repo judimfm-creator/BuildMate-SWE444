@@ -12,28 +12,23 @@ class LoginScreen extends StatefulWidget {
 }
 
 class _LoginScreenState extends State<LoginScreen> {
-  // أنا أحب أخليها فوق واضحة عشان ما أضيع وأنا أعدل
   final _formKey = GlobalKey<FormState>();
   final _emailController = TextEditingController();
   final _passwordController = TextEditingController();
 
   bool _isPasswordVisible = false;
 
-  // ألواننا الثابتة
   static const Color purple = Color(0xFF6D56B3);
 
   @override
   void dispose() {
-    // مهمم جدًا عشان ما يصير memory leak
     _emailController.dispose();
     _passwordController.dispose();
     super.dispose();
   }
 
-  // 👇 هذا هو الصح: الدالة تكون هنا داخل الكلاس (مو داخل build)
   void _handleLogin() {
     final authVM = context.read<RegisterViewModel>();
-
     if (_formKey.currentState!.validate()) {
       authVM.login(
         _emailController.text.trim(),
@@ -56,29 +51,24 @@ class _LoginScreenState extends State<LoginScreen> {
             key: _formKey,
             child: Column(
               children: [
-                const SizedBox(height: 50),
+                const SizedBox(height: 40),
 
-                // ✅ كبرت اللوقو  
                 Image.asset(
                   'assets/images/logo.png',
-                  height: 180,
+                  height: 210,
                   fit: BoxFit.contain,
                 ),
 
-                const SizedBox(height: 28),
+                const SizedBox(height: 20),
 
                 const Text(
                   "Welcome Back!",
-                  style: TextStyle(
-                    fontSize: 28,
-                    fontWeight: FontWeight.bold,
-                  ),
+                  style: TextStyle(fontSize: 28, fontWeight: FontWeight.bold),
                 ),
                 const SizedBox(height: 8),
                 const Text("Login to continue to BuildMate"),
-                const SizedBox(height: 30),
+                const SizedBox(height: 28),
 
-                // Email
                 TextFormField(
                   controller: _emailController,
                   enabled: !authVM.isLoading,
@@ -100,7 +90,6 @@ class _LoginScreenState extends State<LoginScreen> {
 
                 const SizedBox(height: 16),
 
-                // Password
                 TextFormField(
                   controller: _passwordController,
                   enabled: !authVM.isLoading,
@@ -130,7 +119,6 @@ class _LoginScreenState extends State<LoginScreen> {
                   },
                 ),
 
-                // ✅ Forgot Password
                 Align(
                   alignment: Alignment.centerRight,
                   child: TextButton(
@@ -156,7 +144,6 @@ class _LoginScreenState extends State<LoginScreen> {
 
                 const SizedBox(height: 10),
 
-                // Login button
                 SizedBox(
                   width: double.infinity,
                   height: 55,
@@ -190,7 +177,6 @@ class _LoginScreenState extends State<LoginScreen> {
 
                 const SizedBox(height: 18),
 
-                // Create account (Select Role)
                 Row(
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [

@@ -9,14 +9,10 @@ class ResetPasswordScreen extends StatefulWidget {
 }
 
 class _ResetPasswordScreenState extends State<ResetPasswordScreen> {
-  // ✅ عدّلي هذي على طول:
-  static const String kResetRedirectUrl = 'https://YOUR_PROJECT.web.app/reset.html';
-  static const String kAndroidPackageName = 'com.example.buildmate';
+  static const Color purple = Color(0xFF6D56B3);
 
   final _emailController = TextEditingController();
   bool _loading = false;
-
-  final Color purple = const Color(0xFF6D56B3);
 
   @override
   void dispose() {
@@ -32,7 +28,7 @@ class _ResetPasswordScreenState extends State<ResetPasswordScreen> {
   }
 
   bool _isValidEmail(String email) {
-    // بسيطة ومناسبة
+    email = email.trim();
     return email.contains('@') && email.contains('.');
   }
 
@@ -51,33 +47,15 @@ class _ResetPasswordScreenState extends State<ResetPasswordScreen> {
     setState(() => _loading = true);
 
     try {
-      final settings = ActionCodeSettings(
-        // ✅ لازم HTTPS وموجود ضمن Authorized domains
-        url: kResetRedirectUrl,
-        handleCodeInApp: true,
-
-        // Android
-        androidPackageName: kAndroidPackageName,
-        androidInstallApp: true,
-        androidMinimumVersion: '1',
-      );
-
-      await FirebaseAuth.instance.sendPasswordResetEmail(
-        email: email,
-        actionCodeSettings: settings,
-      );
-
+      await FirebaseAuth.instance.sendPasswordResetEmail(email: email);
       _toast("Reset link sent ✅ Check your inbox");
     } on FirebaseAuthException catch (e) {
       String msg = "Failed to send reset email";
 
       if (e.code == 'user-not-found') msg = "No user found for this email";
       if (e.code == 'invalid-email') msg = "Invalid email";
-
-    
-      if (e.code == 'invalid-continue-uri') {
-        msg = "Reset link URL is invalid (must be https + authorized domain)";
-      }
+      if (e.code == 'too-many-requests') msg = "Too many attempts, try later";
+      if (e.code == 'network-request-failed') msg = "Network error, try again";
 
       _toast(msg);
     } catch (_) {
@@ -104,12 +82,11 @@ class _ResetPasswordScreenState extends State<ResetPasswordScreen> {
             children: [
               const SizedBox(height: 18),
 
-              // ✅ اللوقو (ضعف الحجم)
               Center(
                 child: Image.asset(
                   'assets/images/logo.png',
-                  height: 160, // 
-                  width: 160,
+                  height: 180,
+                  width: 180,
                   fit: BoxFit.contain,
                 ),
               ),
@@ -130,7 +107,7 @@ class _ResetPasswordScreenState extends State<ResetPasswordScreen> {
                 enabled: !_loading,
                 decoration: InputDecoration(
                   labelText: "Email",
-                  prefixIcon: Icon(Icons.email_outlined, color: purple),
+                  prefixIcon: const Icon(Icons.email_outlined, color: purple),
                   border: OutlineInputBorder(
                     borderRadius: BorderRadius.circular(12),
                   ),
@@ -167,15 +144,11 @@ class _ResetPasswordScreenState extends State<ResetPasswordScreen> {
 
               const SizedBox(height: 12),
 
-              Text(
-                "After you tap the email link, it will open BuildMate directly and continue the reset inside the app.",
-                style: const TextStyle(fontSize: 12, color: Colors.black54),
+              const Text(
+                "Open the email link, change the password, then come back and login with the new password.",
+                style: TextStyle(fontSize: 12, color: Colors.black54),
                 textAlign: TextAlign.center,
               ),
-
-              const SizedBox(height: 8),
-
-             
             ],
           ),
         ),
