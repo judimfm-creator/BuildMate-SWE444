@@ -5,8 +5,8 @@ import 'package:image_picker/image_picker.dart';
 import 'package:buildmate/model/user_model.dart';
 import 'package:buildmate/viewmodel/profile_view_model.dart';
 import 'package:buildmate/widgets/buildmate_app_bar.dart';
-import 'package:provider/provider.dart';
 import '../viewmodel/register_view_model.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 
 class ProfileManagementPage extends StatefulWidget {
   const ProfileManagementPage({super.key});
@@ -31,14 +31,13 @@ class _ProfileManagementPageState extends State<ProfileManagementPage> {
     _viewModel = Provider.of<ProfileViewModel>(context);
   }
 
-  // دالة اختيار الصورة وتحديثها فوراً
   Future<void> _pickImage() async {
     final ImagePicker picker = ImagePicker();
     final XFile? image = await picker.pickImage(source: ImageSource.gallery);
 
     if (image != null) {
       await _viewModel.uploadProfilePhoto(File(image.path), context);
-      setState(() {}); // إعادة بناء الواجهة لعرض الصورة الجديدة
+      setState(() {}); 
     }
   }
 
@@ -57,6 +56,7 @@ class _ProfileManagementPageState extends State<ProfileManagementPage> {
       builder: (context, snapshot) {
         final user = snapshot.data;
 
+        // ✅ تم تصحيح المسميات هنا لتقرأ من 'linkedin' و 'github' كما في الفايربيز
         if (user != null && _controllers.isEmpty) {
           _controllers["Full Name"] = TextEditingController(text: user.fullName);
           _controllers["Username"] = TextEditingController(text: user.username);
@@ -64,8 +64,11 @@ class _ProfileManagementPageState extends State<ProfileManagementPage> {
           _controllers["Phone Number"] = TextEditingController(text: user.phoneNumber);
           _controllers["Biography"] = TextEditingController(text: user.bio ?? "");
           _controllers["City"] = TextEditingController(text: user.city ?? "");
-          _controllers["LinkedIn Profile"] = TextEditingController(text: user.linkedinUrl ?? "");
-          _controllers["GitHub Profile"] = TextEditingController(text: user.githubUrl ?? "");
+          
+          // حُذفت كلمة "Url" لأن الفايربيز عندك يخزنها كـ linkedin و github فقط
+          _controllers["LinkedIn Profile"] = TextEditingController(text: user.linkedin ?? "");
+          _controllers["GitHub Profile"] = TextEditingController(text: user.github ?? "");
+          
           _selectedGender = user.gender;
         }
 
@@ -73,18 +76,13 @@ class _ProfileManagementPageState extends State<ProfileManagementPage> {
           backgroundColor: Colors.white,
           appBar: BuildMateAppBar(
             titleText: "Profile Management",
+            //label: "Profile",
             showBack: true,
             onBack: () => Navigator.pop(context),
             onLogout: () async {
-              await Provider.of<RegisterViewModel>(context, listen: false)
-                  .logout(context);
+              await Provider.of<RegisterViewModel>(context, listen: false).logout(context);
             },
           ),
-          /*appBar: BuildMateAppBar(
-            titleText: "Profile Management",
-            showBack: true,
-            onBack: () => Navigator.pop(context),
-          ),*/
           body: Column(
             children: [
               Padding(
@@ -157,15 +155,81 @@ class _ProfileManagementPageState extends State<ProfileManagementPage> {
                       _buildInfoField("Biography", Icons.info_outline),
                       _buildInfoField("City", Icons.location_city_outlined),
                       _buildGenderDropdown(),
+                      
+                      // حقول الروابط
                       _buildInfoField("LinkedIn Profile", Icons.link),
                       _buildInfoField("GitHub Profile", Icons.code_rounded),
+                      
                       const SizedBox(height: 30),
                       if (!_isEditMode)
                         Center(
                           child: OutlinedButton.icon(
-                            onPressed: () {},
+                            onPressed: () async {
+                              final confirmDelete = await showDialog<bool>(
+                                context: context,
+                                builder: (context) => AlertDialog(
+                                  title: const Text("Confirm Account Deletion"),
+                                  content: const Text(
+                                    "Are you sure you want to permanently delete your account? This action cannot be undone.",
+                                  ),
+                                  actions: [
+                                    TextButton(
+                                      onPressed: () => Navigator.pop(context, false),
+                                      child: const Text("Cancel"),
+                                    ),
+                                    TextButton(
+                                      onPressed: () => Navigator.pop(context, true),
+                                      child: const Text(
+                                        "Yes, Delete",
+                                        style: TextStyle(color: Colors.red),
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              );
+
+                              if (confirmDelete != true) return;
+
+                              final passwordController = TextEditingController();
+                              final confirmPassword = await showDialog<bool>(
+                                context: context,
+                                builder: (context) => AlertDialog(
+                                  title: const Text("Enter Password"),
+                                  content: TextField(
+                                    controller: passwordController,
+                                    obscureText: true,
+                                    decoration: const InputDecoration(labelText: "Password"),
+                                  ),
+                                  actions: [
+                                    TextButton(
+                                      onPressed: () => Navigator.pop(context, false),
+                                      child: const Text("Cancel"),
+                                    ),
+                                    TextButton(
+                                      onPressed: () => Navigator.pop(context, true),
+                                      child: const Text(
+                                        "Delete",
+                                        style: TextStyle(color: Colors.red),
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              );
+
+                              if (confirmPassword == true) {
+                                final userEmail = FirebaseAuth.instance.currentUser?.email ?? "";
+                                await _viewModel.deleteAccount(
+                                  context,
+                                  userEmail,
+                                  passwordController.text,
+                                );
+                              }
+                            },
                             icon: Icon(Icons.delete_forever_outlined, color: deleteRed, size: 18),
-                            label: Text("Delete Account", style: TextStyle(color: deleteRed, fontWeight: FontWeight.bold)),
+                            label: Text(
+                              "Delete Account",
+                              style: TextStyle(color: deleteRed, fontWeight: FontWeight.bold),
+                            ),
                             style: OutlinedButton.styleFrom(
                               padding: const EdgeInsets.symmetric(horizontal: 25, vertical: 10),
                               side: BorderSide(color: deleteRed.withOpacity(0.4)),
@@ -186,7 +250,6 @@ class _ProfileManagementPageState extends State<ProfileManagementPage> {
     );
   }
 
-  // --- الوجت المساعدة (نفس تصميمك الأصلي) ---
   Widget _buildSectionTitle(String title) {
     return Padding(
       padding: const EdgeInsets.only(bottom: 12, left: 5, top: 10),
@@ -293,9 +356,15 @@ class _ProfileManagementPageState extends State<ProfileManagementPage> {
         child: ElevatedButton(
           style: ElevatedButton.styleFrom(backgroundColor: deepMediumPurple, shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12))),
           onPressed: () async {
+            // ✅ تأكدي أن دالة التحديث في الـ ViewModel ترسل linkedin و github أيضاً
             await _viewModel.updateProfile(
               name: _controllers["Full Name"]!.text,
               phone: _controllers["Phone Number"]!.text,
+              bio: _controllers["Biography"]!.text,
+              city: _controllers["City"]!.text,
+              linkedin: _controllers["LinkedIn Profile"]!.text,
+              github: _controllers["GitHub Profile"]!.text,
+              gender: _selectedGender ?? "",
               context: context,
             );
             setState(() => _isEditMode = false);

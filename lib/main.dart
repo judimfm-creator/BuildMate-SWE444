@@ -2,19 +2,19 @@ import 'package:flutter/material.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:provider/provider.dart';
 
-// Import Views & Auth
-import 'package:buildmate/view/complete_profile_view.dart';
+// ViewModels
+import 'package:buildmate/viewmodel/register_view_model.dart';
+import 'package:buildmate/viewmodel/profile_view_model.dart';
+
+// Screens & Views
 import 'package:buildmate/auth/welcome_screen.dart';
 import 'package:buildmate/auth/login_screen.dart';
 import 'package:buildmate/auth/select_role_screen.dart';
 import 'package:buildmate/view/register_org_view.dart';
 import 'package:buildmate/view/register_user_view.dart';
+import 'package:buildmate/view/complete_profile_view.dart';
 import 'package:buildmate/home_screen.dart';
 import 'package:buildmate/org_home_screen.dart';
-
-// ViewModels
-import 'package:buildmate/viewmodel/register_view_model.dart';
-import 'package:buildmate/viewmodel/profile_view_model.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -36,6 +36,7 @@ class MyApp extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    // اللون البنفسجي المعتمد في المشروع
     const primaryColor = Color(0xFF6D56B3);
 
     return MaterialApp(
@@ -53,7 +54,7 @@ class MyApp extends StatelessWidget {
         ),
       ),
 
-      // نقطة البداية (تقدري تخليها /welcome أو /loginUser حسب رغبتك)
+      // نقطة البداية هي صفحة الترحيب
       initialRoute: '/welcome',
 
       routes: {
