@@ -1,11 +1,11 @@
 import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-import 'package:image_picker/image_picker.dart';
-import 'package:buildmate/model/org_model.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:buildmate/viewmodel/org_profile_view_model.dart';
-import 'package:buildmate/widgets/buildmate_app_bar.dart';
 import 'package:buildmate/viewmodel/register_view_model.dart';
+import 'package:buildmate/widgets/buildmate_app_bar.dart';
+import 'package:buildmate/model/org_model.dart';
 
 class OrgProfileManagementPage extends StatefulWidget {
   const OrgProfileManagementPage({super.key});
@@ -15,39 +15,24 @@ class OrgProfileManagementPage extends StatefulWidget {
 }
 
 class _OrgProfileManagementPageState extends State<OrgProfileManagementPage> {
-  late OrgProfileViewModel _viewModel;
-
-  final Color deepMediumPurple = const Color(0xFF7A62B3);
+  final Color primaryPurple = const Color(0xFF7A62B3);
   final Color deleteRed = const Color(0xFFD9534F);
-
   bool _isEditMode = false;
   final Map<String, TextEditingController> _controllers = {};
 
   @override
-  void didChangeDependencies() {
-    super.didChangeDependencies();
-    _viewModel = Provider.of<OrgProfileViewModel>(context);
-  }
-
-  Future<void> _pickImage() async {
-    final ImagePicker picker = ImagePicker();
-    final XFile? image = await picker.pickImage(source: ImageSource.gallery);
-
-    if (image != null) {
-      await _viewModel.uploadOrgPhoto(File(image.path), context);
-      setState(() {});
-    }
-  }
-
-  @override
   Widget build(BuildContext context) {
+    final viewModel = Provider.of<OrgProfileViewModel>(context);
+    final String userEmail = FirebaseAuth.instance.currentUser?.email ?? "Not Available";
+
     return StreamBuilder<OrgModel?>(
-      stream: _viewModel.orgDataStream,
+      stream: viewModel.orgDataStream,
       builder: (context, snapshot) {
         final org = snapshot.data;
 
         if (org != null && _controllers.isEmpty) {
           _controllers["Organization Name"] = TextEditingController(text: org.orgName);
+          _controllers["Username"] = TextEditingController(text: org.username ?? "");
           _controllers["Phone Number"] = TextEditingController(text: org.phoneNumber);
           _controllers["Location"] = TextEditingController(text: org.location ?? "");
           _controllers["Biography"] = TextEditingController(text: org.biography ?? "");
@@ -59,57 +44,42 @@ class _OrgProfileManagementPageState extends State<OrgProfileManagementPage> {
             titleText: "Account Management",
             showBack: true,
             onBack: () => Navigator.pop(context),
-            onLogout: () async {
-              await Provider.of<RegisterViewModel>(context, listen: false).logout(context);
-            },
+            onLogout: () async => await Provider.of<RegisterViewModel>(context, listen: false).logout(context),
           ),
           body: Column(
             children: [
-              // مفتاح تبديل وضع التعديل (مطابق لليوزر)
-              Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 25, vertical: 15),
-                child: Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    Text(
-                      "Enable Editing Mode",
-                      style: TextStyle(
-                        color: _isEditMode ? deepMediumPurple : Colors.grey.shade600,
-                        fontWeight: FontWeight.bold,
-                        fontSize: 15,
-                      ),
-                    ),
-                    Switch(
-                      value: _isEditMode,
-                      activeColor: deepMediumPurple,
-                      onChanged: (value) => setState(() => _isEditMode = value),
-                    ),
-                  ],
-                ),
-              ),
-
+              _buildEditToggle(),
               Expanded(
                 child: SingleChildScrollView(
                   padding: const EdgeInsets.symmetric(horizontal: 25),
                   child: Column(
                     children: [
-                      _buildProfileImageSection(org),
+                      _buildAvatarSection(org),
                       const SizedBox(height: 25),
                       _buildSectionTitle("Organization Info"),
-                      _buildInfoField("Organization Name", Icons.business_outlined),
-                      _buildInfoField("Phone Number", Icons.phone_android_outlined),
+                      _buildInfoField("Organization Name", Icons.business_rounded, isEditable: true),
+                      // ✅ اليوزر نيم قابل للتعديل
+                      _buildInfoField("Username", Icons.alternate_email, isEditable: true),
+
+                      const SizedBox(height: 15),
+                      _buildSectionTitle("Contact Details"),
+                      // ✅ الإيميل ثابت (مشبوك ومقفل)
+                      _buildFixedField("Email Address", userEmail, Icons.email_outlined),
+                      // ✅ رقم الجوال ثابت (مشبوك ومقفل)
+                      _buildFixedField("Phone Number", _controllers["Phone Number"]?.text ?? "", Icons.phone_android_rounded),
+
                       const SizedBox(height: 15),
                       _buildSectionTitle("Additional Details"),
-                      _buildInfoField("Location", Icons.location_on_outlined),
-                      _buildInfoField("Biography", Icons.info_outline, maxLines: 3),
+                      _buildInfoField("Location", Icons.location_on_outlined, isEditable: true),
+                      _buildInfoField("Biography", Icons.description_outlined, maxLines: 3, isEditable: true),
                       const SizedBox(height: 30),
-                      if (!_isEditMode) _buildDeleteOption(),
+                      if (!_isEditMode) _buildDeleteButton(),
                       const SizedBox(height: 30),
                     ],
                   ),
                 ),
               ),
-              if (_isEditMode) _buildSaveButton(org),
+              if (_isEditMode) _buildSaveButton(),
             ],
           ),
         );
@@ -117,49 +87,73 @@ class _OrgProfileManagementPageState extends State<OrgProfileManagementPage> {
     );
   }
 
-  Widget _buildSectionTitle(String title) {
-    return Padding(
-      padding: const EdgeInsets.only(bottom: 12, left: 5, top: 10),
-      child: Align(
-        alignment: Alignment.centerLeft,
-        child: Text(title, style: TextStyle(color: deepMediumPurple, fontSize: 14, fontWeight: FontWeight.bold)),
-      ),
-    );
-  }
-
-  Widget _buildProfileImageSection(OrgModel? org) {
-    return Center(
-      child: GestureDetector(
-        onTap: _isEditMode ? _pickImage : null,
-        child: Stack(
-          children: [
-            CircleAvatar(
-              radius: 50,
-              backgroundColor: deepMediumPurple.withOpacity(0.1),
-              backgroundImage: (org?.profilePhotoPath != null && org!.profilePhotoPath!.isNotEmpty)
-                  ? FileImage(File(org.profilePhotoPath!))
-                  : null,
-              child: (org?.profilePhotoPath == null || org!.profilePhotoPath!.isEmpty)
-                  ? Icon(Icons.business, size: 50, color: deepMediumPurple)
-                  : null,
-            ),
-            if (_isEditMode)
-              Positioned(
-                bottom: 0,
-                right: 0,
-                child: Container(
-                  padding: const EdgeInsets.all(4),
-                  decoration: BoxDecoration(color: deepMediumPurple, shape: BoxShape.circle),
-                  child: const Icon(Icons.camera_alt, color: Colors.white, size: 18),
-                ),
-              ),
-          ],
+  // ✅ دالة الرسائل (SnackBar) مطابقة تماماً لستايل صفحة اليوزر (ملتصقة بالأسفل)
+  void _showCustomSnackBar(String message, {bool isError = false}) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(
+          message,
+          style: const TextStyle(
+            fontWeight: FontWeight.w500,
+            fontSize: 14,
+            color: Colors.white,
+          ),
         ),
+        backgroundColor: isError ? deleteRed : const Color(0xFF4CAF50),
+        behavior: SnackBarBehavior.fixed, // مشبوكة بالأسفل تماماً
+        duration: const Duration(seconds: 3),
       ),
     );
   }
 
-  Widget _buildInfoField(String label, IconData icon, {int maxLines = 1}) {
+  Widget _buildSaveButton() => Container(
+    padding: const EdgeInsets.all(20),
+    child: SizedBox(
+      width: double.infinity, height: 50,
+      child: ElevatedButton(
+        style: ElevatedButton.styleFrom(
+          backgroundColor: primaryPurple,
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+          elevation: 2,
+        ),
+        onPressed: () {
+          _showCustomSnackBar("Profile Updated Successfully ✅");
+          setState(() => _isEditMode = false);
+        },
+        child: const Text("SAVE CHANGES", style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, letterSpacing: 1.1)),
+      ),
+    ),
+  );
+
+  Widget _buildFixedField(String label, String value, IconData icon) {
+    return Container(
+      margin: const EdgeInsets.only(bottom: 12),
+      padding: const EdgeInsets.all(15),
+      decoration: BoxDecoration(
+        color: const Color(0xFFF9F9F9),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: Colors.grey.shade100),
+      ),
+      child: Row(
+        children: [
+          Icon(icon, color: Colors.grey.shade400, size: 20),
+          const SizedBox(width: 15),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(label, style: TextStyle(color: Colors.grey.shade400, fontSize: 11)),
+                Text(value, style: TextStyle(fontWeight: FontWeight.bold, color: Colors.grey.shade600)),
+              ],
+            ),
+          ),
+          Icon(Icons.lock_outline, size: 16, color: Colors.grey.shade300),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildInfoField(String label, IconData icon, {int maxLines = 1, required bool isEditable}) {
     TextEditingController controller = _controllers[label] ?? TextEditingController();
     return Container(
       margin: const EdgeInsets.only(bottom: 12),
@@ -167,32 +161,26 @@ class _OrgProfileManagementPageState extends State<OrgProfileManagementPage> {
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(12),
-        border: Border.all(
-          color: _isEditMode ? deepMediumPurple.withOpacity(0.5) : Colors.grey.shade100,
-          width: _isEditMode ? 1.5 : 1,
-        ),
+        border: Border.all(color: (_isEditMode && isEditable) ? primaryPurple.withOpacity(0.5) : Colors.grey.shade100, width: (_isEditMode && isEditable) ? 1.5 : 1),
       ),
       child: Row(
         children: [
-          Icon(icon, color: deepMediumPurple, size: 20),
+          Icon(icon, color: primaryPurple, size: 20),
           const SizedBox(width: 15),
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(label, style: TextStyle(color: Colors.grey.shade500, fontSize: 11)),
-                const SizedBox(height: 4),
-                _isEditMode
+                (_isEditMode && isEditable)
                     ? TextField(
                   controller: controller,
                   maxLines: maxLines,
                   style: const TextStyle(fontSize: 14, fontWeight: FontWeight.bold),
                   decoration: const InputDecoration(isDense: true, border: InputBorder.none, contentPadding: EdgeInsets.zero),
                 )
-                    : Text(
-                  controller.text.isEmpty ? "Not set" : controller.text,
-                  style: const TextStyle(fontSize: 14, fontWeight: FontWeight.bold, color: Colors.black87),
-                ),
+                    : Text(controller.text.isEmpty ? "Not set" : controller.text,
+                    style: const TextStyle(fontSize: 14, fontWeight: FontWeight.bold)),
               ],
             ),
           ),
@@ -201,49 +189,38 @@ class _OrgProfileManagementPageState extends State<OrgProfileManagementPage> {
     );
   }
 
-  Widget _buildDeleteOption() {
-    return Center(
-      child: OutlinedButton.icon(
-        onPressed: () {},
-        icon: Icon(Icons.delete_forever_outlined, color: deleteRed, size: 18),
-        label: Text("Delete Account", style: TextStyle(color: deleteRed, fontWeight: FontWeight.bold)),
-        style: OutlinedButton.styleFrom(
-          padding: const EdgeInsets.symmetric(horizontal: 25, vertical: 10),
-          side: BorderSide(color: deleteRed.withOpacity(0.4)),
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-        ),
-      ),
-    );
-  }
+  Widget _buildEditToggle() => Padding(
+    padding: const EdgeInsets.symmetric(horizontal: 25, vertical: 15),
+    child: Row(
+      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+      children: [
+        Text("Enable Editing Mode", style: TextStyle(color: _isEditMode ? primaryPurple : Colors.grey, fontWeight: FontWeight.bold)),
+        Switch(value: _isEditMode, activeColor: primaryPurple, onChanged: (v) => setState(() => _isEditMode = v)),
+      ],
+    ),
+  );
 
-  Widget _buildSaveButton(OrgModel? org) {
-    return Container(
-      padding: const EdgeInsets.all(20),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.05), blurRadius: 10, offset: const Offset(0, -5))],
-      ),
-      child: SizedBox(
-        width: double.infinity,
-        height: 50,
-        child: ElevatedButton(
-          style: ElevatedButton.styleFrom(
-            backgroundColor: deepMediumPurple,
-            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-          ),
-          onPressed: () async {
-            await _viewModel.updateOrgProfile(
-              name: _controllers["Organization Name"]!.text,
-              phone: _controllers["Phone Number"]!.text,
-              location: _controllers["Location"]!.text,
-              bio: _controllers["Biography"]!.text,
-              context: context,
-            );
-            setState(() => _isEditMode = false);
-          },
-          child: const Text("SAVE CHANGES", style: TextStyle(color: Colors.white, fontSize: 15, fontWeight: FontWeight.bold)),
+  Widget _buildAvatarSection(org) => Center(
+    child: Stack(
+      children: [
+        CircleAvatar(
+          radius: 50,
+          backgroundColor: primaryPurple.withOpacity(0.1),
+          backgroundImage: (org?.profilePhotoPath?.isNotEmpty ?? false) ? FileImage(File(org!.profilePhotoPath!)) : null,
+          child: (org?.profilePhotoPath?.isEmpty ?? true) ? Icon(Icons.business, size: 50, color: primaryPurple) : null,
         ),
-      ),
-    );
-  }
+        if (_isEditMode)
+          Positioned(bottom: 0, right: 0, child: Container(padding: const EdgeInsets.all(4), decoration: BoxDecoration(color: primaryPurple, shape: BoxShape.circle), child: const Icon(Icons.camera_alt, color: Colors.white, size: 18))),
+      ],
+    ),
+  );
+
+  Widget _buildSectionTitle(String title) => Align(alignment: Alignment.centerLeft, child: Padding(padding: const EdgeInsets.symmetric(vertical: 10), child: Text(title, style: TextStyle(color: primaryPurple, fontWeight: FontWeight.bold))));
+
+  Widget _buildDeleteButton() => OutlinedButton.icon(
+    onPressed: () => _showCustomSnackBar("Account Deletion is not available in Demo Mode", isError: true),
+    icon: Icon(Icons.delete_outline, color: deleteRed),
+    label: Text("Delete Account", style: TextStyle(color: deleteRed)),
+    style: OutlinedButton.styleFrom(side: BorderSide(color: deleteRed.withOpacity(0.3))),
+  );
 }

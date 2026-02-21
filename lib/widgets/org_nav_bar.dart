@@ -25,19 +25,24 @@ class OrgNavBar extends StatelessWidget {
             child: Container(
               height: 55, width: 55,
               decoration: const BoxDecoration(shape: BoxShape.circle, color: Color(0xFFFFA726)),
-              child: const Icon(Icons.add, color: Colors.white),
+              child: const Icon(Icons.add, color: Colors.white, size: 30),
             ),
           ),
           _navItem(Icons.groups_outlined, 3),
-          _navItem(Icons.person_outline, 4), // يرسل 4 ليفتح صفحة البروفايل الحقيقية
+          _navItem(Icons.person_outline, 4), // هذا الرقم يجب أن يكون 4
         ],
       ),
     );
   }
 
   Widget _navItem(IconData icon, int index) {
+    bool isSelected = selectedIndex == index;
     return IconButton(
-      icon: Icon(icon, color: selectedIndex == index ? const Color(0xFFFFA726) : Colors.grey),
+      icon: Icon(
+        icon,
+        color: isSelected ? const Color(0xFFFFA726) : Colors.grey,
+        size: 28,
+      ),
       onPressed: () => onTap(index),
     );
   }
