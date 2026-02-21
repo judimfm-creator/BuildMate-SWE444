@@ -5,6 +5,7 @@ import 'package:url_launcher/url_launcher.dart';
 import 'package:buildmate/viewmodel/profile_view_model.dart';
 import 'package:buildmate/model/user_model.dart';
 import 'package:buildmate/view/profile_management_page.dart';
+import 'package:buildmate/widgets/buildmate_app_bar.dart';
 
 class ProfilePage extends StatefulWidget {
   const ProfilePage({super.key});
@@ -55,6 +56,10 @@ class _ProfilePageState extends State<ProfilePage> with SingleTickerProviderStat
         String firstInitial = userName.isNotEmpty ? userName.substring(0, 1).toUpperCase() : "U";
 
         return Scaffold(
+          appBar: BuildMateAppBar(
+            titleText: '',
+            showBack: false,
+          ),
           backgroundColor: Colors.white,
           body: Column(
             children: [
