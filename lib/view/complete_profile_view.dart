@@ -52,10 +52,13 @@ class _CompleteProfileViewState extends State<CompleteProfileView> {
         elevation: 0,
         centerTitle: true,
         actions: [
-          TextButton(
-            onPressed: () => vm.skipProfileSetup(context),
-            child: const Text("Skip", style: TextStyle(color: Colors.grey, fontWeight: FontWeight.bold)),
-          )
+        TextButton(
+  onPressed: () {
+    // الانتقال لصفحة الهوم مباشرة
+    Navigator.pushReplacementNamed(context, '/home');
+  },
+  child: const Text("Skip", style: TextStyle(color: Colors.grey, fontWeight: FontWeight.bold)),
+)
         ],
       ),
       body: SingleChildScrollView(

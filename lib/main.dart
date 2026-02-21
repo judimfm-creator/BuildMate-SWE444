@@ -5,8 +5,9 @@ import 'package:provider/provider.dart';
 // ViewModels
 import 'package:buildmate/viewmodel/register_view_model.dart';
 import 'package:buildmate/viewmodel/profile_view_model.dart';
+import 'package:buildmate/viewmodel/org_profile_view_model.dart'; 
 
-// Screens / Views
+// Screens & Views
 import 'package:buildmate/auth/welcome_screen.dart';
 import 'package:buildmate/auth/login_screen.dart';
 import 'package:buildmate/auth/select_role_screen.dart';
@@ -25,6 +26,7 @@ void main() async {
       providers: [
         ChangeNotifierProvider(create: (_) => RegisterViewModel()),
         ChangeNotifierProvider(create: (_) => ProfileViewModel()),
+        ChangeNotifierProvider(create: (_) => OrgProfileViewModel()), 
       ],
       child: const MyApp(),
     ),
@@ -36,6 +38,7 @@ class MyApp extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    // اللون البنفسجي المعتمد في المشروع
     const primaryColor = Color(0xFF6D56B3);
 
     return MaterialApp(
@@ -48,14 +51,12 @@ class MyApp extends StatelessWidget {
           style: ElevatedButton.styleFrom(
             backgroundColor: primaryColor,
             foregroundColor: Colors.white,
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(12),
-            ),
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
           ),
         ),
       ),
 
-      // نقطة البداية المعتمدة (Welcome Screen)
+      // نقطة البداية المعتمدة هي صفحة الترحيب (Welcome Screen)
       initialRoute: '/welcome',
 
       routes: {

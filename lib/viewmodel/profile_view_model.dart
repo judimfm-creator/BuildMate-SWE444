@@ -3,12 +3,13 @@ import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:buildmate/model/user_model.dart';
-import 'package:firebase_auth/firebase_auth.dart';
-import 'package:flutter/material.dart';
 
 class ProfileViewModel extends ChangeNotifier {
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
   final FirebaseAuth _auth = FirebaseAuth.instance;
+
+  UserModel? _currentUser; // متغير داخلي لحفظ بيانات المستخدم
+  UserModel? get currentUser => _currentUser; // ✅ الـ Getter الذي تحتاجه الواجهة
 
   bool _isLoading = false;
   bool get isLoading => _isLoading;
@@ -19,7 +20,10 @@ class ProfileViewModel extends ChangeNotifier {
 
     return _firestore.collection('users').doc(uid).snapshots().map((snapshot) {
       if (snapshot.exists && snapshot.data() != null) {
-        return UserModel.fromMap(snapshot.data()!);
+        // تحديث المتغير المحلي وتنبيه الواجهات
+        _currentUser = UserModel.fromMap(snapshot.data()!);
+        notifyListeners();
+        return _currentUser;
       }
       return null;
     });
@@ -33,21 +37,18 @@ class ProfileViewModel extends ChangeNotifier {
         await _firestore.collection('users').doc(uid).update({
           'profilePhotoPath': imageFile.path,
         });
-        notifyListeners(); 
+        // لا نحتاج notifyListeners هنا لأن الـ Stream سيقوم بالتحديث تلقائياً
 
         if (context.mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(
-              content: Text('Profile photo updated successfully'),
-              backgroundColor: Colors.green,
-            ),
+            const SnackBar(content: Text('Profile photo updated successfully'), backgroundColor: Colors.green),
           );
         }
       }
     } catch (e) {
       if (context.mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Error uploading photo: $e'), backgroundColor: Colors.red),
+          SnackBar(content: Text('Error: $e'), backgroundColor: Colors.red),
         );
       }
     } finally {
@@ -55,12 +56,13 @@ class ProfileViewModel extends ChangeNotifier {
     }
   }
 
-  // ✅ الدالة المحدثة لاستقبال كافة المعاملات وحل الإيرور
   Future<void> updateProfile({
     required String name,
+    required String username,
     required String phone,
     required String bio,
     required String city,
+    required String skills,
     required String linkedin,
     required String github,
     required String gender,
@@ -70,25 +72,21 @@ class ProfileViewModel extends ChangeNotifier {
     try {
       String uid = _auth.currentUser?.uid ?? "";
       if (uid.isNotEmpty) {
-        // تحديث كافة الحقول في فايربيز لضمان ظهور الروابط والبيانات
         await _firestore.collection('users').doc(uid).update({
           'fullName': name.trim(),
+          'username': username.trim(),
           'phoneNumber': phone.trim(),
           'bio': bio.trim(),
           'city': city.trim(),
-          'linkedin': linkedin.trim(), // تم توحيد الاسم مع الفايربيز
-          'github': github.trim(),     // تم توحيد الاسم مع الفايربيز
+          'skills': skills.trim(), // ✅ تأكدنا من إضافة المهارات هنا للحفظ
+          'linkedin': linkedin.trim(),
+          'github': github.trim(),
           'gender': gender,
         });
-        
-        notifyListeners();
 
         if (context.mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(
-              content: Text('Profile updated successfully! ✅'),
-              backgroundColor: Colors.green,
-            ),
+            const SnackBar(content: Text('Profile updated successfully! ✅'), backgroundColor: Colors.green),
           );
         }
       }
@@ -103,59 +101,19 @@ class ProfileViewModel extends ChangeNotifier {
     }
   }
 
-  Future<void> deleteAccount(
-      BuildContext context,
-      String email,
-      String password,
-      ) async {
+  Future<void> deleteAccount(BuildContext context, String email, String password) async {
     final user = _auth.currentUser;
     if (user == null) return;
-
     try {
-      // Re-authenticate
       final credential = EmailAuthProvider.credential(email: email, password: password);
       await user.reauthenticateWithCredential(credential);
-
       String uid = user.uid;
-
-      // Delete user data from Firestore first
       await _firestore.collection('users').doc(uid).delete();
-
-      // Delete account from FirebaseAuth
       await user.delete();
-
-      // Sign out
       await _auth.signOut();
-
-      // Show message & redirect
-      if (context.mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text("Account deleted successfully"),
-            backgroundColor: Colors.green,
-          ),
-        );
-
-        Navigator.pushNamedAndRemoveUntil(context, '/loginUser', (route) => false);
-      }
-    } on FirebaseAuthException catch (e) {
-      if (context.mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text("Failed to delete account: ${e.message}"),
-            backgroundColor: Colors.red,
-          ),
-        );
-      }
+      if (context.mounted) Navigator.pushNamedAndRemoveUntil(context, '/loginUser', (route) => false);
     } catch (e) {
-      if (context.mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text("An error occurred: $e"),
-            backgroundColor: Colors.red,
-          ),
-        );
-      }
+      if (context.mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text("Error: $e"), backgroundColor: Colors.red));
     }
   }
 

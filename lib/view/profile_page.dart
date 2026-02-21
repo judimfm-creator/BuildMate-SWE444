@@ -1,5 +1,6 @@
-import 'dart:io'; // إضافة مكتبة الملفات لدعم عرض الصورة المحدثة
+import 'dart:io';
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
 import 'package:font_awesome_flutter/font_awesome_flutter.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'package:buildmate/viewmodel/profile_view_model.dart';
@@ -18,9 +19,10 @@ class _ProfilePageState extends State<ProfilePage> with SingleTickerProviderStat
   late TabController _tabController;
   final ProfileViewModel _viewModel = ProfileViewModel();
 
-  final Color deepMediumPurple = const Color(0xFF7A62B3);
-  final Color matteOrange = const Color(0xFFD48C5E);
-  final Color tealColor = const Color(0xFF63A2A2);
+  final Color primaryPurple = const Color(0xFF7A62B3);
+  final Color lightPurpleBG = const Color(0xFFF5F3FF);
+  final Color manageButtonGrey = const Color(0xFFF2F2F2);
+  final Color manageButtonText = const Color(0xFF616161);
 
   @override
   void initState() {
@@ -28,223 +30,185 @@ class _ProfilePageState extends State<ProfilePage> with SingleTickerProviderStat
     _tabController = TabController(length: 2, vsync: this);
   }
 
-  Future<void> _launchURL(String? url) async {
-    if (url == null || url.isEmpty) return;
-    final Uri uri = Uri.parse(url);
-    try {
-      if (!await launchUrl(uri, mode: LaunchMode.externalApplication)) {
-        throw Exception('Could not launch $url');
-      }
-    } catch (e) {
-      debugPrint("Error: $e");
-    }
-  }
-
-  @override
-  void dispose() {
-    _tabController.dispose();
-    super.dispose();
+  Future<void> _launchURL(String? urlString) async {
+    if (urlString == null || urlString.trim().isEmpty) return;
+    String cleanUrl = urlString.trim();
+    if (!cleanUrl.startsWith('http')) cleanUrl = 'https://$cleanUrl';
+    final Uri url = Uri.parse(cleanUrl);
+    await launchUrl(url, mode: LaunchMode.inAppWebView);
   }
 
   @override
   Widget build(BuildContext context) {
-    return StreamBuilder<UserModel?>(
-      stream: _viewModel.userDataStream,
-      builder: (context, snapshot) {
-        final user = snapshot.data;
-        String userName = user?.fullName ?? "User";
-        String firstInitial = userName.isNotEmpty ? userName.substring(0, 1).toUpperCase() : "U";
+    return Scaffold(
+      backgroundColor: Colors.white,
+      // ✅ دمجنا الـ AppBar الموحد الخاص بكِ
+      appBar: const BuildMateAppBar(
+        titleText: 'Profile',
+        showBack: false,
+      ),
+      body: StreamBuilder<UserModel?>(
+        stream: _viewModel.userDataStream,
+        builder: (context, snapshot) {
+          if (snapshot.connectionState == ConnectionState.waiting) {
+            return const Center(child: CircularProgressIndicator());
+          }
+          final user = snapshot.data;
+          if (user == null) {
+            return const Center(child: Text("No user data found"));
+          }
 
-        return Scaffold(
-          appBar: BuildMateAppBar(
-            titleText: '',
-            showBack: false,
-          ),
-          backgroundColor: Colors.white,
-          body: Column(
-            children: [
-              Expanded(
-                child: SingleChildScrollView(
-                  physics: const BouncingScrollPhysics(),
-                  child: Column(
+          return SingleChildScrollView(
+            physics: const BouncingScrollPhysics(),
+            child: Column(
+              children: [
+                const SizedBox(height: 20),
+                _buildProfileHeader(user),
+                const SizedBox(height: 20),
+                _buildManageButton(),
+                const SizedBox(height: 35),
+
+                // قسم المهارات (Skills)
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Icon(Icons.bolt, color: primaryPurple, size: 24),
+                    const SizedBox(width: 8),
+                    const Text("Skills", 
+                      style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Colors.black)),
+                  ],
+                ),
+                const SizedBox(height: 15),
+                _buildSkillsChips(user.skills),
+
+                const SizedBox(height: 30),
+                _buildTabBarSection(),
+                
+                // عرض المشاريع (Tabs)
+                SizedBox(
+                  height: 300,
+                  child: TabBarView(
+                    controller: _tabController,
                     children: [
-                      const SizedBox(height: 10),
-                      Center(
-                        child: Container(
-                          width: 105,
-                          height: 105,
-                          decoration: BoxDecoration(
-                            shape: BoxShape.circle,
-                            boxShadow: [
-                              BoxShadow(color: tealColor.withOpacity(0.2), blurRadius: 15, offset: const Offset(0, 8))
-                            ],
-                          ),
-                          child: CircleAvatar(
-                            radius: 52,
-                            backgroundColor: tealColor,
-                            // التعديل: دعم عرض الصورة المختارة محلياً أو المحملة من الإنترنت
-                            backgroundImage: (user?.profilePhotoPath != null && user!.profilePhotoPath!.isNotEmpty)
-                                ? (user.profilePhotoPath!.startsWith('http'))
-                                ? NetworkImage(user.profilePhotoPath!) as ImageProvider
-                                : FileImage(File(user.profilePhotoPath!))
-                                : null,
-                            child: (user?.profilePhotoPath == null || user!.profilePhotoPath!.isEmpty)
-                                ? Text(
-                              firstInitial,
-                              style: const TextStyle(fontSize: 44, fontWeight: FontWeight.bold, color: Colors.white),
-                            )
-                                : null,
-                          ),
-                        ),
-                      ),
-                      const SizedBox(height: 10),
-                      Text(
-                          "@${user?.username ?? 'username'}",
-                          style: TextStyle(fontSize: 21, fontWeight: FontWeight.w900, color: tealColor.withOpacity(0.9))
-                      ),
-                      const SizedBox(height: 8),
-
-                      _buildEnhancedInfoButton(context),
-
-                      const SizedBox(height: 25),
-
-                      Row(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: [
-                        // ✅ تم تغيير linkedinUrl إلى linkedin و githubUrl إلى github
-_buildModernSocialCard(FontAwesomeIcons.linkedinIn, user?.linkedin),
-const SizedBox(width: 20),
-_buildModernSocialCard(FontAwesomeIcons.github, user?.github),
-                        ],
-                      ),
-
-                      const SizedBox(height: 30),
-
-                      Padding(
-                        padding: const EdgeInsets.symmetric(horizontal: 35),
-                        child: Row(
-                          children: [
-                            Expanded(
-                              child: _buildActionButton(
-                                "Skills",
-                                matteOrange,
-                                Icons.bolt_rounded,
-                                    () {},
-                              ),
-                            ),
-                            const SizedBox(width: 15),
-                            Expanded(
-                              child: _buildActionButton(
-                                "Requests",
-                                matteOrange,
-                                Icons.near_me_rounded,
-                                    () {},
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                      const SizedBox(height: 40),
-
-                      _buildMinimalTabBar(),
-                      SizedBox(
-                        height: 300,
-                        child: TabBarView(
-                          controller: _tabController,
-                          children: [
-                            _buildEmptyPlaceholder("No ongoing hackathons", Icons.auto_awesome_mosaic),
-                            _buildEmptyPlaceholder("History is empty", Icons.history_rounded),
-                          ],
-                        ),
-                      ),
+                      _buildEmptyPlaceholder("No ongoing projects", Icons.rocket_launch_outlined),
+                      _buildEmptyPlaceholder("No previous projects", Icons.history),
                     ],
                   ),
                 ),
-              ),
-            ],
-          ),
-        );
-      },
+              ],
+            ),
+          );
+        },
+      ),
     );
   }
 
-  Widget _buildEnhancedInfoButton(BuildContext context) {
-    return InkWell(
-      onTap: () => Navigator.push(context, MaterialPageRoute(builder: (context) => const ProfileManagementPage())),
-      borderRadius: BorderRadius.circular(30),
-      child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 8),
-        decoration: BoxDecoration(
-          color: Colors.white,
-          borderRadius: BorderRadius.circular(30),
-          border: Border.all(color: deepMediumPurple.withOpacity(0.4)),
+  Widget _buildProfileHeader(UserModel user) {
+    return Column(
+      children: [
+        CircleAvatar(
+          radius: 55,
+          backgroundColor: lightPurpleBG,
+          backgroundImage: (user.profilePhotoPath?.isNotEmpty ?? false)
+              ? (user.profilePhotoPath!.startsWith('http') 
+                  ? NetworkImage(user.profilePhotoPath!) 
+                  : FileImage(File(user.profilePhotoPath!))) as ImageProvider
+              : null,
+          child: (user.profilePhotoPath?.isEmpty ?? true) 
+              ? Icon(Icons.person, size: 50, color: primaryPurple) 
+              : null,
         ),
-        child: Row(
-          mainAxisSize: MainAxisSize.min,
+        const SizedBox(height: 12),
+        Text("@${user.username}", 
+          style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold, color: primaryPurple)),
+        if (user.bio != null && user.bio!.isNotEmpty)
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 40, vertical: 8),
+            child: Text(user.bio!, 
+              textAlign: TextAlign.center, 
+              style: TextStyle(fontSize: 13, color: Colors.grey.shade700, height: 1.4)),
+          ),
+        const SizedBox(height: 10),
+        Row(
+          mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Icon(Icons.person_pin_rounded, size: 18, color: deepMediumPurple),
-            const SizedBox(width: 8),
-            Text("Profile Information", style: TextStyle(color: deepMediumPurple, fontSize: 13, fontWeight: FontWeight.bold)),
-            const SizedBox(width: 5),
-            Icon(Icons.arrow_forward_ios, size: 10, color: deepMediumPurple),
+            if (user.linkedin != null) 
+              IconButton(icon: Icon(FontAwesomeIcons.linkedin, color: primaryPurple), 
+                onPressed: () => _launchURL(user.linkedin)),
+            if (user.github != null) 
+              IconButton(icon: Icon(FontAwesomeIcons.github, color: primaryPurple), 
+                onPressed: () => _launchURL(user.github)),
           ],
         ),
-      ),
+      ],
     );
   }
 
-  Widget _buildModernSocialCard(IconData icon, String? url) {
-    bool hasUrl = url != null && url.isNotEmpty;
-    return InkWell(
-      onTap: () => _launchURL(url),
-      borderRadius: BorderRadius.circular(16),
-      child: Container(
-        padding: const EdgeInsets.all(14),
-        decoration: BoxDecoration(
-          color: Colors.white,
-          borderRadius: BorderRadius.circular(16),
-          border: Border.all(color: deepMediumPurple.withOpacity(hasUrl ? 0.3 : 0.1)),
+  Widget _buildManageButton() {
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 25),
+      child: SizedBox(
+        width: double.infinity,
+        height: 45,
+        child: ElevatedButton(
+          onPressed: () => Navigator.push(context, 
+            MaterialPageRoute(builder: (context) => const ProfileManagementPage())),
+          style: ElevatedButton.styleFrom(
+            backgroundColor: manageButtonGrey,
+            elevation: 0,
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+          ),
+          child: Text("Manage Profile", 
+            style: TextStyle(color: manageButtonText, fontWeight: FontWeight.w600, fontSize: 14)),
         ),
-        child: FaIcon(icon, color: deepMediumPurple, size: 22),
       ),
     );
   }
 
-  Widget _buildActionButton(String label, Color color, IconData icon, VoidCallback onTap) {
-    return Container(
-      height: 52,
-      decoration: BoxDecoration(color: color, borderRadius: BorderRadius.circular(18)),
-      child: Material(
-          color: Colors.transparent,
-          child: InkWell(
-              onTap: onTap,
-              borderRadius: BorderRadius.circular(18),
-              child: Row(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    Icon(icon, color: Colors.white, size: 18),
-                    const SizedBox(width: 8),
-                    Text(label, style: const TextStyle(color: Colors.white, fontSize: 15, fontWeight: FontWeight.bold))
-                  ]
-              )
-          )
+  Widget _buildSkillsChips(String? skillsString) {
+    List<String> skills = skillsString?.split(',').map((s) => s.trim()).where((s) => s.isNotEmpty).toList() ?? [];
+    if (skills.isEmpty) return const SizedBox();
+
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 25),
+      child: Wrap(
+        alignment: WrapAlignment.center,
+        spacing: 10,
+        runSpacing: 10,
+        children: skills.map((skill) => Container(
+          padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 10),
+          decoration: BoxDecoration(
+            color: primaryPurple.withOpacity(0.1),
+            borderRadius: BorderRadius.circular(20),
+            border: Border.all(color: primaryPurple.withOpacity(0.4)),
+          ),
+          child: Text(skill, style: TextStyle(color: primaryPurple, fontSize: 13, fontWeight: FontWeight.bold)),
+        )).toList(),
       ),
     );
   }
 
-  Widget _buildMinimalTabBar() {
+  Widget _buildTabBarSection() {
     return TabBar(
-        controller: _tabController,
-        labelColor: deepMediumPurple,
-        unselectedLabelColor: Colors.grey.shade400,
-        indicatorColor: deepMediumPurple,
-        indicatorWeight: 3,
-        indicatorSize: TabBarIndicatorSize.label,
-        tabs: const [Tab(text: "Ongoing"), Tab(text: "Previous")]
+      controller: _tabController,
+      indicatorColor: primaryPurple,
+      labelColor: primaryPurple,
+      unselectedLabelColor: Colors.grey,
+      indicatorWeight: 3,
+      tabs: const [Tab(text: "Ongoing"), Tab(text: "Previous")],
     );
   }
 
   Widget _buildEmptyPlaceholder(String text, IconData icon) {
-    return Center(child: Column(mainAxisAlignment: MainAxisAlignment.center, children: [Icon(icon, size: 45, color: Colors.grey.shade100), const SizedBox(height: 12), Text(text, style: TextStyle(color: Colors.grey.shade300, fontSize: 14))]));
+    return Center(
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Icon(icon, size: 40, color: Colors.grey.shade300),
+          const SizedBox(height: 10),
+          Text(text, style: TextStyle(color: Colors.grey.shade400, fontSize: 14)),
+        ],
+      ),
+    );
   }
 }
