@@ -7,12 +7,12 @@ import 'package:buildmate/viewmodel/register_view_model.dart';
 import 'package:buildmate/viewmodel/profile_view_model.dart';
 
 // Screens
-import 'package:buildmate/auth/welcome_screen.dart'; // صفحة الترحيب
+import 'package:buildmate/auth/welcome_screen.dart';
 import 'package:buildmate/auth/login_screen.dart';
 import 'package:buildmate/auth/select_role_screen.dart';
 import 'package:buildmate/view/register_org_view.dart';
 import 'package:buildmate/view/register_user_view.dart';
-import 'package:buildmate/view/complete_profile_view.dart'; // صفحة إكمال البيانات
+import 'package:buildmate/view/complete_profile_view.dart';
 import 'package:buildmate/home_screen.dart';
 import 'package:buildmate/org_home_screen.dart';
 
@@ -36,7 +36,6 @@ class MyApp extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    // اللون البنفسجي المعتمد في المشروع
     const primaryColor = Color(0xFF6D56B3);
 
     return MaterialApp(
@@ -55,7 +54,7 @@ class MyApp extends StatelessWidget {
         ),
       ),
 
-      // ✅ جعلنا نقطة البداية هي صفحة الترحيب (Welcome) كما طلبتِ
+      // نقطة البداية المعتمدة
       initialRoute: '/welcome',
 
       routes: {

@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import 'package:firebase_auth/firebase_auth.dart'; // تمت إضافة هذا الـ Import من نسخة زميلتك
 import '../viewmodel/register_view_model.dart';
 import 'view/create_hackathon_view.dart';
 import 'widgets/org_nav_bar.dart';
@@ -17,10 +18,11 @@ class _InstitutionHomeScreenState extends State<InstitutionHomeScreen> {
   int _navIndex = 0;
 
   Future<void> logout() async {
+    // استخدام Provider لاستدعاء دالة تسجيل الخروج من RegisterViewModel
     await Provider.of<RegisterViewModel>(context, listen: false).logout(context);
   }
 
-  // صفحات التابات (بدون صفحة Create)
+  // صفحات التابات (بدون صفحة Create لأنها تفتح كـ Route مستقل)
   final List<Widget> _pages = const [
     Center(child: Text("Home")),
     Center(child: Text("Announcements")),
@@ -28,11 +30,11 @@ class _InstitutionHomeScreenState extends State<InstitutionHomeScreen> {
     Center(child: Text("Profile")),
   ];
 
-  // تحويل navIndex إلى index داخل _pages (لأن + مو صفحة)
+  // تحويل navIndex إلى index داخل _pages (لأن زر + في المنتصف ليس صفحة تابعة للـ Index المباشر)
   int get _pageIndex => (_navIndex > 2) ? _navIndex - 1 : _navIndex;
 
   void _onItemTapped(int index) {
-    // زر + يفتح صفحة جديدة (Route) ولا يغير التاب الحالي
+    // زر + (Index 2) يفتح صفحة إنشاء الهاكاثون كشاشة جديدة ولا يغير التاب الحالي
     if (index == 2) {
       Navigator.push(
         context,
@@ -51,11 +53,11 @@ class _InstitutionHomeScreenState extends State<InstitutionHomeScreen> {
     return Scaffold(
       backgroundColor: purple,
       appBar: BuildMateAppBar(
-        onLogout: logout,
+        onLogout: logout, // تمرير دالة تسجيل الخروج للـ AppBar المخصص
       ),
       body: _pages[_pageIndex],
       bottomNavigationBar: OrgNavBar(
-        selectedIndex: _navIndex, // مهم عشان الهايلايت يضبط
+        selectedIndex: _navIndex, // لضمان بقاء التحديد (Highlight) على الأيقونة الصحيحة
         onTap: _onItemTapped,
       ),
     );

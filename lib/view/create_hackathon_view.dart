@@ -343,7 +343,8 @@ class _CreateHackathonViewState extends State<CreateHackathonView> {
                         validator: (v) {
                           if (v == null || v.trim().isEmpty) return "Required";
                           final n = int.tryParse(v.trim());
-                          if (n == null || n <= 0) return "Enter a valid number";
+                          if (n == null || n <= 0)
+                            return "Enter a valid number";
                           return null;
                         },
                       ),
@@ -384,7 +385,8 @@ class _CreateHackathonViewState extends State<CreateHackathonView> {
                           final result = await showDialog<List<String>>(
                             context: context,
                             builder: (context) {
-                              List<String> tempSelected = List.from(selectedRoles);
+                              List<String> tempSelected =
+                                  List.from(selectedRoles);
 
                               return StatefulBuilder(
                                 builder: (context, setDialogState) {
@@ -399,7 +401,8 @@ class _CreateHackathonViewState extends State<CreateHackathonView> {
                                             onChanged: (checked) {
                                               setDialogState(() {
                                                 if (checked == true) {
-                                                  if (!tempSelected.contains(role)) {
+                                                  if (!tempSelected
+                                                      .contains(role)) {
                                                     tempSelected.add(role);
                                                   }
                                                 } else {
@@ -417,8 +420,8 @@ class _CreateHackathonViewState extends State<CreateHackathonView> {
                                         child: const Text("Cancel"),
                                       ),
                                       ElevatedButton(
-                                        onPressed: () =>
-                                            Navigator.pop(context, tempSelected),
+                                        onPressed: () => Navigator.pop(
+                                            context, tempSelected),
                                         style: _primaryButtonStyle(),
                                         child: const Text("Done"),
                                       ),
@@ -445,7 +448,6 @@ class _CreateHackathonViewState extends State<CreateHackathonView> {
                           ),
                         ),
                       ),
-
                       if (selectedRoles.contains("Other"))
                         Padding(
                           padding: const EdgeInsets.only(top: 8),
@@ -511,13 +513,13 @@ class _CreateHackathonViewState extends State<CreateHackathonView> {
                     style: _primaryButtonStyle(),
                     icon: isSubmitting
                         ? const SizedBox(
-                      width: 18,
-                      height: 18,
-                      child: CircularProgressIndicator(
-                        strokeWidth: 2,
-                        color: Colors.white,
-                      ),
-                    )
+                            width: 18,
+                            height: 18,
+                            child: CircularProgressIndicator(
+                              strokeWidth: 2,
+                              color: Colors.white,
+                            ),
+                          )
                         : const Icon(Icons.check_circle_outline),
                     label: Text(isSubmitting ? "Saving..." : "Submit"),
                   ),
@@ -569,7 +571,8 @@ class _CreateHackathonViewState extends State<CreateHackathonView> {
         keyboardType: keyboardType,
         textInputAction: TextInputAction.next,
         validator: validator ??
-                (value) => (value == null || value.trim().isEmpty) ? "Required" : null,
+            (value) =>
+                (value == null || value.trim().isEmpty) ? "Required" : null,
         decoration: _fieldDecoration(label: label, icon: icon, hint: hint),
       ),
     );

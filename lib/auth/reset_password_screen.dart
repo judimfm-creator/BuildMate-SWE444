@@ -9,22 +9,24 @@ class ResetPasswordScreen extends StatefulWidget {
 }
 
 class _ResetPasswordScreenState extends State<ResetPasswordScreen> {
-  // ✅ عدّلي هذي على طول:
-  static const String kResetRedirectUrl = 'https://YOUR_PROJECT.web.app/reset.html';
-  static const String kAndroidPackageName = 'com.example.buildmate';
+  // (ملاحظتي) هنا أحفظ الإيميل اللي المستخدم يكتبه
+  final TextEditingController _emailController = TextEditingController();
 
-  final _emailController = TextEditingController();
+  // (ملاحظتي) عشان أعطل الزر وقت الإرسال وما يصير ضغطات كثيرة
   bool _loading = false;
 
+  // (ملاحظتي) لون المشروع (بنفس اللي عندك)
   final Color purple = const Color(0xFF6D56B3);
 
   @override
   void dispose() {
+    // (ملاحظتي) لازم أفضي الذاكرة من الكونترولر
     _emailController.dispose();
     super.dispose();
   }
 
   void _toast(String msg) {
+    // (ملاحظتي) أطلع رسالة بسيطة للمستخدم
     if (!mounted) return;
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(content: Text(msg)),
@@ -32,17 +34,20 @@ class _ResetPasswordScreenState extends State<ResetPasswordScreen> {
   }
 
   bool _isValidEmail(String email) {
-    // بسيطة ومناسبة
+    // (ملاحظتي) تحقق بسيط وسريع للإيميل
     return email.contains('@') && email.contains('.');
   }
 
   Future<void> _sendResetLink() async {
     final email = _emailController.text.trim();
 
+    // (ملاحظتي) لا أرسل إذا الإيميل فاضي
     if (email.isEmpty) {
       _toast("Email is required");
       return;
     }
+
+    // (ملاحظتي) لا أرسل إذا الإيميل شكله غلط
     if (!_isValidEmail(email)) {
       _toast("Enter a valid email");
       return;
@@ -51,33 +56,21 @@ class _ResetPasswordScreenState extends State<ResetPasswordScreen> {
     setState(() => _loading = true);
 
     try {
-      final settings = ActionCodeSettings(
-        // ✅ لازم HTTPS وموجود ضمن Authorized domains
-        url: kResetRedirectUrl,
-        handleCodeInApp: true,
+     
+      // Firebase يرسل رابط reset الرسمي على الإيميل
+      await FirebaseAuth.instance.sendPasswordResetEmail(email: email);
 
-        // Android
-        androidPackageName: kAndroidPackageName,
-        androidInstallApp: true,
-        androidMinimumVersion: '1',
-      );
+      // (ملاحظتي) أذكرها تشيك spam بعد
+      _toast("Reset link sent ✅ Check your inbox + Spam");
 
-      await FirebaseAuth.instance.sendPasswordResetEmail(
-        email: email,
-        actionCodeSettings: settings,
-      );
-
-      _toast("Reset link sent ✅ Check your inbox");
+      // (ملاحظتي) بعد ما أرسله أرجع لصفحة اللوقن
+      if (mounted) Navigator.pop(context);
     } on FirebaseAuthException catch (e) {
+      // (ملاحظتي) رسائل واضحة وبسيطة بدل ما أعرض كودات كثيرة
       String msg = "Failed to send reset email";
 
-      if (e.code == 'user-not-found') msg = "No user found for this email";
       if (e.code == 'invalid-email') msg = "Invalid email";
-
-    
-      if (e.code == 'invalid-continue-uri') {
-        msg = "Reset link URL is invalid (must be https + authorized domain)";
-      }
+      if (e.code == 'user-not-found') msg = "No user found for this email";
 
       _toast(msg);
     } catch (_) {
@@ -104,11 +97,11 @@ class _ResetPasswordScreenState extends State<ResetPasswordScreen> {
             children: [
               const SizedBox(height: 18),
 
-              // ✅ اللوقو (ضعف الحجم)
+              
               Center(
                 child: Image.asset(
                   'assets/images/logo.png',
-                  height: 160, // 
+                  height: 160,
                   width: 160,
                   fit: BoxFit.contain,
                 ),
@@ -167,15 +160,12 @@ class _ResetPasswordScreenState extends State<ResetPasswordScreen> {
 
               const SizedBox(height: 12),
 
-              Text(
-                "After you tap the email link, it will open BuildMate directly and continue the reset inside the app.",
-                style: const TextStyle(fontSize: 12, color: Colors.black54),
+              
+              const Text(
+                "After you tap the email link, you will reset the password on the Firebase page.",
+                style: TextStyle(fontSize: 12, color: Colors.black54),
                 textAlign: TextAlign.center,
               ),
-
-              const SizedBox(height: 8),
-
-             
             ],
           ),
         ),
