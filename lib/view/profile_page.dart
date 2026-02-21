@@ -17,7 +17,6 @@ class _ProfilePageState extends State<ProfilePage> with SingleTickerProviderStat
   late TabController _tabController;
   final ProfileViewModel _viewModel = ProfileViewModel();
 
-  // ✅ اللون الموف الواضح (غير باهت)
   final Color primaryPurple = const Color(0xFF7A62B3);
   final Color lightPurpleBG = const Color(0xFFF5F3FF);
   final Color manageButtonGrey = const Color(0xFFF2F2F2);
@@ -41,16 +40,7 @@ class _ProfilePageState extends State<ProfilePage> with SingleTickerProviderStat
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: Colors.white,
-      appBar: AppBar(
-        backgroundColor: Colors.white,
-        elevation: 0,
-        centerTitle: true,
-        title: const Text("Profile", style: TextStyle(color: Colors.black, fontWeight: FontWeight.bold, fontSize: 18)),
-        leading: IconButton(
-          icon: const Icon(Icons.arrow_back_ios_new, color: Colors.black, size: 20),
-          onPressed: () => Navigator.pushNamedAndRemoveUntil(context, '/home', (route) => false),
-        ),
-      ),
+      // ✅ تم حذف الـ AppBar بالكامل هنا
       body: StreamBuilder<UserModel?>(
         stream: _viewModel.userDataStream,
         builder: (context, snapshot) {
@@ -59,15 +49,15 @@ class _ProfilePageState extends State<ProfilePage> with SingleTickerProviderStat
           if (user == null) return const Center(child: Text("No user data found"));
 
           return SingleChildScrollView(
+            physics: const BouncingScrollPhysics(),
             child: Column(
               children: [
-                const SizedBox(height: 10),
+                const SizedBox(height: 60), // مساحة تعويضية علوية بعد حذف الـ AppBar
                 _buildProfileHeader(user),
                 const SizedBox(height: 20),
                 _buildManageButton(),
                 const SizedBox(height: 35),
 
-                // ✅ عنوان المهارات في المنتصف مع أيقونة البرق
                 Row(
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
@@ -78,7 +68,6 @@ class _ProfilePageState extends State<ProfilePage> with SingleTickerProviderStat
                 ),
                 const SizedBox(height: 15),
 
-                // ✅ الـ Chips في المنتصف تماماً
                 _buildSkillsChips(user.skills),
 
                 const SizedBox(height: 30),
@@ -157,7 +146,7 @@ class _ProfilePageState extends State<ProfilePage> with SingleTickerProviderStat
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 25),
       child: Wrap(
-        alignment: WrapAlignment.center, // ✅ جعل المهارات تظهر في المنتصف
+        alignment: WrapAlignment.center,
         spacing: 10,
         runSpacing: 10,
         children: skills.map((skill) => Container(

@@ -35,50 +35,25 @@ class _OrgProfilePageState extends State<OrgProfilePage> {
 
         final org = snapshot.data;
 
-        // ✅ DefaultTabController يحل مشكلة الـ Initialization والشاشة الحمراء
         return DefaultTabController(
           length: 1,
           child: Scaffold(
             backgroundColor: Colors.white,
-            appBar: AppBar(
-              backgroundColor: Colors.white,
-              elevation: 0,
-              centerTitle: true,
-              title: const Text(
-                "Profile",
-                style: TextStyle(
-                    color: Colors.black,
-                    fontSize: 18,
-                    fontWeight: FontWeight.bold,
-                    fontFamily: 'Inter'
-                ),
-              ),
-              leading: IconButton(
-                icon: const Icon(Icons.arrow_back_ios_new, color: Colors.black, size: 20),
-                onPressed: () {
-                  Navigator.of(context).pushAndRemoveUntil(
-                    MaterialPageRoute(builder: (context) => const InstitutionHomeScreen()),
-                        (route) => false,
-                  );
-                },
-              ),
-            ),
+            // ✅ تم حذف الـ AppBar بالكامل هنا
             body: SingleChildScrollView(
               physics: const BouncingScrollPhysics(),
               child: Column(
                 children: [
-                  const SizedBox(height: 10),
+                  const SizedBox(height: 60), // مساحة تعويضية علوية بعد حذف الـ AppBar
                   _buildOrgHeader(org),
                   const SizedBox(height: 25),
                   _buildManageButton(context),
                   const SizedBox(height: 35),
 
-                  // ✅ قسم التواصل (الموقع، الإيميل، الجوال)
                   _buildContactSection(org, userEmail),
 
                   const SizedBox(height: 35),
 
-                  // ✅ التاب الوحيد (نفس ستايل اليوزر)
                   _buildTabBarSection(),
 
                   SizedBox(
@@ -112,10 +87,10 @@ class _OrgProfilePageState extends State<OrgProfilePage> {
               : null,
         ),
         const SizedBox(height: 15),
-        // ✅ الاعتماد على اليوزر نيم فقط
+        // ✅ تم تغيير اللون للموف ليتطابق مع اليوزر
         Text(
           "@${org?.username ?? "organization"}",
-          style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold, fontFamily: 'Inter'),
+          style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold, fontFamily: 'Inter', color: primaryPurple),
         ),
         Padding(
           padding: const EdgeInsets.symmetric(horizontal: 40, vertical: 12),
@@ -134,7 +109,7 @@ class _OrgProfilePageState extends State<OrgProfilePage> {
       padding: const EdgeInsets.symmetric(horizontal: 10),
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-        crossAxisAlignment: CrossAxisAlignment.start, // لضمان توازي الأيقونات لو نزل النص سطرين
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Expanded(child: _buildContactItem(Icons.location_on_rounded, "Location", org?.location ?? "N/A")),
           Expanded(child: _buildContactItem(Icons.email_rounded, "Email", email)),
@@ -166,13 +141,12 @@ class _OrgProfilePageState extends State<OrgProfilePage> {
         const SizedBox(height: 10),
         Text(label, style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold)),
         const SizedBox(height: 4),
-        // ✅ تم إزالة العرض الثابت واستخدام constraints للسماح بنزول النص لسطر ثانٍ
         Container(
           constraints: const BoxConstraints(maxWidth: 100),
           child: Text(
             value,
             textAlign: TextAlign.center,
-            softWrap: true, // يسمح بالالتفاف
+            softWrap: true,
             style: TextStyle(fontSize: 10, color: Colors.grey.shade600, height: 1.2),
           ),
         ),
