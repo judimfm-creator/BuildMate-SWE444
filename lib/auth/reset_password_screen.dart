@@ -9,24 +9,20 @@ class ResetPasswordScreen extends StatefulWidget {
 }
 
 class _ResetPasswordScreenState extends State<ResetPasswordScreen> {
-  // (ملاحظتي) هنا أحفظ الإيميل اللي المستخدم يكتبه
+  // تعريف الكونترولر واللون المعتمد
   final TextEditingController _emailController = TextEditingController();
+  static const Color purple = Color(0xFF6D56B3);
 
-  // (ملاحظتي) عشان أعطل الزر وقت الإرسال وما يصير ضغطات كثيرة
+  // حالة التحميل
   bool _loading = false;
-
-  // (ملاحظتي) لون المشروع (بنفس اللي عندك)
-  final Color purple = const Color(0xFF6D56B3);
 
   @override
   void dispose() {
-    // (ملاحظتي) لازم أفضي الذاكرة من الكونترولر
     _emailController.dispose();
     super.dispose();
   }
 
   void _toast(String msg) {
-    // (ملاحظتي) أطلع رسالة بسيطة للمستخدم
     if (!mounted) return;
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(content: Text(msg)),
@@ -34,20 +30,18 @@ class _ResetPasswordScreenState extends State<ResetPasswordScreen> {
   }
 
   bool _isValidEmail(String email) {
-    // (ملاحظتي) تحقق بسيط وسريع للإيميل
-    return email.contains('@') && email.contains('.');
+    final cleanEmail = email.trim();
+    return cleanEmail.contains('@') && cleanEmail.contains('.');
   }
 
   Future<void> _sendResetLink() async {
     final email = _emailController.text.trim();
 
-    // (ملاحظتي) لا أرسل إذا الإيميل فاضي
     if (email.isEmpty) {
       _toast("Email is required");
       return;
     }
 
-    // (ملاحظتي) لا أرسل إذا الإيميل شكله غلط
     if (!_isValidEmail(email)) {
       _toast("Enter a valid email");
       return;
@@ -56,21 +50,21 @@ class _ResetPasswordScreenState extends State<ResetPasswordScreen> {
     setState(() => _loading = true);
 
     try {
-     
-      // Firebase يرسل رابط reset الرسمي على الإيميل
+      // إرسال رابط إعادة التعيين عبر فايربيز
       await FirebaseAuth.instance.sendPasswordResetEmail(email: email);
 
-      // (ملاحظتي) أذكرها تشيك spam بعد
       _toast("Reset link sent ✅ Check your inbox + Spam");
 
-      // (ملاحظتي) بعد ما أرسله أرجع لصفحة اللوقن
+      // العودة لصفحة تسجيل الدخول بعد النجاح
       if (mounted) Navigator.pop(context);
     } on FirebaseAuthException catch (e) {
-      // (ملاحظتي) رسائل واضحة وبسيطة بدل ما أعرض كودات كثيرة
       String msg = "Failed to send reset email";
 
-      if (e.code == 'invalid-email') msg = "Invalid email";
+      // معالجة شاملة لكل أنواع الأخطاء المحتملة
+      if (e.code == 'invalid-email') msg = "Invalid email format";
       if (e.code == 'user-not-found') msg = "No user found for this email";
+      if (e.code == 'too-many-requests') msg = "Too many attempts, try later";
+      if (e.code == 'network-request-failed') msg = "Network error, try again";
 
       _toast(msg);
     } catch (_) {
@@ -97,12 +91,12 @@ class _ResetPasswordScreenState extends State<ResetPasswordScreen> {
             children: [
               const SizedBox(height: 18),
 
-              
+              // اللوجو بحجم متناسق 170
               Center(
                 child: Image.asset(
                   'assets/images/logo.png',
-                  height: 160,
-                  width: 160,
+                  height: 170,
+                  width: 170,
                   fit: BoxFit.contain,
                 ),
               ),
@@ -123,7 +117,7 @@ class _ResetPasswordScreenState extends State<ResetPasswordScreen> {
                 enabled: !_loading,
                 decoration: InputDecoration(
                   labelText: "Email",
-                  prefixIcon: Icon(Icons.email_outlined, color: purple),
+                  prefixIcon: const Icon(Icons.email_outlined, color: purple),
                   border: OutlineInputBorder(
                     borderRadius: BorderRadius.circular(12),
                   ),
@@ -160,9 +154,8 @@ class _ResetPasswordScreenState extends State<ResetPasswordScreen> {
 
               const SizedBox(height: 12),
 
-              
               const Text(
-                "After you tap the email link, you will reset the password on the Firebase page.",
+                "Open the email link, change the password, then come back and login with the new password.",
                 style: TextStyle(fontSize: 12, color: Colors.black54),
                 textAlign: TextAlign.center,
               ),

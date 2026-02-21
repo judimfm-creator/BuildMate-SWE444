@@ -6,7 +6,7 @@ import 'package:provider/provider.dart';
 import 'package:buildmate/viewmodel/register_view_model.dart';
 import 'package:buildmate/viewmodel/profile_view_model.dart';
 
-// Screens
+// Screens / Views
 import 'package:buildmate/auth/welcome_screen.dart';
 import 'package:buildmate/auth/login_screen.dart';
 import 'package:buildmate/auth/select_role_screen.dart';
@@ -48,13 +48,14 @@ class MyApp extends StatelessWidget {
           style: ElevatedButton.styleFrom(
             backgroundColor: primaryColor,
             foregroundColor: Colors.white,
-            shape:
-                RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(12),
+            ),
           ),
         ),
       ),
 
-      // نقطة البداية المعتمدة
+      // نقطة البداية المعتمدة (Welcome Screen)
       initialRoute: '/welcome',
 
       routes: {
