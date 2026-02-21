@@ -6,6 +6,7 @@ import 'package:buildmate/model/user_model.dart';
 import 'package:buildmate/viewmodel/profile_view_model.dart';
 import 'package:buildmate/widgets/buildmate_app_bar.dart';
 import '../viewmodel/register_view_model.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 
 class ProfileManagementPage extends StatefulWidget {
   const ProfileManagementPage({super.key});
@@ -75,6 +76,7 @@ class _ProfileManagementPageState extends State<ProfileManagementPage> {
           backgroundColor: Colors.white,
           appBar: BuildMateAppBar(
             titleText: "Profile Management",
+            //label: "Profile",
             showBack: true,
             onBack: () => Navigator.pop(context),
             onLogout: () async {
@@ -162,9 +164,72 @@ class _ProfileManagementPageState extends State<ProfileManagementPage> {
                       if (!_isEditMode)
                         Center(
                           child: OutlinedButton.icon(
-                            onPressed: () {},
+                            onPressed: () async {
+                              final confirmDelete = await showDialog<bool>(
+                                context: context,
+                                builder: (context) => AlertDialog(
+                                  title: const Text("Confirm Account Deletion"),
+                                  content: const Text(
+                                    "Are you sure you want to permanently delete your account? This action cannot be undone.",
+                                  ),
+                                  actions: [
+                                    TextButton(
+                                      onPressed: () => Navigator.pop(context, false),
+                                      child: const Text("Cancel"),
+                                    ),
+                                    TextButton(
+                                      onPressed: () => Navigator.pop(context, true),
+                                      child: const Text(
+                                        "Yes, Delete",
+                                        style: TextStyle(color: Colors.red),
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              );
+
+                              if (confirmDelete != true) return;
+
+                              final passwordController = TextEditingController();
+                              final confirmPassword = await showDialog<bool>(
+                                context: context,
+                                builder: (context) => AlertDialog(
+                                  title: const Text("Enter Password"),
+                                  content: TextField(
+                                    controller: passwordController,
+                                    obscureText: true,
+                                    decoration: const InputDecoration(labelText: "Password"),
+                                  ),
+                                  actions: [
+                                    TextButton(
+                                      onPressed: () => Navigator.pop(context, false),
+                                      child: const Text("Cancel"),
+                                    ),
+                                    TextButton(
+                                      onPressed: () => Navigator.pop(context, true),
+                                      child: const Text(
+                                        "Delete",
+                                        style: TextStyle(color: Colors.red),
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              );
+
+                              if (confirmPassword == true) {
+                                final userEmail = FirebaseAuth.instance.currentUser?.email ?? "";
+                                await _viewModel.deleteAccount(
+                                  context,
+                                  userEmail,
+                                  passwordController.text,
+                                );
+                              }
+                            },
                             icon: Icon(Icons.delete_forever_outlined, color: deleteRed, size: 18),
-                            label: Text("Delete Account", style: TextStyle(color: deleteRed, fontWeight: FontWeight.bold)),
+                            label: Text(
+                              "Delete Account",
+                              style: TextStyle(color: deleteRed, fontWeight: FontWeight.bold),
+                            ),
                             style: OutlinedButton.styleFrom(
                               padding: const EdgeInsets.symmetric(horizontal: 25, vertical: 10),
                               side: BorderSide(color: deleteRed.withOpacity(0.4)),
