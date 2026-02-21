@@ -35,17 +35,14 @@ class RegisterViewModel extends ChangeNotifier {
     }
   }
 
+  // تسجيل المنظمات
   Future<void> registerOrg(OrgModel org, String password, BuildContext context) async {
     _setLoading(true);
     try {
       await _authService.signUpOrg(org, password.trim());
       if (context.mounted) {
-<<<<<<< Updated upstream
         clearPickedImage();
-        Navigator.pushReplacementNamed(context, '/orgHome'); 
-=======
         Navigator.pushReplacementNamed(context, '/orgHome');
->>>>>>> Stashed changes
         _showSnackBar(context, "Welcome! Organization Registered ✅", Colors.green);
       }
     } catch (e) {
@@ -57,25 +54,40 @@ class RegisterViewModel extends ChangeNotifier {
     }
   }
 
-<<<<<<< Updated upstream
-  Future<void> registerUser(UserModel user, String password, BuildContext context) async {
-=======
-  // تسجيل المتسابق - (تم التعديل لإضافة الصورة فوراً)
-  Future<void> registerUser(UserModel user, String password, File? imageFile, BuildContext context) async {
->>>>>>> Stashed changes
+  // تسجيل المستخدم (المتسابق) - دمج نسخة الحفظ الفوري للصورة
+  Future<void> registerUser({
+    required String email,
+    required String password,
+    required String fullName,
+    required String username,
+    required String phone,
+    required BuildContext context,
+  }) async {
     _setLoading(true);
     try {
-      await _authService.signUpUser(user, password.trim());
+      // 1. إنشاء الحساب في Auth وتخزين البيانات الأولية
+      UserCredential cred = await FirebaseAuth.instance.createUserWithEmailAndPassword(
+          email: email.trim(),
+          password: password.trim()
+      );
 
-      // التعديل الجديد: حفظ مسار الصورة الشخصية في المستند الخاص بالمستخدم
-      if (imageFile != null) {
-        final String uid = FirebaseAuth.instance.currentUser?.uid ?? "";
-        if (uid.isNotEmpty) {
-          await FirebaseFirestore.instance.collection('users').doc(uid).update({
-            'profilePhotoPath': imageFile.path,
-          });
-        }
-      }
+      // 2. تخزين مسار الصورة لو تم اختيارها مبكراً
+      String photoPath = _pickedImage?.path ?? "";
+
+      await FirebaseFirestore.instance.collection('users').doc(cred.user!.uid).set({
+        'uid': cred.user!.uid,
+        'email': email.trim(),
+        'fullName': fullName.trim(),
+        'username': username.trim(),
+        'phoneNumber': phone.trim(),
+        'role': 'user',
+        'bio': '',
+        'skills': '',
+        'profilePhotoPath': photoPath,
+        'linkedinUrl': '',
+        'githubUrl': '',
+        'profileSetupComplete': false,
+      });
 
       if (context.mounted) {
         clearPickedImage();
@@ -91,96 +103,14 @@ class RegisterViewModel extends ChangeNotifier {
     }
   }
 
-<<<<<<< Updated upstream
-  // ✅ تحديث دالة الـ Profile لاستقبال linkedin و github بشكل منفصل
-=======
-  // تسجيل الدخول
-  Future<void> login(String email, String password, BuildContext context) async {
-    if (email.trim().isEmpty || password.trim().isEmpty) {
-      _showSnackBar(context, "Please enter your email and password", Colors.orange);
-      return;
-    }
-
-    _setLoading(true);
-    try {
-      final userCredential = await _authService.signIn(email.trim(), password.trim());
-      final uid = userCredential.user!.uid;
-
-      var userDoc = await FirebaseFirestore.instance.collection('users').doc(uid).get();
-      if (userDoc.exists) {
-        if (context.mounted) {
-          Navigator.pushReplacementNamed(context, '/home');
-          _showSnackBar(context, "Welcome Back! ✅", Colors.green);
-        }
-        return;
-      }
-
-      var orgDoc = await FirebaseFirestore.instance.collection('organizations').doc(uid).get();
-      if (orgDoc.exists) {
-        if (context.mounted) {
-          Navigator.pushReplacementNamed(context, '/orgHome');
-          _showSnackBar(context, "Welcome Back, Institution! ✅", Colors.green);
-        }
-        return;
-      }
-
-      throw "Account not found in database.";
-    } catch (e) {
-      if (context.mounted) {
-        String errorMsg = _getCleanErrorMessage(e.toString());
-        _showSnackBar(context, errorMsg, Colors.red);
-      }
-    } finally {
-      _setLoading(false);
-    }
-  }
-
-  // تسجيل الخروج
-  Future<void> logout(BuildContext context) async {
-    try {
-      await _authService.signOut();
-      if (context.mounted) {
-        Navigator.of(context).pushNamedAndRemoveUntil('/loginUser', (route) => false);
-        _showSnackBar(context, "Logged out successfully! 👋", Colors.blue);
-      }
-    } catch (e) {
-      if (context.mounted) {
-        _showSnackBar(context, "Error: ${e.toString()}", Colors.red);
-      }
-    }
-  }
-
-  String _getCleanErrorMessage(String error) {
-    if (error.contains('invalid-credential') || error.contains('wrong-password')) {
-      return "Incorrect email or password.";
-    } else if (error.contains('user-not-found')) {
-      return "No account found for this email.";
-    } else if (error.contains('email-already-in-use')) {
-      return "This email is already registered.";
-    } else if (error.contains('network-request-failed')) {
-      return "Check your internet connection.";
-    } else if (error.contains('invalid-email')) {
-      return "The email format is incorrect.";
-    } else if (error.contains('weak-password')) {
-      return "The password is too weak.";
-    }
-    return "Something went wrong. Please try again.";
-  }
-
-  void _showSnackBar(BuildContext context, String message, Color color) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text(message), backgroundColor: color),
-    );
-  }
-
->>>>>>> Stashed changes
+  // تحديث البروفايل (دعم LinkedIn و GitHub ليتوافق مع تصميم الإنستقرام)
   Future<void> updateProfile({
     required String bio,
     required String skills,
     required String city,
     required String gender,
-    required String linkedin, // الإضافة الجديدة
-    required String github,   // الإضافة الجديدة
+    required String linkedin,
+    required String github,
     required BuildContext context,
   }) async {
     _setLoading(true);
@@ -193,14 +123,9 @@ class RegisterViewModel extends ChangeNotifier {
           'skills': skills.trim(),
           'city': city.trim(),
           'gender': gender,
-<<<<<<< Updated upstream
-          'linkedin': linkedin.trim(), // تخزين لينكد إن
-          'github': github.trim(),     // تخزين جيت هاب
-          'profileSetupComplete': true, 
-=======
-          'portfolio': portfolio.trim(),
+          'linkedinUrl': linkedin.trim(), // تخزين الرابط بمسمى موحد
+          'githubUrl': github.trim(),
           'profileSetupComplete': true,
->>>>>>> Stashed changes
         }, SetOptions(merge: true));
 
         if (context.mounted) {
@@ -219,25 +144,31 @@ class RegisterViewModel extends ChangeNotifier {
     }
   }
 
-  // ... (باقي الدوال: login, logout, skipProfileSetup تبقى كما هي)
-  
+  // تسجيل الدخول
   Future<void> login(String email, String password, BuildContext context) async {
     if (email.trim().isEmpty || password.trim().isEmpty) {
       _showSnackBar(context, "Please enter your email and password", Colors.orange);
       return;
     }
-    _setLoading(true); 
+    _setLoading(true);
     try {
       final userCredential = await _authService.signIn(email.trim(), password.trim());
       final uid = userCredential.user!.uid;
+
       var userDoc = await FirebaseFirestore.instance.collection('users').doc(uid).get();
       if (userDoc.exists) {
-        if (context.mounted) Navigator.pushReplacementNamed(context, '/home');
+        if (context.mounted) {
+          Navigator.pushReplacementNamed(context, '/home');
+          _showSnackBar(context, "Welcome Back! ✅", Colors.green);
+        }
         return;
       }
       var orgDoc = await FirebaseFirestore.instance.collection('organizations').doc(uid).get();
       if (orgDoc.exists) {
-        if (context.mounted) Navigator.pushReplacementNamed(context, '/orgHome');
+        if (context.mounted) {
+          Navigator.pushReplacementNamed(context, '/orgHome');
+          _showSnackBar(context, "Welcome Back, Institution! ✅", Colors.green);
+        }
         return;
       }
       throw "Account not found.";
@@ -248,9 +179,13 @@ class RegisterViewModel extends ChangeNotifier {
     }
   }
 
+  // تسجيل الخروج
   Future<void> logout(BuildContext context) async {
-    await _authService.signOut(); 
-    if (context.mounted) Navigator.of(context).pushNamedAndRemoveUntil('/loginUser', (route) => false);
+    await _authService.signOut();
+    if (context.mounted) {
+      Navigator.of(context).pushNamedAndRemoveUntil('/loginUser', (route) => false);
+      _showSnackBar(context, "Logged out successfully! 👋", Colors.blue);
+    }
   }
 
   void skipProfileSetup(BuildContext context) {
@@ -259,7 +194,8 @@ class RegisterViewModel extends ChangeNotifier {
 
   String _getCleanErrorMessage(String error) {
     if (error.contains('email-already-in-use')) return "Email already registered.";
-    if (error.contains('invalid-credential')) return "Incorrect email or password.";
+    if (error.contains('invalid-credential') || error.contains('wrong-password')) return "Incorrect email or password.";
+    if (error.contains('network-request-failed')) return "Check your internet connection.";
     return "Something went wrong. Please try again.";
   }
 

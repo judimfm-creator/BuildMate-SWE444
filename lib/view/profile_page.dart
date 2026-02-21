@@ -3,6 +3,8 @@ import 'package:flutter/material.dart';
 import 'package:buildmate/viewmodel/profile_view_model.dart';
 import 'package:buildmate/model/user_model.dart';
 import 'package:buildmate/view/profile_management_page.dart';
+import 'package:font_awesome_flutter/font_awesome_flutter.dart';
+import 'package:url_launcher/url_launcher.dart';
 
 class ProfilePage extends StatefulWidget {
   const ProfilePage({super.key});
@@ -15,9 +17,11 @@ class _ProfilePageState extends State<ProfilePage> with SingleTickerProviderStat
   late TabController _tabController;
   final ProfileViewModel _viewModel = ProfileViewModel();
 
-  // الألوان المستخدمة في مشروعك
-  final Color deepMediumPurple = const Color(0xFF7A62B3);
-  final Color tealColor = const Color(0xFF63A2A2);
+  // ✅ اللون الموف الواضح (غير باهت)
+  final Color primaryPurple = const Color(0xFF7A62B3);
+  final Color lightPurpleBG = const Color(0xFFF5F3FF);
+  final Color manageButtonGrey = const Color(0xFFF2F2F2);
+  final Color manageButtonText = const Color(0xFF616161);
 
   @override
   void initState() {
@@ -25,189 +29,69 @@ class _ProfilePageState extends State<ProfilePage> with SingleTickerProviderStat
     _tabController = TabController(length: 2, vsync: this);
   }
 
-  @override
-  void dispose() {
-    _tabController.dispose();
-    super.dispose();
+  Future<void> _launchURL(String? urlString) async {
+    if (urlString == null || urlString.trim().isEmpty) return;
+    String cleanUrl = urlString.trim();
+    if (!cleanUrl.startsWith('http')) cleanUrl = 'https://$cleanUrl';
+    final Uri url = Uri.parse(cleanUrl);
+    await launchUrl(url, mode: LaunchMode.inAppWebView);
   }
 
   @override
   Widget build(BuildContext context) {
-    return StreamBuilder<UserModel?>(
-      stream: _viewModel.userDataStream,
-      builder: (context, snapshot) {
-        final user = snapshot.data;
-        String userName = user?.fullName ?? "User";
-        String firstInitial = userName.isNotEmpty ? userName.substring(0, 1).toUpperCase() : "U";
+    return Scaffold(
+      backgroundColor: Colors.white,
+      appBar: AppBar(
+        backgroundColor: Colors.white,
+        elevation: 0,
+        centerTitle: true,
+        title: const Text("Profile", style: TextStyle(color: Colors.black, fontWeight: FontWeight.bold, fontSize: 18)),
+        leading: IconButton(
+          icon: const Icon(Icons.arrow_back_ios_new, color: Colors.black, size: 20),
+          onPressed: () => Navigator.pushNamedAndRemoveUntil(context, '/home', (route) => false),
+        ),
+      ),
+      body: StreamBuilder<UserModel?>(
+        stream: _viewModel.userDataStream,
+        builder: (context, snapshot) {
+          if (snapshot.connectionState == ConnectionState.waiting) return const Center(child: CircularProgressIndicator());
+          final user = snapshot.data;
+          if (user == null) return const Center(child: Text("No user data found"));
 
-        return Scaffold(
-          backgroundColor: Colors.white,
-          appBar: AppBar(
-            backgroundColor: Colors.white,
-            elevation: 0,
-            title: Text(
-              user?.username ?? "username",
-              style: const TextStyle(color: Colors.black, fontWeight: FontWeight.bold),
-            ),
-            centerTitle: true,
-          ),
-          body: Column(
-            children: [
-              Expanded(
-                child: SingleChildScrollView(
-                  physics: const BouncingScrollPhysics(),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start, // لجعل النصوص تبدأ من اليسار/اليمين حسب اللغة
-                    children: [
-                      // 1. قسم الصورة (في المنتصف)
-                      const SizedBox(height: 20),
-                      Center(
-                        child: CircleAvatar(
-                          radius: 50,
-                          backgroundColor: Colors.grey.shade200,
-                          backgroundImage: (user?.profilePhotoPath != null && user!.profilePhotoPath!.isNotEmpty)
-                              ? (user.profilePhotoPath!.startsWith('http'))
-                              ? NetworkImage(user.profilePhotoPath!) as ImageProvider
-                              : FileImage(File(user.profilePhotoPath!))
-                              : null,
-                          child: (user?.profilePhotoPath == null || user!.profilePhotoPath!.isEmpty)
-                              ? Text(firstInitial, style: TextStyle(fontSize: 40, color: tealColor))
-                              : null,
-                        ),
-                      ),
-
-<<<<<<< Updated upstream
-                      _buildEnhancedInfoButton(context),
-
-                      const SizedBox(height: 25),
-
-                      Row(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: [
-                        // ✅ تم تغيير linkedinUrl إلى linkedin و githubUrl إلى github
-_buildModernSocialCard(FontAwesomeIcons.linkedinIn, user?.linkedin),
-const SizedBox(width: 20),
-_buildModernSocialCard(FontAwesomeIcons.github, user?.github),
-                        ],
-                      ),
-
-                      const SizedBox(height: 30),
-
-                      Padding(
-                        padding: const EdgeInsets.symmetric(horizontal: 35),
-                        child: Row(
-=======
-                      // 2. الاسم والبايو (تحت الصورة)
-                      const SizedBox(height: 15),
-                      Center(
-                        child: Column(
->>>>>>> Stashed changes
-                          children: [
-                            Text(
-                              user?.fullName ?? "Full Name",
-                              style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
-                            ),
-                            const SizedBox(height: 4),
-                            Padding(
-                              padding: const EdgeInsets.symmetric(horizontal: 40),
-                              child: Text(
-                                user?.bio ?? "No bio yet...", // تأكدي من وجود bio في الـ UserModel
-                                textAlign: TextAlign.center,
-                                style: const TextStyle(fontSize: 14, color: Colors.black87),
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-
-                      // 3. زر Manage Profile
-                      const SizedBox(height: 20),
-                      Padding(
-                        padding: const EdgeInsets.symmetric(horizontal: 20),
-                        child: SizedBox(
-                          width: double.infinity,
-                          child: OutlinedButton(
-                            onPressed: () => Navigator.push(
-                              context,
-                              MaterialPageRoute(builder: (context) => const ProfileManagementPage()),
-                            ),
-                            style: OutlinedButton.styleFrom(
-                              side: BorderSide(color: Colors.grey.shade300),
-                              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
-                            ),
-                            child: const Text(
-                              "Manage Profile",
-                              style: TextStyle(color: Colors.black, fontWeight: FontWeight.bold),
-                            ),
-                          ),
-                        ),
-                      ),
-
-                      // 4. قسم المهارات (تصميم الهايلايت)
-                      const SizedBox(height: 25),
-                      const Padding(
-                        padding: EdgeInsets.symmetric(horizontal: 20),
-                        child: Text("Skills", style: TextStyle(fontWeight: FontWeight.bold, fontSize: 15)),
-                      ),
-                      const SizedBox(height: 10),
-                      _buildSkillsHighlights(user?.skills), // نمرر المهارات هنا
-
-                      const SizedBox(height: 20),
-
-                      // 5. التبويبات (الهاكاثونات)
-                      _buildInstagramTabBar(),
-                      SizedBox(
-                        height: 400, // يمكن تعديله حسب الحاجة
-                        child: TabBarView(
-                          controller: _tabController,
-                          children: [
-                            _buildEmptyPlaceholder("No ongoing hackathons", Icons.grid_on_rounded),
-                            _buildEmptyPlaceholder("History is empty", Icons.assignment_ind_outlined),
-                          ],
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              ),
-            ],
-          ),
-        );
-      },
-    );
-  }
-
-  // مهارات على شكل Highlights
-  Widget _buildSkillsHighlights(String? skillsString) {
-    List<String> skills = skillsString?.split(',').where((s) => s.trim().isNotEmpty).toList() ?? [];
-
-    return SizedBox(
-      height: 100,
-      child: ListView.builder(
-        scrollDirection: Axis.horizontal,
-        padding: const EdgeInsets.symmetric(horizontal: 15),
-        itemCount: skills.length,
-        itemBuilder: (context, index) {
-          return Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 8),
+          return SingleChildScrollView(
             child: Column(
               children: [
-                Container(
-                  padding: const EdgeInsets.all(3),
-                  decoration: BoxDecoration(
-                    shape: BoxShape.circle,
-                    border: Border.all(color: Colors.grey.shade300, width: 1),
-                  ),
-                  child: CircleAvatar(
-                    radius: 30,
-                    backgroundColor: Colors.grey.shade100,
-                    child: Icon(Icons.star_border_rounded, color: deepMediumPurple, size: 25),
-                  ),
+                const SizedBox(height: 10),
+                _buildProfileHeader(user),
+                const SizedBox(height: 20),
+                _buildManageButton(),
+                const SizedBox(height: 35),
+
+                // ✅ عنوان المهارات في المنتصف مع أيقونة البرق
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Icon(Icons.bolt, color: primaryPurple, size: 24),
+                    const SizedBox(width: 8),
+                    const Text("Skills", style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Colors.black)),
+                  ],
                 ),
-                const SizedBox(height: 5),
-                Text(
-                  skills[index].trim(),
-                  style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w500),
+                const SizedBox(height: 15),
+
+                // ✅ الـ Chips في المنتصف تماماً
+                _buildSkillsChips(user.skills),
+
+                const SizedBox(height: 30),
+                _buildTabBarSection(),
+                SizedBox(
+                  height: 300,
+                  child: TabBarView(
+                    controller: _tabController,
+                    children: [
+                      _buildEmptyPlaceholder("No ongoing projects", Icons.rocket_launch_outlined),
+                      _buildEmptyPlaceholder("No previous projects", Icons.history),
+                    ],
+                  ),
                 ),
               ],
             ),
@@ -217,17 +101,86 @@ _buildModernSocialCard(FontAwesomeIcons.github, user?.github),
     );
   }
 
-  Widget _buildInstagramTabBar() {
+  Widget _buildProfileHeader(UserModel user) {
+    return Column(
+      children: [
+        CircleAvatar(
+          radius: 55,
+          backgroundColor: lightPurpleBG,
+          backgroundImage: (user.profilePhotoPath?.isNotEmpty ?? false)
+              ? (user.profilePhotoPath!.startsWith('http') ? NetworkImage(user.profilePhotoPath!) : FileImage(File(user.profilePhotoPath!))) as ImageProvider
+              : null,
+          child: (user.profilePhotoPath?.isEmpty ?? true) ? Icon(Icons.person, size: 50, color: primaryPurple) : null,
+        ),
+        const SizedBox(height: 12),
+        Text("@${user.username}", style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold, color: primaryPurple)),
+        if (user.bio != null && user.bio!.isNotEmpty)
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 40, vertical: 8),
+            child: Text(user.bio!, textAlign: TextAlign.center, style: TextStyle(fontSize: 13, color: Colors.grey.shade700, height: 1.4)),
+          ),
+        const SizedBox(height: 10),
+        Row(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            if (user.linkedin != null) IconButton(icon: Icon(FontAwesomeIcons.linkedin, color: primaryPurple), onPressed: () => _launchURL(user.linkedin)),
+            if (user.github != null) IconButton(icon: Icon(FontAwesomeIcons.github, color: primaryPurple), onPressed: () => _launchURL(user.github)),
+          ],
+        ),
+      ],
+    );
+  }
+
+  Widget _buildManageButton() {
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 25),
+      child: SizedBox(
+        width: double.infinity,
+        height: 45,
+        child: ElevatedButton(
+          onPressed: () => Navigator.push(context, MaterialPageRoute(builder: (context) => const ProfileManagementPage())),
+          style: ElevatedButton.styleFrom(
+            backgroundColor: manageButtonGrey,
+            elevation: 0,
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+          ),
+          child: Text("Manage Profile", style: TextStyle(color: manageButtonText, fontWeight: FontWeight.w600, fontSize: 14)),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildSkillsChips(String? skillsString) {
+    List<String> skills = skillsString?.split(',').map((s) => s.trim()).where((s) => s.isNotEmpty).toList() ?? [];
+    if (skills.isEmpty) return const SizedBox();
+
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 25),
+      child: Wrap(
+        alignment: WrapAlignment.center, // ✅ جعل المهارات تظهر في المنتصف
+        spacing: 10,
+        runSpacing: 10,
+        children: skills.map((skill) => Container(
+          padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 10),
+          decoration: BoxDecoration(
+            color: primaryPurple.withOpacity(0.1),
+            borderRadius: BorderRadius.circular(20),
+            border: Border.all(color: primaryPurple.withOpacity(0.4)),
+          ),
+          child: Text(skill, style: TextStyle(color: primaryPurple, fontSize: 13, fontWeight: FontWeight.bold)),
+        )).toList(),
+      ),
+    );
+  }
+
+  Widget _buildTabBarSection() {
     return TabBar(
       controller: _tabController,
-      indicatorColor: Colors.black,
-      indicatorWeight: 1,
-      labelColor: Colors.black,
+      indicatorColor: primaryPurple,
+      labelColor: primaryPurple,
       unselectedLabelColor: Colors.grey,
-      tabs: const [
-        Tab(icon: Icon(Icons.grid_on_rounded)),
-        Tab(icon: Icon(Icons.assignment_ind_outlined)),
-      ],
+      indicatorWeight: 3,
+      tabs: const [Tab(text: "Ongoing"), Tab(text: "Previous")],
     );
   }
 
@@ -236,9 +189,9 @@ _buildModernSocialCard(FontAwesomeIcons.github, user?.github),
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          Icon(icon, size: 60, color: Colors.grey.shade300),
+          Icon(icon, size: 40, color: Colors.grey.shade300),
           const SizedBox(height: 10),
-          Text(text, style: TextStyle(color: Colors.grey.shade400)),
+          Text(text, style: TextStyle(color: Colors.grey.shade400, fontSize: 14)),
         ],
       ),
     );
