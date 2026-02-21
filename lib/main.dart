@@ -7,7 +7,6 @@ import 'package:buildmate/auth/welcome_screen.dart';
 
 import 'package:buildmate/viewmodel/register_view_model.dart';
 import 'package:buildmate/auth/login_screen.dart';
-import 'package:buildmate/auth/select_role_screen.dart';
 import 'package:buildmate/home_screen.dart';
 import 'package:buildmate/org_home_screen.dart';
 
@@ -40,9 +39,7 @@ class MyApp extends StatelessWidget {
         routes: {
           // ✅ NEW
           '/welcome': (context) => const WelcomeScreen(),
-
           '/loginUser': (context) => const LoginScreen(),
-          '/selectRole': (context) => const SelectRoleScreen(),
           '/home': (context) => const HomeScreen(),
           '/orgHome': (context) => const InstitutionHomeScreen(),
           '/completeProfile': (context) => const CompleteProfileView(),

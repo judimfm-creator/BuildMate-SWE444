@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:provider/provider.dart'; // ضروري لاستدعاء الـ ViewModel
 import '../viewmodel/register_view_model.dart'; // تأكدي من المسار الصحيح
-import 'auth/select_role_screen.dart';
 import 'view/create_hackathon_view.dart';
 import 'widgets/org_nav_bar.dart';
 import 'widgets/buildmate_app_bar.dart';
