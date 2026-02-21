@@ -14,7 +14,6 @@ class RegisterOrgView extends StatefulWidget {
 class _RegisterOrgViewState extends State<RegisterOrgView> {
   final _formKey = GlobalKey<FormState>();
   
-  // وحدات التحكم بالنصوص لجميع الحقول
   final _orgNameController = TextEditingController();
   final _usernameController = TextEditingController();
   final _emailController = TextEditingController();
@@ -24,11 +23,18 @@ class _RegisterOrgViewState extends State<RegisterOrgView> {
   final _passwordController = TextEditingController();
   final _confirmPasswordController = TextEditingController();
 
-  // متغيرات الحالة لإظهار/إخفاء الباسورد
   bool _isPasswordVisible = false;
-  bool _isConfirmPasswordVisible = false;
+  bool _isConfirmVisible = false;
+  final Color purple = const Color(0xFF6D56B3);
 
-  final Color primaryColor = const Color(0xFF6D56B3);
+  @override
+  void initState() {
+    super.initState();
+    // ✅ تصفير الصورة فور دخول الصفحة لضمان عدم ظهور صورة قديمة
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      context.read<RegisterViewModel>().clearPickedImage();
+    });
+  }
 
   @override
   void dispose() {
@@ -43,114 +49,162 @@ class _RegisterOrgViewState extends State<RegisterOrgView> {
     super.dispose();
   }
 
-  void _showImagePicker(BuildContext context, RegisterViewModel vm) {
-    showModalBottomSheet(
-      context: context,
-      shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(20))),
-      builder: (ctx) => SafeArea(
-        child: Wrap(
-          children: [
-            ListTile(
-              leading: Icon(Icons.photo_library, color: primaryColor),
-              title: const Text('Photo Library'),
-              onTap: () { vm.pickImage(ImageSource.gallery); Navigator.pop(ctx); },
-            ),
-            ListTile(
-              leading: Icon(Icons.photo_camera, color: primaryColor),
-              title: const Text('Camera'),
-              onTap: () { vm.pickImage(ImageSource.camera); Navigator.pop(ctx); },
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
   @override
   Widget build(BuildContext context) {
-    final authVM = context.watch<RegisterViewModel>();
+    final vm = context.watch<RegisterViewModel>();
 
     return Scaffold(
       backgroundColor: Colors.white,
-      appBar: AppBar(title: const Text("Register Organization"), centerTitle: true),
+      appBar: AppBar(
+        title: const Text("Register Organization", style: TextStyle(color: Colors.black, fontWeight: FontWeight.bold)),
+        backgroundColor: Colors.white,
+        elevation: 0,
+        centerTitle: true,
+        iconTheme: const IconThemeData(color: Colors.black),
+      ),
       body: SingleChildScrollView(
-        padding: const EdgeInsets.all(24),
+        padding: const EdgeInsets.only(left: 24, right: 24, top: 30, bottom: 24),
         child: Form(
           key: _formKey,
+          autovalidateMode: AutovalidateMode.onUserInteraction, 
           child: Column(
             children: [
-              // قسم اختيار اللوجو
-              GestureDetector(
-                onTap: () => _showImagePicker(context, authVM),
+              // ✅ اختيار اللوجو مع إضافة زر الحذف (X)
+              Center(
                 child: Stack(
                   alignment: Alignment.bottomRight,
                   children: [
-                    CircleAvatar(
-                      radius: 55,
-                      backgroundColor: primaryColor.withOpacity(0.1),
-                      backgroundImage: authVM.pickedImage != null ? FileImage(authVM.pickedImage!) : null,
-                      child: authVM.pickedImage == null ? Icon(Icons.business, size: 50, color: primaryColor) : null,
+                    GestureDetector(
+                      onTap: () => _showPicker(context, vm),
+                      child: CircleAvatar(
+                        radius: 50,
+                        backgroundColor: purple.withOpacity(0.1),
+                        backgroundImage: vm.pickedImage != null ? FileImage(vm.pickedImage!) : null,
+                        child: vm.pickedImage == null ? Icon(Icons.add_a_photo_outlined, color: purple, size: 30) : null,
+                      ),
                     ),
-                    CircleAvatar(radius: 18, backgroundColor: primaryColor, child: const Icon(Icons.camera_alt, size: 15, color: Colors.white)),
+                    // زر الحذف (X) الأحمر يظهر فقط عند وجود صورة
+                    if (vm.pickedImage != null)
+                      Positioned(
+                        top: 0,
+                        right: 0,
+                        child: GestureDetector(
+                          onTap: () => vm.clearPickedImage(),
+                          child: const CircleAvatar(
+                            radius: 15,
+                            backgroundColor: Colors.red,
+                            child: Icon(Icons.close, size: 18, color: Colors.white),
+                          ),
+                        ),
+                      ),
                   ],
                 ),
               ),
               const SizedBox(height: 30),
 
-              _buildField(_usernameController, "Username", Icons.person_outline, (v) => v!.trim().length < 3 ? "At least 3 characters" : null),
-              _buildField(_orgNameController, "Organization Name", Icons.corporate_fare, (v) => v!.trim().isEmpty ? "Required" : null),
+              // اسم المنشأة
+              _buildField(
+                _orgNameController, 
+                "Organization Name", 
+                "Enter the name of the organization", 
+                Icons.corporate_fare,
+                validator: (v) => (v == null || v.trim().isEmpty) ? "Organization name is required" : null,
+              ),
               
-              // حقل الإيميل مع الـ Trim والـ Regex المرن
-              _buildEmailField(),
+              // اسم المستخدم
+              _buildField(
+                _usernameController, 
+                "Username", 
+                "minimum 3 characters", 
+                Icons.person_outline,
+                validator: (v) => (v != null && v.trim().length < 3) ? "Username must be at least 3 characters" : null,
+              ),
 
-              _buildField(_phoneController, "Phone (05xxxxxxxx)", Icons.phone_android, (v) {
-                final regex = RegExp(r'^05\d{8}$');
-                return !regex.hasMatch(v!.trim()) ? "Must be 10 digits starting with 05" : null;
-              }, type: TextInputType.phone),
-
-              _buildField(_locationController, "Location", Icons.location_on_outlined, (v) => v!.trim().isEmpty ? "Location is required" : null),
-              
-              _buildField(_bioController, "Biography", Icons.info_outline, (v) => v!.trim().isEmpty ? "Bio is required" : null),
-
-              // كلمة المرور مع ميزة العين
-              _buildPasswordField(
-                controller: _passwordController,
-                label: "Password",
-                isVisible: _isPasswordVisible,
-                onToggle: () => setState(() => _isPasswordVisible = !_isPasswordVisible),
+              // البريد الإلكتروني (صارم)
+              _buildField(
+                _emailController, 
+                "Email Address", 
+                "name@org.com ", 
+                Icons.email_outlined, 
+                type: TextInputType.emailAddress,
                 validator: (v) {
-                  if (v == null || v.isEmpty) return "Password is required";
-                  if (v.length < 8) return "Min 8 characters";
-                  if (!v.contains(RegExp(r'[A-Z]'))) return "Add one uppercase letter";
-                  if (!v.contains(RegExp(r'[0-9]'))) return "Add one number";
-                  if (!v.contains(RegExp(r'[!@#$%^&*(),.?":{}|<>]'))) return "Add one special character";
+                  if (v == null || v.trim().isEmpty) return "Email is required";
+                  final regex = RegExp(r"^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.(com|net|org|sa)$");
+                  if (!regex.hasMatch(v.trim())) return "Invalid email format (use .com, .sa, etc.)";
                   return null;
                 },
               ),
 
-              _buildPasswordField(
-                controller: _confirmPasswordController,
-                label: "Confirm Password",
-                isVisible: _isConfirmPasswordVisible,
-                onToggle: () => setState(() => _isConfirmPasswordVisible = !_isConfirmPasswordVisible),
-                validator: (v) => v != _passwordController.text ? "Passwords do not match" : null,
+              // رقم الجوال (صارم)
+              _buildField(
+                _phoneController, 
+                "Phone Number", 
+                "10 digits starting with '05'", 
+                Icons.phone_android, 
+                type: TextInputType.phone,
+                validator: (v) {
+                  final regex = RegExp(r'^05\d{8}$');
+                  if (v == null || !regex.hasMatch(v.trim())) return "Must start with 05 and be 10 digits";
+                  return null;
+                },
+              ),
+
+              // الموقع
+              _buildField(
+                _locationController, 
+                "Location", 
+                "e.g., Riyadh, KSU Campus", 
+                Icons.location_on_outlined,
+                validator: (v) => (v == null || v.trim().isEmpty) ? "Location is required" : null,
+              ),
+              
+              // النبذة التعريفية
+              _buildField(
+                _bioController, 
+                "Biography", 
+                "Brief description of the organization", 
+                Icons.info_outline,
+                maxLines: 3,
+                validator: (v) => (v == null || v.trim().isEmpty) ? "Biography is required" : null,
+              ),
+
+              // كلمة المرور (صارمة)
+              _buildPassField(
+                _passwordController, 
+                "Password", 
+                "minimum 8 chars, include capital letter, number, symbol", 
+                _isPasswordVisible, 
+                () => setState(() => _isPasswordVisible = !_isPasswordVisible),
+              ),
+
+              // تأكيد كلمة المرور
+              _buildPassField(
+                _confirmPasswordController, 
+                "Confirm Password", 
+                " match the same password above", 
+                _isConfirmVisible, 
+                () => setState(() => _isConfirmVisible = !_isConfirmVisible),
+                isConfirm: true,
               ),
 
               const SizedBox(height: 30),
+              
               SizedBox(
                 width: double.infinity,
                 height: 55,
                 child: ElevatedButton(
-                  onPressed: authVM.isLoading ? null : _submit,
                   style: ElevatedButton.styleFrom(
-                    backgroundColor: primaryColor, 
+                    backgroundColor: purple, 
                     shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                    elevation: 0,
                   ),
-                  child: authVM.isLoading 
+                  onPressed: vm.isLoading ? null : _submit,
+                  child: vm.isLoading 
                     ? const CircularProgressIndicator(color: Colors.white) 
-                    : const Text("Register", style: TextStyle(color: Colors.white, fontSize: 18)),
+                    : const Text("Register", style: TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.bold)),
                 ),
               ),
+              const SizedBox(height: 20),
             ],
           ),
         ),
@@ -158,15 +212,22 @@ class _RegisterOrgViewState extends State<RegisterOrgView> {
     );
   }
 
-  Widget _buildField(TextEditingController ctrl, String label, IconData icon, String? Function(String?)? validator, {TextInputType type = TextInputType.text}) {
+  Widget _buildField(TextEditingController ctrl, String label, String helper, IconData icon, {TextInputType type = TextInputType.text, int maxLines = 1, String? Function(String?)? validator}) {
     return Padding(
-      padding: const EdgeInsets.only(bottom: 16),
+      padding: const EdgeInsets.only(bottom: 20),
       child: TextFormField(
         controller: ctrl,
         keyboardType: type,
+        maxLines: maxLines,
         decoration: InputDecoration(
-          labelText: label,
-          prefixIcon: Icon(icon, color: primaryColor),
+          labelText: label, 
+          helperText: helper,
+          helperStyle: const TextStyle(fontSize: 11, color: Colors.blueGrey),
+          floatingLabelBehavior: FloatingLabelBehavior.always,
+          prefixIcon: Icon(icon, color: purple), 
+          enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide(color: Colors.grey.shade300)),
+          errorBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: const BorderSide(color: Colors.red, width: 1.5)),
+          focusedErrorBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: const BorderSide(color: Colors.red, width: 2)),
           border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
         ),
         validator: validator,
@@ -174,56 +235,48 @@ class _RegisterOrgViewState extends State<RegisterOrgView> {
     );
   }
 
-  Widget _buildEmailField() {
+  Widget _buildPassField(TextEditingController ctrl, String label, String helper, bool visible, VoidCallback toggle, {bool isConfirm = false}) {
     return Padding(
-      padding: const EdgeInsets.only(bottom: 16),
+      padding: const EdgeInsets.only(bottom: 20),
       child: TextFormField(
-        controller: _emailController,
-        keyboardType: TextInputType.emailAddress,
+        controller: ctrl,
+        obscureText: !visible,
         decoration: InputDecoration(
-          labelText: "Email",
-          prefixIcon: Icon(Icons.email_outlined, color: primaryColor),
+          labelText: label,
+          helperText: helper,
+          helperStyle: const TextStyle(fontSize: 11, color: Colors.blueGrey),
+          floatingLabelBehavior: FloatingLabelBehavior.always,
+          prefixIcon: Icon(Icons.lock_outline, color: purple),
+          suffixIcon: IconButton(icon: Icon(visible ? Icons.visibility : Icons.visibility_off, color: Colors.grey), onPressed: toggle),
+          enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide(color: Colors.grey.shade300)),
+          errorBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: const BorderSide(color: Colors.red, width: 1.5)),
+          focusedErrorBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: const BorderSide(color: Colors.red, width: 2)),
           border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
         ),
-        validator: (value) {
-          if (value == null || value.trim().isEmpty) return "Email is required";
-          final emailRegex = RegExp(r"^[a-zA-Z0-9.a-zA-Z0-9.!#$%&'*+-/=?^_`{|}~]+@[a-zA-Z0-9]+\.[a-zA-Z]+");
-          if (!emailRegex.hasMatch(value.trim())) return "Enter a valid email address";
+        validator: (v) {
+          if (v == null || v.isEmpty) return "Required";
+          if (isConfirm && v != _passwordController.text) return "Passwords do not match";
+          if (!isConfirm) {
+            if (v.length < 8) return "Min 8 characters";
+            if (!v.contains(RegExp(r'[A-Z]'))) return "Add a capital letter";
+            if (!v.contains(RegExp(r'[0-9]'))) return "Add a number";
+            if (!v.contains(RegExp(r'[!@#$%^&*(),._?":{}|<>]'))) return "Add a symbol (e.g. _ )";
+          }
           return null;
         },
       ),
     );
   }
 
-  Widget _buildPasswordField({
-    required TextEditingController controller,
-    required String label,
-    required bool isVisible,
-    required VoidCallback onToggle,
-    required String? Function(String?)? validator,
-  }) {
-    return Padding(
-      padding: const EdgeInsets.only(bottom: 16),
-      child: TextFormField(
-        controller: controller,
-        obscureText: !isVisible,
-        decoration: InputDecoration(
-          labelText: label,
-          prefixIcon: Icon(Icons.lock_outline, color: primaryColor),
-          suffixIcon: IconButton(
-            icon: Icon(isVisible ? Icons.visibility : Icons.visibility_off, color: Colors.grey),
-            onPressed: onToggle,
-          ),
-          border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
-        ),
-        validator: validator,
-      ),
-    );
+  void _showPicker(BuildContext context, RegisterViewModel vm) {
+    showModalBottomSheet(context: context, builder: (_) => SafeArea(child: Wrap(children: [
+      ListTile(leading: const Icon(Icons.photo_library), title: const Text('Gallery'), onTap: () { vm.pickImage(ImageSource.gallery); Navigator.pop(context); }),
+      ListTile(leading: const Icon(Icons.camera_alt), title: const Text('Camera'), onTap: () { vm.pickImage(ImageSource.camera); Navigator.pop(context); }),
+    ])));
   }
 
   void _submit() {
     if (_formKey.currentState!.validate()) {
-      // التأكد من أن المودل يحتوي على جميع هذه الحقول لتفادي الإيرور
       final org = OrgModel(
         orgName: _orgNameController.text.trim(),
         username: _usernameController.text.trim(),

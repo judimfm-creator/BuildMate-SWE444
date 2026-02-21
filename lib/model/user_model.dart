@@ -1,4 +1,5 @@
 class UserModel {
+  final String uid;
   final String fullName;
   final String username;
   final String email;
@@ -7,10 +8,14 @@ class UserModel {
   final String? bio;
   final String? city;
   final String? gender;
-  final String? linkedinUrl;
-  final String? githubUrl;
+  final String? skills;
+  
+  // ✅ التعديل هنا: غيري الأسماء لتطابق الفايربيز والمانجمنت
+  final String? linkedin; 
+  final String? github;
 
   UserModel({
+    required this.uid,
     required this.fullName,
     required this.username,
     required this.email,
@@ -19,12 +24,15 @@ class UserModel {
     this.bio,
     this.city,
     this.gender,
-    this.linkedinUrl,
-    this.githubUrl,
+    this.skills,
+    this.linkedin,
+    this.github,
   });
 
+  // ✅ التعديل هنا: دالة تحويل البيانات من فايربيز (fromMap)
   factory UserModel.fromMap(Map<String, dynamic> map) {
     return UserModel(
+      uid: map['uid'] ?? '',
       fullName: map['fullName'] ?? '',
       username: map['username'] ?? '',
       email: map['email'] ?? '',
@@ -33,13 +41,16 @@ class UserModel {
       bio: map['bio'],
       city: map['city'],
       gender: map['gender'],
-      linkedinUrl: map['linkedinUrl'],
-      githubUrl: map['githubUrl'],
+      skills: map['skills'],
+      // ✅ تأكدي أن الأسماء هنا تطابق الصورة اللي أرسلتيها من فايربيز
+      linkedin: map['linkedin'], 
+      github: map['github'],
     );
   }
 
   Map<String, dynamic> toMap() {
     return {
+      'uid': uid,
       'fullName': fullName,
       'username': username,
       'email': email,
@@ -48,8 +59,9 @@ class UserModel {
       'bio': bio,
       'city': city,
       'gender': gender,
-      'linkedinUrl': linkedinUrl,
-      'githubUrl': githubUrl,
+      'skills': skills,
+      'linkedin': linkedin,
+      'github': github,
     };
   }
 }

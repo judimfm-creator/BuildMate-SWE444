@@ -5,7 +5,6 @@ import 'package:image_picker/image_picker.dart';
 import 'package:buildmate/model/user_model.dart';
 import 'package:buildmate/viewmodel/profile_view_model.dart';
 import 'package:buildmate/widgets/buildmate_app_bar.dart';
-import 'package:provider/provider.dart';
 import '../viewmodel/register_view_model.dart';
 
 class ProfileManagementPage extends StatefulWidget {
@@ -31,14 +30,13 @@ class _ProfileManagementPageState extends State<ProfileManagementPage> {
     _viewModel = Provider.of<ProfileViewModel>(context);
   }
 
-  // دالة اختيار الصورة وتحديثها فوراً
   Future<void> _pickImage() async {
     final ImagePicker picker = ImagePicker();
     final XFile? image = await picker.pickImage(source: ImageSource.gallery);
 
     if (image != null) {
       await _viewModel.uploadProfilePhoto(File(image.path), context);
-      setState(() {}); // إعادة بناء الواجهة لعرض الصورة الجديدة
+      setState(() {}); 
     }
   }
 
@@ -57,6 +55,7 @@ class _ProfileManagementPageState extends State<ProfileManagementPage> {
       builder: (context, snapshot) {
         final user = snapshot.data;
 
+        // ✅ تم تصحيح المسميات هنا لتقرأ من 'linkedin' و 'github' كما في الفايربيز
         if (user != null && _controllers.isEmpty) {
           _controllers["Full Name"] = TextEditingController(text: user.fullName);
           _controllers["Username"] = TextEditingController(text: user.username);
@@ -64,8 +63,11 @@ class _ProfileManagementPageState extends State<ProfileManagementPage> {
           _controllers["Phone Number"] = TextEditingController(text: user.phoneNumber);
           _controllers["Biography"] = TextEditingController(text: user.bio ?? "");
           _controllers["City"] = TextEditingController(text: user.city ?? "");
-          _controllers["LinkedIn Profile"] = TextEditingController(text: user.linkedinUrl ?? "");
-          _controllers["GitHub Profile"] = TextEditingController(text: user.githubUrl ?? "");
+          
+          // حُذفت كلمة "Url" لأن الفايربيز عندك يخزنها كـ linkedin و github فقط
+          _controllers["LinkedIn Profile"] = TextEditingController(text: user.linkedin ?? "");
+          _controllers["GitHub Profile"] = TextEditingController(text: user.github ?? "");
+          
           _selectedGender = user.gender;
         }
 
@@ -76,15 +78,9 @@ class _ProfileManagementPageState extends State<ProfileManagementPage> {
             showBack: true,
             onBack: () => Navigator.pop(context),
             onLogout: () async {
-              await Provider.of<RegisterViewModel>(context, listen: false)
-                  .logout(context);
+              await Provider.of<RegisterViewModel>(context, listen: false).logout(context);
             },
           ),
-          /*appBar: BuildMateAppBar(
-            titleText: "Profile Management",
-            showBack: true,
-            onBack: () => Navigator.pop(context),
-          ),*/
           body: Column(
             children: [
               Padding(
@@ -157,8 +153,11 @@ class _ProfileManagementPageState extends State<ProfileManagementPage> {
                       _buildInfoField("Biography", Icons.info_outline),
                       _buildInfoField("City", Icons.location_city_outlined),
                       _buildGenderDropdown(),
+                      
+                      // حقول الروابط
                       _buildInfoField("LinkedIn Profile", Icons.link),
                       _buildInfoField("GitHub Profile", Icons.code_rounded),
+                      
                       const SizedBox(height: 30),
                       if (!_isEditMode)
                         Center(
@@ -186,7 +185,6 @@ class _ProfileManagementPageState extends State<ProfileManagementPage> {
     );
   }
 
-  // --- الوجت المساعدة (نفس تصميمك الأصلي) ---
   Widget _buildSectionTitle(String title) {
     return Padding(
       padding: const EdgeInsets.only(bottom: 12, left: 5, top: 10),
@@ -293,9 +291,15 @@ class _ProfileManagementPageState extends State<ProfileManagementPage> {
         child: ElevatedButton(
           style: ElevatedButton.styleFrom(backgroundColor: deepMediumPurple, shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12))),
           onPressed: () async {
+            // ✅ تأكدي أن دالة التحديث في الـ ViewModel ترسل linkedin و github أيضاً
             await _viewModel.updateProfile(
               name: _controllers["Full Name"]!.text,
               phone: _controllers["Phone Number"]!.text,
+              bio: _controllers["Biography"]!.text,
+              city: _controllers["City"]!.text,
+              linkedin: _controllers["LinkedIn Profile"]!.text,
+              github: _controllers["GitHub Profile"]!.text,
+              gender: _selectedGender ?? "",
               context: context,
             );
             setState(() => _isEditMode = false);

@@ -31,7 +31,7 @@ class ProfileViewModel extends ChangeNotifier {
         await _firestore.collection('users').doc(uid).update({
           'profilePhotoPath': imageFile.path,
         });
-        notifyListeners(); // To update all screens (ProfileView + Management)
+        notifyListeners(); 
 
         if (context.mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
@@ -53,24 +53,40 @@ class ProfileViewModel extends ChangeNotifier {
     }
   }
 
+  // ✅ الدالة المحدثة لاستقبال كافة المعاملات وحل الإيرور
   Future<void> updateProfile({
     required String name,
     required String phone,
+    required String bio,
+    required String city,
+    required String linkedin,
+    required String github,
+    required String gender,
     required BuildContext context,
   }) async {
     _setLoading(true);
     try {
       String uid = _auth.currentUser?.uid ?? "";
       if (uid.isNotEmpty) {
+        // تحديث كافة الحقول في فايربيز لضمان ظهور الروابط والبيانات
         await _firestore.collection('users').doc(uid).update({
-          'fullName': name,
-          'phoneNumber': phone,
+          'fullName': name.trim(),
+          'phoneNumber': phone.trim(),
+          'bio': bio.trim(),
+          'city': city.trim(),
+          'linkedin': linkedin.trim(), // تم توحيد الاسم مع الفايربيز
+          'github': github.trim(),     // تم توحيد الاسم مع الفايربيز
+          'gender': gender,
         });
+        
         notifyListeners();
 
         if (context.mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text('Profile data updated successfully')),
+            const SnackBar(
+              content: Text('Profile updated successfully! ✅'),
+              backgroundColor: Colors.green,
+            ),
           );
         }
       }

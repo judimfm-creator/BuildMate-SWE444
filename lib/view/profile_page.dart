@@ -106,9 +106,10 @@ class _ProfilePageState extends State<ProfilePage> with SingleTickerProviderStat
                       Row(
                         mainAxisAlignment: MainAxisAlignment.center,
                         children: [
-                          _buildModernSocialCard(FontAwesomeIcons.linkedinIn, user?.linkedinUrl),
-                          const SizedBox(width: 20),
-                          _buildModernSocialCard(FontAwesomeIcons.github, user?.githubUrl),
+                        // ✅ تم تغيير linkedinUrl إلى linkedin و githubUrl إلى github
+_buildModernSocialCard(FontAwesomeIcons.linkedinIn, user?.linkedin),
+const SizedBox(width: 20),
+_buildModernSocialCard(FontAwesomeIcons.github, user?.github),
                         ],
                       ),
 
