@@ -101,76 +101,23 @@ class ProfileViewModel extends ChangeNotifier {
     }
   }
 
-  Future<void> deleteAccount(BuildContext context, String email, String password) async {
+
+  Future<void> deleteAccount(String email, String password) async {
     final user = _auth.currentUser;
     if (user == null) return;
-    try {
-      final credential = EmailAuthProvider.credential(email: email, password: password);
-      await user.reauthenticateWithCredential(credential);
-      String uid = user.uid;
-      await _firestore.collection('users').doc(uid).delete();
-      await user.delete();
-      await _auth.signOut();
-      if (context.mounted) Navigator.pushNamedAndRemoveUntil(context, '/loginUser', (route) => false);
-    } catch (e) {
-      if (context.mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text("Error: $e"), backgroundColor: Colors.red));
-    }
+
+    final credential = EmailAuthProvider.credential(email: email, password: password);
+    await user.reauthenticateWithCredential(credential);
+
+    final uid = user.uid;
+
+    await _firestore.collection('users').doc(uid).delete();
+    await user.delete();
+    await _auth.signOut();
   }
 
   void _setLoading(bool value) {
     _isLoading = value;
     notifyListeners();
-  }
-  Future<void> DeleteAccount(
-    BuildContext context,
-    String email,
-    String password,
-  ) async {
-    final user = FirebaseAuth.instance.currentUser;
-    if (user == null) return;
-
-    try {
-      // 1. إعادة التحقق من الهوية (ضروري قبل الحذف)
-      final credential = EmailAuthProvider.credential(email: email, password: password);
-      await user.reauthenticateWithCredential(credential);
-
-      String uid = user.uid;
-
-      // 2. الحذف الفعلي من Firestore 
-      // (تأكدي من تغيير 'users' إلى 'organizations' إذا كنتِ في مودل المنظمة)
-      await FirebaseFirestore.instance.collection('users').doc(uid).delete();
-
-      // 3. حذف الحساب من Authentication
-      await user.delete();
-
-      // 4. تسجيل الخروج
-      await FirebaseAuth.instance.signOut();
-
-      // 5. التوجيه لصفحة تسجيل الدخول مباشرة (بدون رسالة نجاح)
-      if (context.mounted) {
-        Navigator.pushNamedAndRemoveUntil(context, '/loginUser', (route) => false);
-      }
-    } on FirebaseAuthException catch (e) {
-      // إظهار رسالة في حال الخطأ فقط (مثل كلمة مرور خاطئة)
-      if (context.mounted) {
-        String message = "Deletion failed";
-        if (e.code == 'wrong-password') message = "Incorrect password";
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text("$message: ${e.message}"),
-            backgroundColor: Colors.red,
-          ),
-        );
-      }
-    } catch (e) {
-      if (context.mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text("An error occurred: $e"),
-            backgroundColor: Colors.red,
-          ),
-        );
-      }
-    }
   }
 }

@@ -24,6 +24,7 @@ class _ProfileManagementPageState extends State<ProfileManagementPage> {
 
   bool _isEditMode = false;
   bool _isInitialized = false;
+  bool _obscurePassword = true;
 
   final Set<String> _itemsMarkedForDeletion = {};
   final Map<String, TextEditingController> _controllers = {};
@@ -269,49 +270,154 @@ class _ProfileManagementPageState extends State<ProfileManagementPage> {
       style: OutlinedButton.styleFrom(side: BorderSide(color: deleteRed.withOpacity(0.4)), shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)), padding: const EdgeInsets.symmetric(horizontal: 25, vertical: 12)))
   );
 
-  // ✅ دالة الحذف الحقيقية من كودك السابق
   Future<void> _handleDeleteAccount() async {
     final confirmDelete = await showDialog<bool>(
       context: context,
       builder: (context) => AlertDialog(
         title: const Text("Confirm Account Deletion"),
-        content: const Text("Are you sure you want to permanently delete your account? This action cannot be undone."),
+        content: const Text(
+            "Are you sure you want to permanently delete your account? This action cannot be undone."),
         actions: [
-          TextButton(onPressed: () => Navigator.pop(context, false), child: const Text("Cancel")),
-          TextButton(onPressed: () => Navigator.pop(context, true), child: const Text("Yes, Delete", style: TextStyle(color: Colors.red))),
+          TextButton(
+              onPressed: () => Navigator.pop(context, false),
+              child: const Text("Cancel")),
+          TextButton(
+              onPressed: () => Navigator.pop(context, true),
+              child: const Text("Yes, Delete",
+                  style: TextStyle(color: Colors.red))),
         ],
       ),
     );
 
     if (confirmDelete != true) return;
 
-    final passwordController = TextEditingController();
-
-    final confirmPassword = await showDialog<bool>(
+    final password = await showDialog<String>(
       context: context,
-      builder: (context) => AlertDialog(
-        title: const Text("Enter Password"),
-        content: TextField(
-          controller: passwordController,
-          obscureText: true,
-          decoration: const InputDecoration(labelText: "Password"),
-        ),
-        actions: [
-          TextButton(onPressed: () => Navigator.pop(context, false), child: const Text("Cancel")),
-          TextButton(onPressed: () => Navigator.pop(context, true), child: const Text("Delete", style: TextStyle(color: Colors.red))),
-        ],
-      ),
+      builder: (context) => const _DeletePasswordDialog(),
     );
 
-    if (confirmPassword != true) return;
+    if (password == null) return;
 
     final userEmail = FirebaseAuth.instance.currentUser?.email ?? "";
 
-    // ✅ استدعاء الحذف الفعلي من الـ ViewModel
-    await _viewModel.deleteAccount(
-      context,
-      userEmail,
-      passwordController.text,
+    try {
+      await _viewModel.deleteAccount(userEmail, password);
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text("Account deleted successfully ✅"),
+            backgroundColor: Colors.green,
+          ),
+        );
+        await Future.delayed(const Duration(seconds: 1));
+        if (context.mounted) {
+          Navigator.pushNamedAndRemoveUntil(context, '/loginUser', (route) => false);
+        }
+      }
+    } on FirebaseAuthException catch (e) {
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text(e.message ?? "Failed"), backgroundColor: Colors.red),
+        );
+      }
+    }
+  }
+}  // ✅ هذا القوس يغلق _ProfileManagementPageState
+
+
+
+
+
+
+
+class _DeletePasswordDialog extends StatefulWidget {
+  const _DeletePasswordDialog();
+
+  @override
+  State<_DeletePasswordDialog> createState() => _DeletePasswordDialogState();
+}
+
+
+class _DeletePasswordDialogState extends State<_DeletePasswordDialog> {
+  final _formKey = GlobalKey<FormState>();
+  final _passwordController = TextEditingController();
+  String? _serverError;
+  bool _obscurePassword = true; // ✅ إضافة
+
+  @override
+  void dispose() {
+    _passwordController.dispose();
+    super.dispose();
+  }
+
+  Future<void> _tryDelete(BuildContext context) async {
+    if (!_formKey.currentState!.validate()) return;
+
+    final user = FirebaseAuth.instance.currentUser;
+    if (user == null) return;
+
+    try {
+      final credential = EmailAuthProvider.credential(
+        email: user.email!,
+        password: _passwordController.text,
+      );
+      await user.reauthenticateWithCredential(credential);
+      if (context.mounted) Navigator.pop(context, _passwordController.text);
+    } on FirebaseAuthException catch (e) {
+      setState(() {
+        if (e.code == 'wrong-password' || e.code == 'invalid-credential') {
+          _serverError = "Incorrect password. Please try again.";
+        } else {
+          _serverError = e.message ?? "An error occurred.";
+        }
+      });
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return AlertDialog(
+      title: const Text("Enter Password"),
+      content: Form(
+        key: _formKey,
+        child: TextFormField(
+          controller: _passwordController,
+          obscureText: _obscurePassword, // ✅
+          decoration: InputDecoration(
+            labelText: "Password",
+            errorText: _serverError,
+            suffixIcon: IconButton( // ✅ زر الإظهار/الإخفاء
+              icon: Icon(
+                _obscurePassword ? Icons.visibility_off : Icons.visibility,
+              ),
+              onPressed: () {
+                setState(() => _obscurePassword = !_obscurePassword);
+              },
+            ),
+          ),
+          onChanged: (_) {
+            if (_serverError != null) {
+              setState(() => _serverError = null);
+            }
+          },
+          validator: (value) {
+            if (value == null || value.trim().isEmpty) {
+              return "Please enter the password";
+            }
+            return null;
+          },
+        ),
+      ),
+      actions: [
+        TextButton(
+          onPressed: () => Navigator.pop(context, null),
+          child: const Text("Cancel"),
+        ),
+        TextButton(
+          onPressed: () => _tryDelete(context),
+          child: const Text("Delete", style: TextStyle(color: Colors.red)),
+        ),
+      ],
     );
   }
 }

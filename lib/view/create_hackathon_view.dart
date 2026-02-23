@@ -288,6 +288,7 @@ class _CreateHackathonViewState extends State<CreateHackathonView> {
                   controller: nameController,
                   label: "Hackathon Name",
                   icon: Icons.flag_outlined,
+                  maxLength: 60,
                   validator: (v) {
                     if (v == null || v.trim().isEmpty) return "Required";
                     if (v.trim().length < 5) return "Minimum 5 characters";
@@ -300,6 +301,7 @@ class _CreateHackathonViewState extends State<CreateHackathonView> {
                   label: "Description",
                   icon: Icons.description_outlined,
                   maxLines: 3,
+                  maxLength: 100,
                   validator: (v) {
                     if (v == null || v.trim().isEmpty) return "Required";
                     if (v.trim().length < 20) return "Minimum 20 characters";
@@ -370,6 +372,7 @@ class _CreateHackathonViewState extends State<CreateHackathonView> {
 
                 _textField(
                   controller: locationController,
+                  maxLength: 60,
                   label: "Location (e.g., Venue / Address)",
                   icon: Icons.place_outlined,
                 ),
@@ -433,7 +436,13 @@ class _CreateHackathonViewState extends State<CreateHackathonView> {
                           );
 
                           if (result != null) {
-                            setState(() => selectedRoles = result);
+                            setState(() {
+                              selectedRoles = result;
+                              // لو "Other" اتشال، امسح النص القديم
+                              if (!result.contains("Other")) {
+                                otherRoleController.clear();
+                              }
+                            });
                           }
                         },
                         child: InputDecorator(
@@ -560,6 +569,7 @@ class _CreateHackathonViewState extends State<CreateHackathonView> {
     required IconData icon,
     String? hint,
     int maxLines = 1,
+    int? maxLength,
     TextInputType keyboardType = TextInputType.text,
     String? Function(String?)? validator,
   }) {
@@ -568,6 +578,7 @@ class _CreateHackathonViewState extends State<CreateHackathonView> {
       child: TextFormField(
         controller: controller,
         maxLines: maxLines,
+        maxLength: maxLength,
         keyboardType: keyboardType,
         textInputAction: TextInputAction.next,
         validator: validator ??

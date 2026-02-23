@@ -20,6 +20,7 @@ class _OrgProfileManagementPageState extends State<OrgProfileManagementPage> {
 
   bool _isEditMode = false;
   bool _isInitialized = false;
+  bool _obscurePassword = true;
 
   final Set<String> _itemsMarkedForDeletion = {};
   final Map<String, TextEditingController> _controllers = {};
@@ -252,35 +253,123 @@ class _OrgProfileManagementPageState extends State<OrgProfileManagementPage> {
 
     if (confirmDelete != true) return;
 
-    final passwordController = TextEditingController();
-
-    final confirmPassword = await showDialog<bool>(
+    // ✅ نفس نظام اليوزر — Widget مستقل
+    final password = await showDialog<String>(
       context: context,
-      builder: (context) => AlertDialog(
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(15)),
-        title: const Text("Enter Password"),
-        content: TextField(
-          controller: passwordController,
-          obscureText: true,
-          decoration: const InputDecoration(labelText: "Password", border: OutlineInputBorder()),
-        ),
-        actions: [
-          TextButton(onPressed: () => Navigator.pop(context, false), child: const Text("Cancel")),
-          TextButton(onPressed: () => Navigator.pop(context, true), child: const Text("Delete", style: TextStyle(color: Colors.red))),
-        ],
-      ),
+      builder: (context) => const _OrgDeletePasswordDialog(),
     );
 
-    if (confirmPassword != true) return;
+    if (password == null) return;
 
-    final userEmail = FirebaseAuth.instance.currentUser?.email ?? "";
+
     final orgVM = Provider.of<OrgProfileViewModel>(context, listen: false);
+    final userEmail = FirebaseAuth.instance.currentUser?.email ?? "";
 
-    // ✅ استدعاء دالة الحذف من الـ ViewModel الخاص بالمنظمة
-    await orgVM.DeleteAccount(
-      context,
-      userEmail,
-      passwordController.text,
+    try {
+      await orgVM.deleteAccount(userEmail, password);
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text("Account deleted successfully ✅"),
+            backgroundColor: Colors.green,
+          ),
+        );
+        await Future.delayed(const Duration(seconds: 1));
+        if (context.mounted) {
+          Navigator.pushNamedAndRemoveUntil(context, '/loginUser', (route) => false);
+        }
+      }
+    } on FirebaseAuthException catch (e) {
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text(e.message ?? "Failed to delete account"), backgroundColor: Colors.red),
+        );
+      }
+    }
+  }
+}
+
+
+// ✅ Widget مستقل للـ dialog — نفس نظام اليوزر
+class _OrgDeletePasswordDialog extends StatefulWidget {
+  const _OrgDeletePasswordDialog();
+
+  @override
+  State<_OrgDeletePasswordDialog> createState() => _OrgDeletePasswordDialogState();
+}
+
+class _OrgDeletePasswordDialogState extends State<_OrgDeletePasswordDialog> {
+  final _formKey = GlobalKey<FormState>();
+  final _passwordController = TextEditingController();
+  String? _serverError;
+  bool _obscurePassword = true;
+
+  @override
+  void dispose() {
+    _passwordController.dispose();
+    super.dispose();
+  }
+
+  Future<void> _tryDelete(BuildContext context) async {
+    if (!_formKey.currentState!.validate()) return;
+
+    final user = FirebaseAuth.instance.currentUser;
+    if (user == null) return;
+
+    try {
+      final credential = EmailAuthProvider.credential(
+        email: user.email!,
+        password: _passwordController.text,
+      );
+      await user.reauthenticateWithCredential(credential);
+      if (context.mounted) Navigator.pop(context, _passwordController.text);
+    } on FirebaseAuthException catch (e) {
+      setState(() {
+        if (e.code == 'wrong-password' || e.code == 'invalid-credential') {
+          _serverError = "Incorrect password. Please try again.";
+        } else {
+          _serverError = e.message ?? "An error occurred.";
+        }
+      });
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return AlertDialog(
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(15)),
+      title: const Text("Enter Password"),
+      content: Form(
+        key: _formKey,
+        child: TextFormField(
+          controller: _passwordController,
+          obscureText: _obscurePassword,
+          decoration: InputDecoration(
+            labelText: "Password",
+            errorText: _serverError,
+            suffixIcon: IconButton(
+              icon: Icon(_obscurePassword ? Icons.visibility_off : Icons.visibility),
+              onPressed: () => setState(() => _obscurePassword = !_obscurePassword),
+            ),
+          ),
+          onChanged: (_) {
+            if (_serverError != null) setState(() => _serverError = null);
+          },
+          validator: (value) {
+            if (value == null || value.trim().isEmpty) {
+              return "Please enter the password";
+            }
+            return null;
+          },
+        ),
+      ),
+      actions: [
+        TextButton(onPressed: () => Navigator.pop(context, null), child: const Text("Cancel")),
+        TextButton(
+          onPressed: () => _tryDelete(context),
+          child: const Text("Delete", style: TextStyle(color: Colors.red)),
+        ),
+      ],
     );
   }
 }

@@ -38,60 +38,25 @@ class OrgProfileViewModel extends ChangeNotifier {
     } catch (e) {
       debugPrint("Update Failed: $e");
     }
-  } 
-  Future<void> DeleteAccount(
-    BuildContext context,
-    String email,
-    String password,
-  ) async {
-    final user = FirebaseAuth.instance.currentUser;
+  }
+
+  Future<void> deleteAccount(String email, String password) async {
+    final user = _auth.currentUser;
     if (user == null) return;
 
-    try {
-      // 1. إعادة التحقق من الهوية (Re-authenticate)
-      // ضروري جداً لتأكيد أن الشخص هو صاحب الحساب قبل الحذف النهائي
-      final credential = EmailAuthProvider.credential(email: email, password: password);
-      await user.reauthenticateWithCredential(credential);
+    // 1. إعادة التحقق من الهوية
+    final credential = EmailAuthProvider.credential(email: email, password: password);
+    await user.reauthenticateWithCredential(credential);
 
-      String uid = user.uid;
+    final uid = user.uid;
 
-      // 2. الحذف الفعلي لبيانات المنشأة من Firestore
-      // ✅ هنا نتأكد من اسم الكولكشن 'organizations'
-      await FirebaseFirestore.instance
-          .collection('organizations')
-          .doc(uid)
-          .delete();
+    // 2. حذف بيانات المنشأة من Firestore
+    await _firestore.collection('organizations').doc(uid).delete();
 
-      // 3. حذف الحساب من قائمة المستخدمين في Firebase Auth
-      await user.delete();
+    // 3. حذف الحساب من Firebase Auth
+    await user.delete();
 
-      // 4. تسجيل الخروج
-      await FirebaseAuth.instance.signOut();
-
-      // 5. التوجيه لصفحة تسجيل الدخول (بدون رسالة نجاح)
-      if (context.mounted) {
-        Navigator.pushNamedAndRemoveUntil(context, '/loginUser', (route) => false);
-      }
-    } on FirebaseAuthException catch (e) {
-      // إظهار تنبيه فقط في حال حدوث خطأ (مثل كلمة مرور خاطئة)
-      if (context.mounted) {
-        String message = "Deletion failed";
-        if (e.code == 'wrong-password') message = "Incorrect password";
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text("$message: ${e.message}"),
-            backgroundColor: Colors.red,
-          ),
-        );
-      }
-    } catch (e) {
-      if (context.mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text("An error occurred: $e"),
-            backgroundColor: Colors.red,
-          ),
-        );
-      }
+    // 4. تسجيل الخروج
+    await _auth.signOut();
+  }
     }
-  }}
