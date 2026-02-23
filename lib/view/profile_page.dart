@@ -1,6 +1,5 @@
 import 'dart:io';
 import 'package:flutter/material.dart';
-import 'package:provider/provider.dart';
 import 'package:font_awesome_flutter/font_awesome_flutter.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'package:buildmate/viewmodel/profile_view_model.dart';
@@ -30,6 +29,12 @@ class _ProfilePageState extends State<ProfilePage> with SingleTickerProviderStat
     _tabController = TabController(length: 2, vsync: this);
   }
 
+  @override
+  void dispose() {
+    _tabController.dispose();
+    super.dispose();
+  }
+
   Future<void> _launchURL(String? urlString) async {
     if (urlString == null || urlString.trim().isEmpty) return;
     String cleanUrl = urlString.trim();
@@ -42,7 +47,6 @@ class _ProfilePageState extends State<ProfilePage> with SingleTickerProviderStat
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: Colors.white,
-      // ✅ دمجنا الـ AppBar الموحد الخاص بكِ
       appBar: const BuildMateAppBar(
         titleText: 'Profile',
         showBack: false,
@@ -54,8 +58,10 @@ class _ProfilePageState extends State<ProfilePage> with SingleTickerProviderStat
             return const Center(child: CircularProgressIndicator());
           }
           final user = snapshot.data;
+          
+          // حل مشكلة No user data found
           if (user == null) {
-            return const Center(child: Text("No user data found"));
+            return const Center(child: Text("No user profile found"));
           }
 
           return SingleChildScrollView(
@@ -68,7 +74,6 @@ class _ProfilePageState extends State<ProfilePage> with SingleTickerProviderStat
                 _buildManageButton(),
                 const SizedBox(height: 35),
 
-                // قسم المهارات (Skills)
                 Row(
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
@@ -79,12 +84,12 @@ class _ProfilePageState extends State<ProfilePage> with SingleTickerProviderStat
                   ],
                 ),
                 const SizedBox(height: 15),
+                // ✅ نمرر البيانات كما هي (Array)
                 _buildSkillsChips(user.skills),
 
                 const SizedBox(height: 30),
                 _buildTabBarSection(),
                 
-                // عرض المشاريع (Tabs)
                 SizedBox(
                   height: 300,
                   child: TabBarView(
@@ -104,17 +109,25 @@ class _ProfilePageState extends State<ProfilePage> with SingleTickerProviderStat
   }
 
   Widget _buildProfileHeader(UserModel user) {
+    ImageProvider? profileImage;
+    if (user.profilePhotoPath != null && user.profilePhotoPath!.isNotEmpty) {
+      if (user.profilePhotoPath!.startsWith('http')) {
+        profileImage = NetworkImage(user.profilePhotoPath!);
+      } else {
+        final file = File(user.profilePhotoPath!);
+        if (file.existsSync()) {
+          profileImage = FileImage(file);
+        }
+      }
+    }
+
     return Column(
       children: [
         CircleAvatar(
           radius: 55,
           backgroundColor: lightPurpleBG,
-          backgroundImage: (user.profilePhotoPath?.isNotEmpty ?? false)
-              ? (user.profilePhotoPath!.startsWith('http') 
-                  ? NetworkImage(user.profilePhotoPath!) 
-                  : FileImage(File(user.profilePhotoPath!))) as ImageProvider
-              : null,
-          child: (user.profilePhotoPath?.isEmpty ?? true) 
+          backgroundImage: profileImage,
+          child: profileImage == null 
               ? Icon(Icons.person, size: 50, color: primaryPurple) 
               : null,
         ),
@@ -129,17 +142,22 @@ class _ProfilePageState extends State<ProfilePage> with SingleTickerProviderStat
               style: TextStyle(fontSize: 13, color: Colors.grey.shade700, height: 1.4)),
           ),
         const SizedBox(height: 10),
+        
         Row(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            if (user.linkedin != null) 
-              IconButton(icon: Icon(FontAwesomeIcons.linkedin, color: primaryPurple), 
-                onPressed: () => _launchURL(user.linkedin)),
-            if (user.github != null) 
-              IconButton(icon: Icon(FontAwesomeIcons.github, color: primaryPurple), 
-                onPressed: () => _launchURL(user.github)),
+            if (user.linkedin != null && user.linkedin!.isNotEmpty) 
+              IconButton(
+                icon: const Icon(FontAwesomeIcons.linkedin, color: Color(0xFF7A62B3)), 
+                onPressed: () => _launchURL(user.linkedin),
+              ),
+            if (user.github != null && user.github!.isNotEmpty) 
+              IconButton(
+                icon: const Icon(FontAwesomeIcons.github, color: Color(0xFF7A62B3)), 
+                onPressed: () => _launchURL(user.github),
+              ),
           ],
-        ),
+        )
       ],
     );
   }
@@ -165,8 +183,16 @@ class _ProfilePageState extends State<ProfilePage> with SingleTickerProviderStat
     );
   }
 
-  Widget _buildSkillsChips(String? skillsString) {
-    List<String> skills = skillsString?.split(',').map((s) => s.trim()).where((s) => s.isNotEmpty).toList() ?? [];
+  // ✅ الميثود المعدلة لقراءة المصفوفة (Array)
+  Widget _buildSkillsChips(dynamic skillsData) {
+    List<String> skills = [];
+    
+    if (skillsData is List) {
+      skills = skillsData.map((e) => e.toString()).toList();
+    } else if (skillsData is String && skillsData.isNotEmpty) {
+      skills = skillsData.split(',').map((s) => s.trim()).toList();
+    }
+
     if (skills.isEmpty) return const SizedBox();
 
     return Padding(

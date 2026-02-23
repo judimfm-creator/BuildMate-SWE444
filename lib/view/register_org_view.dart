@@ -30,6 +30,7 @@ class _RegisterOrgViewState extends State<RegisterOrgView> {
   @override
   void initState() {
     super.initState();
+    // ✅ السطر المسؤول عن تصفير الصورة عند الدخول بـ حساب جديد
     WidgetsBinding.instance.addPostFrameCallback((_) {
       context.read<RegisterViewModel>().clearPickedImage();
     });
@@ -48,7 +49,6 @@ class _RegisterOrgViewState extends State<RegisterOrgView> {
     super.dispose();
   }
 
-  // دالة فحص بسيطة لتغيير لون الحواف بهدوء
   bool _isFieldValid(String label, String value) {
     if (value.isEmpty) return false;
     if (label == "Email Address")
@@ -83,39 +83,51 @@ class _RegisterOrgViewState extends State<RegisterOrgView> {
             const EdgeInsets.only(left: 24, right: 24, top: 30, bottom: 24),
         child: Form(
           key: _formKey,
-          // ✅ تم التعديل: لن يظهر الخطأ الأحمر أثناء الكتابة
           autovalidateMode: AutovalidateMode.disabled,
           child: Column(
             children: [
               Center(
                 child: Stack(
-                  alignment: Alignment.bottomRight,
                   children: [
-                    GestureDetector(
-                      onTap: () => _showPicker(context, vm),
-                      child: CircleAvatar(
-                        radius: 50,
-                        backgroundColor: purple.withOpacity(0.1),
-                        backgroundImage: vm.pickedImage != null
-                            ? FileImage(vm.pickedImage!)
-                            : null,
-                        child: vm.pickedImage == null
-                            ? Icon(Icons.add_a_photo_outlined,
-                                color: purple, size: 30)
-                            : null,
+                    CircleAvatar(
+                      radius: 50,
+                      backgroundColor: purple.withOpacity(0.1),
+                      backgroundImage: vm.pickedImage != null
+                          ? FileImage(vm.pickedImage!)
+                          : null,
+                      // ✅ تم تغيير الأيقونة لتكون نفس أيقونة اليوزر (Icons.person)
+                      child: vm.pickedImage == null
+                          ? Icon(Icons.person, color: purple, size: 50)
+                          : null,
+                    ),
+                    // زر إضافة/تغيير الصورة
+                    Positioned(
+                      bottom: 0,
+                      right: 0,
+                      child: GestureDetector(
+                        onTap: () => _showPicker(context, vm),
+                        child: Container(
+                          padding: const EdgeInsets.all(4),
+                          decoration: BoxDecoration(
+                              color: purple, shape: BoxShape.circle),
+                          child: const Icon(Icons.camera_alt,
+                              color: Colors.white, size: 18),
+                        ),
                       ),
                     ),
+                    // ✅ تم إضافة زر الحذف (X) الأحمر ليظهر عند وجود صورة
                     if (vm.pickedImage != null)
                       Positioned(
                         top: 0,
                         right: 0,
                         child: GestureDetector(
                           onTap: () => vm.clearPickedImage(),
-                          child: const CircleAvatar(
-                            radius: 15,
-                            backgroundColor: Colors.red,
-                            child: Icon(Icons.close,
-                                size: 18, color: Colors.white),
+                          child: Container(
+                            padding: const EdgeInsets.all(2),
+                            decoration: const BoxDecoration(
+                                color: Colors.red, shape: BoxShape.circle),
+                            child: const Icon(Icons.close,
+                                color: Colors.white, size: 16),
                           ),
                         ),
                       ),
@@ -132,15 +144,18 @@ class _RegisterOrgViewState extends State<RegisterOrgView> {
                     ? "Organization name must be at least 3 characters"
                     : null,
               ),
-              _buildField(
-                _usernameController,
-                "Username",
-                "minimum 3 characters",
-                Icons.person_outline,
-                validator: (v) => (v != null && v.trim().length < 3)
-                    ? "Username must be at least 3 characters"
-                    : null,
-              ),
+            _buildField(
+  _usernameController,
+  "Username",
+  "minimum 3 characters,spaces are not allowed",
+  Icons.person_outline,
+  validator: (v) {
+    if (v == null || v.isEmpty) return "Username is required";
+    if (v.contains(' ')) return "Spaces are not allowed"; // ✅ هذا شرط منع المسافات
+    if (v.trim().length < 3) return "Username must be at least 3 characters";
+    return null;
+  },
+),
               _buildField(
                 _emailController,
                 "Email Address",
@@ -237,7 +252,6 @@ class _RegisterOrgViewState extends State<RegisterOrgView> {
       {TextInputType type = TextInputType.text,
       int maxLines = 1,
       String? Function(String?)? validator}) {
-    // نتحقق من صحة الحقل لتغيير اللون بهدوء
     bool isValid = _isFieldValid(label, ctrl.text);
 
     return Padding(
@@ -246,14 +260,13 @@ class _RegisterOrgViewState extends State<RegisterOrgView> {
         controller: ctrl,
         keyboardType: type,
         maxLines: maxLines,
-        onChanged: (v) => setState(() {}), // لتحديث لون الحواف فوراً
+        onChanged: (v) => setState(() {}),
         decoration: InputDecoration(
           labelText: label,
           helperText: helper,
           helperStyle: const TextStyle(fontSize: 11, color: Colors.blueGrey),
           floatingLabelBehavior: FloatingLabelBehavior.always,
           prefixIcon: Icon(icon, color: purple),
-          // الحواف تتلون ببنفسجي خفيف إذا كان المدخل صحيحاً، ورمادي إذا لم يكتمل
           enabledBorder: OutlineInputBorder(
             borderRadius: BorderRadius.circular(12),
             borderSide: BorderSide(

@@ -79,13 +79,18 @@ class _RegisterUserViewState extends State<RegisterUserView> {
                 },
               ),
               
-              _buildField(
-                _usernameController, 
-                "Username", 
-                "minimum 3 characters", 
-                Icons.person_outline,
-                customValidator: (v) => (v != null && v.trim().length < 3) ? "At least 3 characters" : null,
-              ),
+             _buildField(
+  _usernameController, 
+  "Username", 
+  "minimum 3 characters,spaces are not allowed", 
+  Icons.person_outline,
+  customValidator: (v) {
+    if (v == null || v.trim().isEmpty) return "Field cannot be empty";
+    if (v.contains(' ')) return "Spaces are not allowed"; // ✅ هذا هو شرط منع المسافات
+    if (v.trim().length < 3) return "At least 3 characters";
+    return null;
+  },
+),
               
               _buildField(
                 _emailController, 
@@ -145,7 +150,7 @@ class _RegisterUserViewState extends State<RegisterUserView> {
                   onPressed: vm.isLoading ? null : _submit,
                   child: vm.isLoading 
                     ? const CircularProgressIndicator(color: Colors.white) 
-                    : const Text("Sign Up", style: TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.bold)),
+                    : const Text("Register", style: TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.bold)),
                 ),
               ),
             ],

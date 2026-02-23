@@ -8,9 +8,7 @@ class UserModel {
   final String? bio;
   final String? city;
   final String? gender;
-  final String? skills;
-  
-  // ✅ التعديل هنا: غيري الأسماء لتطابق الفايربيز والمانجمنت
+  final dynamic skills; // ✅ يدعم المصفوفة والنص
   final String? linkedin; 
   final String? github;
 
@@ -29,7 +27,6 @@ class UserModel {
     this.github,
   });
 
-  // ✅ التعديل هنا: دالة تحويل البيانات من فايربيز (fromMap)
   factory UserModel.fromMap(Map<String, dynamic> map) {
     return UserModel(
       uid: map['uid'] ?? '',
@@ -41,27 +38,9 @@ class UserModel {
       bio: map['bio'],
       city: map['city'],
       gender: map['gender'],
-      skills: map['skills'],
-      // ✅ تأكدي أن الأسماء هنا تطابق الصورة اللي أرسلتيها من فايربيز
+      skills: map['skills'], // ✅ يقرأ المصفوفة مباشرة
       linkedin: map['linkedin'], 
       github: map['github'],
     );
-  }
-
-  Map<String, dynamic> toMap() {
-    return {
-      'uid': uid,
-      'fullName': fullName,
-      'username': username,
-      'email': email,
-      'phoneNumber': phoneNumber,
-      'profilePhotoPath': profilePhotoPath,
-      'bio': bio,
-      'city': city,
-      'gender': gender,
-      'skills': skills,
-      'linkedin': linkedin,
-      'github': github,
-    };
   }
 }

@@ -13,7 +13,6 @@ class CompleteProfileView extends StatefulWidget {
 class _CompleteProfileViewState extends State<CompleteProfileView> {
   final _formKey = GlobalKey<FormState>();
   
-  // controllers بنفس مسميات المانجمنت لتوحيد البيانات
   final _bioController = TextEditingController();
   final _cityController = TextEditingController();
   final _linkedinController = TextEditingController();
@@ -23,12 +22,13 @@ class _CompleteProfileViewState extends State<CompleteProfileView> {
   final List<String> _predefinedSkills = ["UI/UX", "Flutter", "Python", "Java", "Teamwork"];
   List<TextEditingController> _otherSkillControllers = [];
 
-  String _selectedGender = 'Male';
-  final Color deepMediumPurple = const Color(0xFF7A62B3); // نفس لون المانجمنت بالضبط
+  String? _selectedGender; 
+  final Color deepMediumPurple = const Color(0xFF7A62B3);
 
   @override
   void initState() {
     super.initState();
+    // ✅ هذا السطر الوحيد المضاف لحل مشكلة بقاء الصورة القديمة
     WidgetsBinding.instance.addPostFrameCallback((_) {
       context.read<RegisterViewModel>().clearPickedImage();
     });
@@ -52,13 +52,10 @@ class _CompleteProfileViewState extends State<CompleteProfileView> {
         elevation: 0,
         centerTitle: true,
         actions: [
-        TextButton(
-  onPressed: () {
-    // الانتقال لصفحة الهوم مباشرة
-    Navigator.pushReplacementNamed(context, '/home');
-  },
-  child: const Text("Skip", style: TextStyle(color: Colors.grey, fontWeight: FontWeight.bold)),
-)
+          TextButton(
+            onPressed: () => Navigator.pushReplacementNamed(context, '/home'),
+            child: const Text("Skip", style: TextStyle(color: Colors.grey, fontWeight: FontWeight.bold)),
+          )
         ],
       ),
       body: SingleChildScrollView(
@@ -68,7 +65,6 @@ class _CompleteProfileViewState extends State<CompleteProfileView> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              // قسم الصورة (نفس ستايل المانجمنت)
               Center(
                 child: Stack(
                   children: [
@@ -96,7 +92,11 @@ class _CompleteProfileViewState extends State<CompleteProfileView> {
                         right: 0,
                         child: GestureDetector(
                           onTap: () => vm.clearPickedImage(),
-                          child: const CircleAvatar(radius: 12, backgroundColor: Colors.red, child: Icon(Icons.close, size: 14, color: Colors.white)),
+                          child: Container(
+                            padding: const EdgeInsets.all(2),
+                            decoration: const BoxDecoration(color: Colors.red, shape: BoxShape.circle),
+                            child: const Icon(Icons.close, color: Colors.white, size: 16),
+                          ),
                         ),
                       ),
                   ],
@@ -109,7 +109,6 @@ class _CompleteProfileViewState extends State<CompleteProfileView> {
               _buildManagementField("Biography", "Tell us about yourself", Icons.info_outline, _bioController, maxLines: 2),
 
               _buildSectionTitle("Skills"),
-              // بوكسات المهارات البيضاء (نفس تصميم المانجمنت في البطاقات)
               Wrap(
                 spacing: 10,
                 runSpacing: 10,
@@ -143,9 +142,26 @@ class _CompleteProfileViewState extends State<CompleteProfileView> {
 
               const SizedBox(height: 15),
               _buildSectionTitle("Social Links"),
-              // حقول الروابط - تأكدي أن المسميات هنا تطابق المانجمنت
-              _buildManagementField("LinkedIn Profile", "Paste Link", Icons.link, _linkedinController, type: TextInputType.url),
-              _buildManagementField("GitHub Profile", "Paste Link", Icons.code_rounded, _githubController, type: TextInputType.url),
+              _buildManagementField(
+                "LinkedIn Profile", "https://linkedin.com/in/...", Icons.link, _linkedinController, 
+                type: TextInputType.url,
+                exampleText: " Example: https://linkedin.com/in/Sara-Mohammed", // ✅ التوضيح هنا
+                validator: (val) {
+                  if (val == null || val.isEmpty) return null;
+                  if (!val.toLowerCase().contains("linkedin.com/")) return "Enter a valid LinkedIn URL";
+                  return null;
+                }
+              ),
+              _buildManagementField(
+                "GitHub Profile", "https://github.com/...", Icons.code_rounded, _githubController, 
+                type: TextInputType.url,
+                exampleText: "Example: https://github.com/Sara-Mohammed", // ✅ التوضيح هنا
+                validator: (val) {
+                  if (val == null || val.isEmpty) return null;
+                  if (!val.toLowerCase().contains("github.com/")) return "Enter a valid GitHub URL";
+                  return null;
+                }
+              ),
 
               _buildSectionTitle("Gender"),
               _buildGenderDropdown(),
@@ -174,81 +190,127 @@ class _CompleteProfileViewState extends State<CompleteProfileView> {
     );
   }
 
-  // الوجت المساعدة المطابقة للمانجمنت
-  Widget _buildSectionTitle(String title) {
-    return Padding(
-      padding: const EdgeInsets.only(bottom: 12, left: 5, top: 10),
-      child: Text(title, style: TextStyle(color: deepMediumPurple, fontSize: 14, fontWeight: FontWeight.bold)),
-    );
-  }
+  Widget _buildSectionTitle(String title) => Padding(
+    padding: const EdgeInsets.only(bottom: 12, left: 5, top: 10),
+    child: Text(title, style: TextStyle(color: deepMediumPurple, fontSize: 14, fontWeight: FontWeight.bold)),
+  );
 
-  Widget _buildManagementField(String label, String helper, IconData icon, TextEditingController ctrl, {int maxLines = 1, TextInputType type = TextInputType.text}) {
-    return Container(
-      margin: const EdgeInsets.only(bottom: 12),
-      padding: const EdgeInsets.all(15),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: Colors.grey.shade100, width: 1),
-      ),
-      child: Row(
-        children: [
-          Icon(icon, color: deepMediumPurple, size: 20),
-          const SizedBox(width: 15),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(label, style: TextStyle(color: Colors.grey.shade500, fontSize: 11)),
-                TextField(
+  Widget _buildManagementField(
+    String label, 
+    String helper, 
+    IconData icon, 
+    TextEditingController ctrl, {
+    int maxLines = 1, 
+    TextInputType type = TextInputType.text, 
+    String? Function(String?)? validator,
+    String? exampleText, // ✅ أضفنا هذا المتغير للتوضيح تحت الحقل
+  }) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Container(
+          margin: const EdgeInsets.only(bottom: 4), // تقليل المسافة عشان التوضيح يكون قريب
+          padding: const EdgeInsets.symmetric(horizontal: 15, vertical: 8),
+          decoration: BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.circular(12),
+            border: Border.all(color: Colors.grey.shade100, width: 1),
+          ),
+          child: Row(
+            children: [
+              Icon(icon, color: deepMediumPurple, size: 20),
+              const SizedBox(width: 15),
+              Expanded(
+                child: TextFormField(
                   controller: ctrl,
                   maxLines: maxLines,
                   keyboardType: type,
+                  validator: validator,
                   style: const TextStyle(fontSize: 14, fontWeight: FontWeight.bold),
                   decoration: InputDecoration(
+                    labelText: label,
+                    labelStyle: TextStyle(color: Colors.grey.shade500, fontSize: 12),
                     hintText: helper,
                     hintStyle: TextStyle(color: Colors.grey.shade300, fontSize: 13, fontWeight: FontWeight.normal),
-                    isDense: true,
                     border: InputBorder.none,
-                    contentPadding: const EdgeInsets.only(top: 4),
                   ),
                 ),
-              ],
-            ),
+              ),
+            ],
           ),
-        ],
+        ),
+        // ✅ النص التوضيحي يظهر هنا (خارج الكونتينر وتحته)
+       // ✅ هذا الجزء اللي في نهاية الميثود _buildManagementField
+if (exampleText != null)
+  Padding(
+    padding: const EdgeInsets.only(left: 15, bottom: 12),
+    child: Text(
+      exampleText,
+      style: TextStyle(
+        color: Colors.grey.shade500, // نفس لون الـ Label حق صديقتك
+        fontSize: 11,               // نفس حجم الخط الصغير في الحقول
+        fontWeight: FontWeight.normal, // خط عادي مو مائل ولا عريض
+        // شلنا FontStyle.italic عشان يصير زي باقي الخطوط
       ),
+    ),
+  ),
+      ],
     );
   }
 
-  Widget _buildGenderDropdown() {
-    return Container(
-      padding: const EdgeInsets.all(15),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: Colors.grey.shade100),
-      ),
-      child: Row(
-        children: [
-          Icon(Icons.wc_outlined, color: deepMediumPurple, size: 20),
-          const SizedBox(width: 15),
-          Expanded(
-            child: DropdownButtonHideUnderline(
-              child: DropdownButton<String>(
-                value: _selectedGender,
-                isDense: true,
-                items: ["Male", "Female"].map((String value) {
-                  return DropdownMenuItem<String>(value: value, child: Text(value, style: const TextStyle(fontSize: 14, fontWeight: FontWeight.bold)));
-                }).toList(),
-                onChanged: (newValue) => setState(() => _selectedGender = newValue!),
+  
+           Widget _buildGenderDropdown() {
+  return Container(
+    padding: const EdgeInsets.symmetric(horizontal: 15, vertical: 5),
+    decoration: BoxDecoration(
+      color: Colors.white,
+      borderRadius: BorderRadius.circular(12),
+      border: Border.all(color: Colors.grey.shade100),
+    ),
+    child: Row(
+      children: [
+        Icon(Icons.wc_outlined, color: deepMediumPurple, size: 20),
+        const SizedBox(width: 15),
+        Expanded(
+          child: DropdownButtonHideUnderline(
+            child: DropdownButton<String>(
+              value: _selectedGender,
+              // ✅ تعديل الـ Hint: شلنا البولد وخليناه عادي (Normal) ليتناسب مع باقي حقولك
+              hint: const Text(
+                "Choose Gender", 
+                style: TextStyle(
+                  fontSize: 14, 
+                  color: Colors.grey, 
+                  fontWeight: FontWeight.normal
+                )
               ),
+              isExpanded: true,
+              dropdownColor: Colors.white, // ✅ خلفية الدروب داون بيضاء
+              items: ["Male", "Female"].map((String value) {
+                return DropdownMenuItem<String>(
+                  value: value, 
+                  // ✅ توسيط النص داخل قائمة الاختيارات
+                  child: Center(
+                    child: Text(
+                      value, 
+                      style: const TextStyle(
+                        fontSize: 14, 
+                        fontWeight: FontWeight.normal // خط عادي للتناسق
+                      )
+                    ),
+                  ),
+                );
+              }).toList(),
+              onChanged: (newValue) => setState(() => _selectedGender = newValue),
+              // يمكنك إضافة أيقونة سهم مخصصة إذا أردتِ
+              icon: Icon(Icons.arrow_drop_down, color: deepMediumPurple),
             ),
           ),
-        ],
-      ),
-    );
-  }
+        ),
+      ],
+    ),
+  );
+}
 
   void _showPicker(BuildContext context, RegisterViewModel vm) {
     showModalBottomSheet(context: context, builder: (_) => SafeArea(child: Wrap(children: [
@@ -258,16 +320,18 @@ class _CompleteProfileViewState extends State<CompleteProfileView> {
   }
 
   void _submit() {
-    List<String> finalSkills = [..._selectedSkills];
+    if (!_formKey.currentState!.validate()) return;
+
+    List<String> finalSkillsList = [..._selectedSkills];
     for (var controller in _otherSkillControllers) {
-      if (controller.text.trim().isNotEmpty) finalSkills.add(controller.text.trim());
+      if (controller.text.trim().isNotEmpty) finalSkillsList.add(controller.text.trim());
     }
 
     context.read<RegisterViewModel>().updateProfile(
       bio: _bioController.text.trim(),
-      skills: finalSkills.join(", "), 
+      skills: finalSkillsList, 
       city: _cityController.text.trim(),
-      gender: _selectedGender,
+      gender: _selectedGender ?? "Not Specified",
       linkedin: _linkedinController.text.trim(),
       github: _githubController.text.trim(),
       context: context,

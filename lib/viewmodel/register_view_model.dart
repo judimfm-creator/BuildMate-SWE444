@@ -58,16 +58,13 @@ class RegisterViewModel extends ChangeNotifier {
   Future<void> registerUser(UserModel user, String password, BuildContext context) async {
     _setLoading(true);
     try {
-      // إنشاء الحساب في Auth
       UserCredential cred = await FirebaseAuth.instance.createUserWithEmailAndPassword(
           email: user.email.trim(),
           password: password.trim()
       );
 
-      // تخزين مسار الصورة لو تم اختيارها
       String photoPath = _pickedImage?.path ?? "";
 
-      // حفظ البيانات في Firestore باستخدام المسميات الموحدة
       await FirebaseFirestore.instance.collection('users').doc(cred.user!.uid).set({
         'uid': cred.user!.uid,
         'email': user.email.trim(),
@@ -76,16 +73,15 @@ class RegisterViewModel extends ChangeNotifier {
         'phoneNumber': user.phoneNumber.trim(),
         'role': 'user',
         'bio': '',
-        'skills': '',
-        'profilePhotoPath': photoPath,
-        'linkedinUrl': '', // مسمى موحد
-        'githubUrl': '',   // مسمى موحد
+        'skills': [], 
+        'profilePhotoPath': photoPath, 
+        'linkedin': '',
+        'github': '',
         'profileSetupComplete': false,
         'createdAt': FieldValue.serverTimestamp(),
       });
 
       if (context.mounted) {
-        clearPickedImage();
         Navigator.pushReplacementNamed(context, '/completeProfile');
         _showSnackBar(context, "Account Created! Let's complete your profile 🚀", Colors.green);
       }
@@ -98,38 +94,41 @@ class RegisterViewModel extends ChangeNotifier {
     }
   }
 
-  // تحديث البروفايل (دعم LinkedIn و GitHub ليتوافق مع التصميم)
+  // ✅ التعديل هنا: حذفنا الـ Navigator عشان ما تطلعين للهوم بيج
   Future<void> updateProfile({
     required String bio,
-    required String skills,
+    required dynamic skills, 
     required String city,
     required String gender,
     required String linkedin,
     required String github,
     required BuildContext context,
+    bool isDemoMode = false, // ✅ أضفت هذا المتغير عشان نميز
   }) async {
     _setLoading(true);
     try {
       final String? uid = FirebaseAuth.instance.currentUser?.uid;
 
       if (uid != null) {
+        String finalPhotoPath = _pickedImage?.path ?? "";
+
         await FirebaseFirestore.instance.collection('users').doc(uid).set({
           'bio': bio.trim(),
-          'skills': skills.trim(),
+          'skills': skills, 
           'city': city.trim(),
           'gender': gender,
-          'linkedinUrl': linkedin.trim(),
-          'githubUrl': github.trim(),
+          'linkedin': linkedin.trim(),
+          'github': github.trim(),
+          'profilePhotoPath': finalPhotoPath, 
           'profileSetupComplete': true,
           'updatedAt': FieldValue.serverTimestamp(),
         }, SetOptions(merge: true));
 
         if (context.mounted) {
-          Navigator.pushReplacementNamed(context, '/home');
-          _showSnackBar(context, "Profile updated successfully! 🚀", Colors.green);
+          clearPickedImage();
+          // ✅ شلنا سطر الـ Navigator.pushReplacementNamed
+          // التنبيه بيطلع من الصفحة نفسها الحين
         }
-      } else {
-        throw "User session not found.";
       }
     } catch (e) {
       if (context.mounted) {
@@ -140,7 +139,7 @@ class RegisterViewModel extends ChangeNotifier {
     }
   }
 
-  // تسجيل الدخول مع فحص الوجهة (Organization vs User)
+  // تسجيل الدخول
   Future<void> login(String email, String password, BuildContext context) async {
     final cleanEmail = email.trim();
     final cleanPassword = password;
@@ -159,41 +158,24 @@ class RegisterViewModel extends ChangeNotifier {
 
       final firestore = FirebaseFirestore.instance;
 
-      // 1) فحص هل هو منظم (Organization)
       final orgDoc = await firestore.collection('organizations').doc(uid).get();
       if (orgDoc.exists) {
         if (context.mounted) {
           Navigator.pushReplacementNamed(context, '/orgHome');
-          _showSnackBar(context, "Welcome Back, Institution! ✅", Colors.green);
         }
         return;
       }
 
-      // 2) فحص هل هو متسابق (User) وهل أكمل بياناته
       final userDoc = await firestore.collection('users').doc(uid).get();
       if (userDoc.exists) {
-        final data = userDoc.data();
-        final bool setupDone = (data?['profileSetupComplete'] == true);
-
         if (context.mounted) {
-          Navigator.pushReplacementNamed(
-            context,
-            setupDone ? '/home' : '/completeProfile',
-          );
-          _showSnackBar(context, "Welcome Back! ✅", Colors.green);
+          Navigator.pushReplacementNamed(context, '/home');
         }
         return;
       }
 
-      // 3) لو نجح الـ Auth وما فيه Document (حالة نادرة) ننشئ واحد جديد
-      await firestore.collection('users').doc(uid).set({
-        'email': cleanEmail,
-        'profileSetupComplete': false,
-        'createdAt': FieldValue.serverTimestamp(),
-      }, SetOptions(merge: true));
-
       if (context.mounted) {
-        Navigator.pushReplacementNamed(context, '/completeProfile');
+        Navigator.pushReplacementNamed(context, '/home');
       }
     } catch (e) {
       if (context.mounted) {
@@ -204,12 +186,10 @@ class RegisterViewModel extends ChangeNotifier {
     }
   }
 
-  // تسجيل الخروج
   Future<void> logout(BuildContext context) async {
     await _authService.signOut();
     if (context.mounted) {
       Navigator.of(context).pushNamedAndRemoveUntil('/loginUser', (route) => false);
-      _showSnackBar(context, "Logged out successfully! 👋", Colors.blue);
     }
   }
 
@@ -218,8 +198,6 @@ class RegisterViewModel extends ChangeNotifier {
       switch (error.code) {
         case 'email-already-in-use': return "Email already registered.";
         case 'invalid-credential': return "Incorrect email or password.";
-        case 'too-many-requests': return "Too many attempts. Try later.";
-        case 'network-request-failed': return "Check your internet connection.";
         default: return "Error: ${error.code}";
       }
     }
