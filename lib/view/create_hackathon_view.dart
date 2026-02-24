@@ -288,7 +288,8 @@ class _CreateHackathonViewState extends State<CreateHackathonView> {
                   controller: nameController,
                   label: "Hackathon Name",
                   icon: Icons.flag_outlined,
-                  maxLength: 60,
+                  maxLength: 40,
+                  maxLines: null,
                   validator: (v) {
                     if (v == null || v.trim().isEmpty) return "Required";
                     if (v.trim().length < 5) return "Minimum 5 characters";
@@ -366,13 +367,16 @@ class _CreateHackathonViewState extends State<CreateHackathonView> {
 
                 _textField(
                   controller: cityController,
+                  maxLength: 40,
+                  maxLines: null,
                   label: "City",
                   icon: Icons.location_city_outlined,
                 ),
 
                 _textField(
                   controller: locationController,
-                  maxLength: 60,
+                  maxLength: 40,
+                  maxLines: null,
                   label: "Location (e.g., Venue / Address)",
                   icon: Icons.place_outlined,
                 ),
@@ -568,7 +572,7 @@ class _CreateHackathonViewState extends State<CreateHackathonView> {
     required String label,
     required IconData icon,
     String? hint,
-    int maxLines = 1,
+    int? maxLines = 1,
     int? maxLength,
     TextInputType keyboardType = TextInputType.text,
     String? Function(String?)? validator,
