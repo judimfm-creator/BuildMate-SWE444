@@ -1,9 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 
-// تم تحديث المسارات لتناسب المجلدات الجديدة
+
 import '../view/register_org_view.dart'; 
-// تأكدي من أن اسم الملف في هذا المسار صحيح (org_home_screen.dart)
+
 import '../org_home_screen.dart'; 
 
 class OrgLoginScreen extends StatefulWidget {
@@ -52,7 +52,6 @@ class _OrgLoginScreenState extends State<OrgLoginScreen> {
 
       if (!mounted) return;
 
-      // التأكد من أن اسم الـ Home Screen صحيح
       Navigator.pushReplacement(
         context,
         MaterialPageRoute(builder: (_) => const InstitutionHomeScreen()),
