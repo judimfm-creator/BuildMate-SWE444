@@ -95,50 +95,57 @@ class RegisterViewModel extends ChangeNotifier {
   }
 
   // ✅ التعديل هنا: حذفنا الـ Navigator عشان ما تطلعين للهوم بيج
-  Future<void> updateProfile({
-    required String bio,
-    required dynamic skills, 
-    required String city,
-    required String gender,
-    required String linkedin,
-    required String github,
-    required BuildContext context,
-    bool isDemoMode = false, // ✅ أضفت هذا المتغير عشان نميز
-  }) async {
-    _setLoading(true);
-    try {
-      final String? uid = FirebaseAuth.instance.currentUser?.uid;
+ Future<void> updateProfile({
+  required String bio,
+  required dynamic skills,
+  required String city,
+  required String gender,
+  required String linkedin,
+  required String github,
+  required BuildContext context,
+  bool isDemoMode = false,
+}) async {
+  _setLoading(true);
 
-      if (uid != null) {
-        String finalPhotoPath = _pickedImage?.path ?? "";
+  try {
+    final user = FirebaseAuth.instance.currentUser;
 
-        await FirebaseFirestore.instance.collection('users').doc(uid).set({
-          'bio': bio.trim(),
-          'skills': skills, 
-          'city': city.trim(),
-          'gender': gender,
-          'linkedin': linkedin.trim(),
-          'github': github.trim(),
-          'profilePhotoPath': finalPhotoPath, 
-          'profileSetupComplete': true,
-          'updatedAt': FieldValue.serverTimestamp(),
-        }, SetOptions(merge: true));
-
-        if (context.mounted) {
-          clearPickedImage();
-          // ✅ شلنا سطر الـ Navigator.pushReplacementNamed
-          // التنبيه بيطلع من الصفحة نفسها الحين
-        }
-      }
-    } catch (e) {
-      if (context.mounted) {
-        _showSnackBar(context, "Update failed: ${e.toString()}", Colors.red);
-      }
-    } finally {
+    if (user == null) {
+      _showSnackBar(context, "User not logged in ❌", Colors.red);
       _setLoading(false);
+      return;
     }
-  }
 
+    String finalPhotoPath = _pickedImage?.path ?? "";
+
+    await FirebaseFirestore.instance.collection('users').doc(user.uid).set({
+      'bio': bio.trim(),
+      'skills': skills,
+      'city': city.trim(),
+      'gender': gender,
+      'linkedin': linkedin.trim(),
+      'github': github.trim(),
+      'profilePhotoPath': finalPhotoPath,
+      'profileSetupComplete': true,
+      'updatedAt': FieldValue.serverTimestamp(),
+    }, SetOptions(merge: true));
+
+    if (context.mounted) {
+      clearPickedImage();
+      _showSnackBar(context, "Profile updated successfully ✅", Colors.green);
+
+      // 🔥 أضفت هذا عشان تتأكدين أنه فعلاً يشتغل
+      Navigator.pushReplacementNamed(context, '/home');
+    }
+
+  } catch (e) {
+    if (context.mounted) {
+      _showSnackBar(context, "Update failed: ${e.toString()}", Colors.red);
+    }
+  } finally {
+    _setLoading(false);
+  }
+}
   // تسجيل الدخول
   Future<void> login(String email, String password, BuildContext context) async {
     final cleanEmail = email.trim();

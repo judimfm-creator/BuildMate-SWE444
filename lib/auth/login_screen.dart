@@ -72,9 +72,13 @@ class _LoginScreenState extends State<LoginScreen> {
                 TextFormField(
                   controller: _emailController,
                   enabled: !authVM.isLoading,
-                  keyboardType: TextInputType.emailAddress,
+keyboardType: TextInputType.emailAddress, // ✅ تطلع لوحة مفاتيح الإيميل (@)
+  maxLines: 2,
+  minLines: 1,
+  maxLength: 40,
                   decoration: InputDecoration(
                     labelText: "Email",
+                    counterText: "", // ✅ عشان ما يطلع رقم 0/40 تحت الحقل ويخرب الشكل
                     prefixIcon: const Icon(Icons.email_outlined, color: purple),
                     border: OutlineInputBorder(
                       borderRadius: BorderRadius.circular(12),
@@ -94,7 +98,9 @@ class _LoginScreenState extends State<LoginScreen> {
                   controller: _passwordController,
                   enabled: !authVM.isLoading,
                   obscureText: !_isPasswordVisible,
+                  maxLength: 40,
                   decoration: InputDecoration(
+                    counterText: "",
                     labelText: "Password",
                     prefixIcon: const Icon(Icons.lock_outline, color: purple),
                     suffixIcon: IconButton(

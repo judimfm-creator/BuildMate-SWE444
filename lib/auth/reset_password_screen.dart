@@ -113,14 +113,19 @@ class _ResetPasswordScreenState extends State<ResetPasswordScreen> {
 
               TextField(
                 controller: _emailController,
-                keyboardType: TextInputType.emailAddress,
+               keyboardType: TextInputType.emailAddress, // ✅ تطلع لوحة مفاتيح الإيميل (@)
+  maxLines: 2,
+  minLines: 1,
+  maxLength: 40, //
                 enabled: !_loading,
                 decoration: InputDecoration(
                   labelText: "Email",
+                  counterText: "", // ✅ إخفاء العداد 0/40 عشان التصميم يبقى نظيف
                   prefixIcon: const Icon(Icons.email_outlined, color: purple),
                   border: OutlineInputBorder(
                     borderRadius: BorderRadius.circular(12),
                   ),
+                  contentPadding: const EdgeInsets.symmetric(vertical: 15, horizontal: 12),
                 ),
               ),
 

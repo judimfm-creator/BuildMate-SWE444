@@ -30,7 +30,6 @@ class _RegisterOrgViewState extends State<RegisterOrgView> {
   @override
   void initState() {
     super.initState();
-    // ✅ السطر المسؤول عن تصفير الصورة عند الدخول بـ حساب جديد
     WidgetsBinding.instance.addPostFrameCallback((_) {
       context.read<RegisterViewModel>().clearPickedImage();
     });
@@ -95,12 +94,10 @@ class _RegisterOrgViewState extends State<RegisterOrgView> {
                       backgroundImage: vm.pickedImage != null
                           ? FileImage(vm.pickedImage!)
                           : null,
-                      // ✅ تم تغيير الأيقونة لتكون نفس أيقونة اليوزر (Icons.person)
                       child: vm.pickedImage == null
                           ? Icon(Icons.person, color: purple, size: 50)
                           : null,
                     ),
-                    // زر إضافة/تغيير الصورة
                     Positioned(
                       bottom: 0,
                       right: 0,
@@ -115,7 +112,6 @@ class _RegisterOrgViewState extends State<RegisterOrgView> {
                         ),
                       ),
                     ),
-                    // ✅ تم إضافة زر الحذف (X) الأحمر ليظهر عند وجود صورة
                     if (vm.pickedImage != null)
                       Positioned(
                         top: 0,
@@ -140,27 +136,30 @@ class _RegisterOrgViewState extends State<RegisterOrgView> {
                 "Organization Name",
                 "minimum 3 characters",
                 Icons.corporate_fare,
+                wrap: true, // ✅ راب
                 validator: (v) => (v != null && v.trim().length < 3)
                     ? "Organization name must be at least 3 characters"
                     : null,
               ),
-            _buildField(
-  _usernameController,
-  "Username",
-  "minimum 3 characters,spaces are not allowed",
-  Icons.person_outline,
-  validator: (v) {
-    if (v == null || v.isEmpty) return "Username is required";
-    if (v.contains(' ')) return "Spaces are not allowed"; // ✅ هذا شرط منع المسافات
-    if (v.trim().length < 3) return "Username must be at least 3 characters";
-    return null;
-  },
-),
+              _buildField(
+                _usernameController,
+                "Username",
+                "minimum 3 characters, spaces are not allowed",
+                Icons.person_outline,
+                wrap: true, // ✅ راب
+                validator: (v) {
+                  if (v == null || v.isEmpty) return "Username is required";
+                  if (v.contains(' ')) return "Spaces are not allowed";
+                  if (v.trim().length < 3) return "Username must be at least 3 characters";
+                  return null;
+                },
+              ),
               _buildField(
                 _emailController,
                 "Email Address",
                 "name@org.com ",
                 Icons.email_outlined,
+                wrap: true, // ✅ راب
                 type: TextInputType.emailAddress,
                 validator: (v) {
                   if (v == null || v.trim().isEmpty) return "Email is required";
@@ -176,11 +175,12 @@ class _RegisterOrgViewState extends State<RegisterOrgView> {
                 "Phone Number",
                 "10 digits starting with '05'",
                 Icons.phone_android,
+                isPhone: true, // ✅ 10 أرقام وما فيه راب
                 type: TextInputType.phone,
                 validator: (v) {
                   final regex = RegExp(r'^05\d{8}$');
                   if (v == null || !regex.hasMatch(v.trim()))
-                    return "Must start with 05 and be 10 digits";
+                    return "must start with 05 and be 10 digits";
                   return null;
                 },
               ),
@@ -189,6 +189,7 @@ class _RegisterOrgViewState extends State<RegisterOrgView> {
                 "Location",
                 "e.g., Riyadh, KSU Campus",
                 Icons.location_on_outlined,
+                wrap: true, // ✅ راب
                 validator: (v) => (v == null || v.trim().isEmpty)
                     ? "Location is required"
                     : null,
@@ -198,7 +199,7 @@ class _RegisterOrgViewState extends State<RegisterOrgView> {
                 "Biography",
                 "Brief description of the organization",
                 Icons.info_outline,
-                maxLines: 3,
+                isBio: true, // ✅ 100 حرف وعداد وراب
                 validator: (v) => (v == null || v.trim().isEmpty)
                     ? "Biography is required"
                     : null,
@@ -250,7 +251,9 @@ class _RegisterOrgViewState extends State<RegisterOrgView> {
   Widget _buildField(
       TextEditingController ctrl, String label, String helper, IconData icon,
       {TextInputType type = TextInputType.text,
-      int maxLines = 1,
+      bool wrap = false,
+      bool isBio = false,
+      bool isPhone = false,
       String? Function(String?)? validator}) {
     bool isValid = _isFieldValid(label, ctrl.text);
 
@@ -259,12 +262,14 @@ class _RegisterOrgViewState extends State<RegisterOrgView> {
       child: TextFormField(
         controller: ctrl,
         keyboardType: type,
-        maxLines: maxLines,
+        maxLines: (isBio || wrap) ? null : 1, // ✅ راب للكل ماعدا الجوال
+        maxLength: isBio ? 100 : (isPhone ? 10 : 40), // ✅ القيود المطلوبة
         onChanged: (v) => setState(() {}),
         decoration: InputDecoration(
           labelText: label,
           helperText: helper,
           helperStyle: const TextStyle(fontSize: 11, color: Colors.blueGrey),
+          counterText: isBio ? null : "", // ✅ عداد فقط للبيو
           floatingLabelBehavior: FloatingLabelBehavior.always,
           prefixIcon: Icon(icon, color: purple),
           enabledBorder: OutlineInputBorder(
@@ -296,11 +301,13 @@ class _RegisterOrgViewState extends State<RegisterOrgView> {
       child: TextFormField(
         controller: ctrl,
         obscureText: !visible,
+        maxLength: 40, // ✅ ماكس 40
         onChanged: (v) => setState(() {}),
         decoration: InputDecoration(
           labelText: label,
           helperText: helper,
           helperStyle: const TextStyle(fontSize: 11, color: Colors.blueGrey),
+          counterText: "", // ✅ بدون عداد
           floatingLabelBehavior: FloatingLabelBehavior.always,
           prefixIcon: Icon(Icons.lock_outline, color: purple),
           suffixIcon: IconButton(
