@@ -321,12 +321,15 @@ class _CreateHackathonViewState extends State<CreateHackathonView> {
                 if (selectedDomain == 'Other')
                   _textField(
                     controller: otherDomainController,
+
                     label: "Specify Domain",
                     icon: Icons.edit_outlined,
                     validator: (v) {
-                      if (selectedDomain == 'Other' &&
-                          (v == null || v.trim().isEmpty)) {
+                      if (selectedDomain == 'Other' && (v == null || v.trim().isEmpty)) {
                         return "Required";
+                      }
+                      if (v != null && RegExp(r'^\d+$').hasMatch(v.trim())) {
+                        return "Cannot be numbers only";
                       }
                       return null;
                     },
@@ -469,9 +472,11 @@ class _CreateHackathonViewState extends State<CreateHackathonView> {
                             label: "Specify Other Role",
                             icon: Icons.edit_outlined,
                             validator: (v) {
-                              if (selectedRoles.contains("Other") &&
-                                  (v == null || v.trim().isEmpty)) {
+                              if (selectedRoles.contains("Other") && (v == null || v.trim().isEmpty)) {
                                 return "Required";
+                              }
+                              if (v != null && RegExp(r'^\d+$').hasMatch(v.trim())) {
+                                return "Cannot be numbers only";
                               }
                               return null;
                             },
