@@ -17,24 +17,32 @@ class OrgProfileViewModel extends ChangeNotifier {
     });
   }
 
- Future<void> updateOrgProfile({
+Future<void> updateOrgProfile({
     required String name,
     required String phone,
     required String location,
     required String bio,
-    String? image, // ✅ أضفنا حقل الصورة هنا
+    String? image, 
     required BuildContext context,
   }) async {
     try {
       String uid = _auth.currentUser?.uid ?? "";
-      await _firestore.collection('organizations').doc(uid).update({
+      
+      // نجهز البيانات الأساسية
+      Map<String, dynamic> data = {
         'orgName': name,
         'phoneNumber': phone,
         'location': location,
         'biography': bio,
-        'profilePhotoPath': image, // ✅ الحين فايربيز بيمسح الصورة لو أرسلنا نص فارغ
-      });
-      // شلنا السناك بار من هنا عشان نتحكم فيه في الصفحة زي اليوزر
+      };
+
+      // الحل هنا: لا نرسل حقل الصورة للفايربيز إلا لو كان فيه قيمة (تحديث أو حذف متعمد)
+      if (image != null) {
+        data['profilePhotoPath'] = image;
+      }
+
+      await _firestore.collection('organizations').doc(uid).update(data);
+      
     } catch (e) {
       debugPrint("Update Failed: $e");
     }

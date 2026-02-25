@@ -95,7 +95,7 @@ class RegisterViewModel extends ChangeNotifier {
   }
 
   // ✅ التعديل هنا: حذفنا الـ Navigator عشان ما تطلعين للهوم بيج
- Future<void> updateProfile({
+Future<void> updateProfile({
   required String bio,
   required dynamic skills,
   required String city,
@@ -104,6 +104,7 @@ class RegisterViewModel extends ChangeNotifier {
   required String github,
   required BuildContext context,
   bool isDemoMode = false,
+  bool deletePhoto = false, // هذا المتغير اللي أضفناه للتحكم بالحذف
 }) async {
   _setLoading(true);
 
@@ -115,27 +116,34 @@ class RegisterViewModel extends ChangeNotifier {
       _setLoading(false);
       return;
     }
-
-    String finalPhotoPath = _pickedImage?.path ?? "";
-
-    await FirebaseFirestore.instance.collection('users').doc(user.uid).set({
+    Map<String, dynamic> dataToUpdate = {
       'bio': bio.trim(),
       'skills': skills,
       'city': city.trim(),
       'gender': gender,
       'linkedin': linkedin.trim(),
       'github': github.trim(),
-      'profilePhotoPath': finalPhotoPath,
       'profileSetupComplete': true,
       'updatedAt': FieldValue.serverTimestamp(),
-    }, SetOptions(merge: true));
+    };
+
+    if (deletePhoto) {
+      dataToUpdate['profilePhotoPath'] = FieldValue.delete();; // يحذف فقط لو أرسلنا deletePhoto = true
+    } else if (_pickedImage != null) {
+      dataToUpdate['profilePhotoPath'] = _pickedImage!.path; // يحدث لو اخترنا صورة جديدة
+    }
+    // لو ما اخترنا صورة وما طلبنا حذف، حقل الصورة لن يتأثر (سيبقى القديم)
+    // --- نهاية التعديل ---
+
+    await FirebaseFirestore.instance.collection('users').doc(user.uid).set(
+      dataToUpdate, 
+      SetOptions(merge: true)
+    );
 
     if (context.mounted) {
       clearPickedImage();
       _showSnackBar(context, "Profile updated successfully ✅", Colors.green);
-
-      // 🔥 أضفت هذا عشان تتأكدين أنه فعلاً يشتغل
-      Navigator.pushReplacementNamed(context, '/home');
+      //Navigator.pushReplacementNamed(context, '/');
     }
 
   } catch (e) {

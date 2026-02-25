@@ -133,8 +133,7 @@ class _ProfileManagementPageState extends State<ProfileManagementPage> {
       },
     );
   }
-
-  Widget _buildSaveButton(UserModel? user) {
+Widget _buildSaveButton(UserModel? user) {
     return Container(
       padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(color: Colors.white, boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.05), blurRadius: 10, offset: const Offset(0, -5))]),
@@ -144,24 +143,34 @@ class _ProfileManagementPageState extends State<ProfileManagementPage> {
           style: ElevatedButton.styleFrom(backgroundColor: deepMediumPurple, shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12))),
           onPressed: () async {
             final vm = Provider.of<RegisterViewModel>(context, listen: false);
-            bool hasDeletions = _itemsMarkedForDeletion.isNotEmpty;
+            // تم تعديل الشرط ليشمل وضع التعديل لضمان الحفظ
+            bool hasChanges = _itemsMarkedForDeletion.isNotEmpty || _isEditMode;
 
-            if (hasDeletions) {
+            if (hasChanges) {
               List<String> finalSkills = _selectedSkills.where((s) => !_itemsMarkedForDeletion.contains("skill_$s")).toList();
               await vm.updateProfile(
-                bio: _itemsMarkedForDeletion.contains("bio") ? "" : (user?.bio ?? ""),
-                city: _itemsMarkedForDeletion.contains("city") ? "" : (user?.city ?? ""),
-                linkedin: _itemsMarkedForDeletion.contains("linkedin") ? "" : (user?.linkedin ?? ""),
-                github: _itemsMarkedForDeletion.contains("github") ? "" : (user?.github ?? ""),
+                // تم تعديل هذه السطور لتقرأ من الكنترولر وتدعم الحذف
+                bio: _itemsMarkedForDeletion.contains("bio") ? "" : (_controllers["Biography"]?.text ?? ""),
+                city: _itemsMarkedForDeletion.contains("city") ? "" : (_controllers["City"]?.text ?? ""),
+                linkedin: _itemsMarkedForDeletion.contains("linkedin") ? "" : (_controllers["LinkedIn"]?.text ?? ""),
+                github: _itemsMarkedForDeletion.contains("github") ? "" : (_controllers["GitHub"]?.text ?? ""),
                 skills: finalSkills,
                 gender: _selectedGender ?? "",
                 context: context,
+                deletePhoto: _itemsMarkedForDeletion.contains("photo"),
               );
-              if (_itemsMarkedForDeletion.contains("photo")) vm.clearPickedImage();
+
+              if (_itemsMarkedForDeletion.contains("photo")) {
+                vm.clearPickedImage();
+              }           
+
               ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Profile updated successfully! ✅'), backgroundColor: Colors.green));
+              
+              // 🔥 هذا السطر هو اللي يخلي الصورة تختفي من الشاشة فوراً
               await _loadUserData();
+
             } else {
-              ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Changes saved locally! ✅ (Demo Mode)'), backgroundColor: Colors.green));
+              ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('No changes to save!'), backgroundColor: Colors.orange));
             }
 
             setState(() { 

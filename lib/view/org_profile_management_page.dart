@@ -90,7 +90,7 @@ class _OrgProfileManagementPageState extends State<OrgProfileManagementPage> {
                             const SizedBox(height: 15),
                             _buildSectionTitle("Additional Details"),
                             _buildFieldRow("Biography", "biography", Icons.info_outline),
-                            _buildFieldRow("Location", "location", Icons.location_on_outlined),
+                            _buildInfoField("Location", Icons.location_on_outlined),
                             const SizedBox(height: 30),
                             if (!_isEditMode) _buildDeleteButton(),
                             const SizedBox(height: 50),
@@ -210,12 +210,16 @@ class _OrgProfileManagementPageState extends State<OrgProfileManagementPage> {
 
             if (_itemsMarkedForDeletion.isNotEmpty) {
               await orgVM.updateOrgProfile(
-                name: org?.orgName ?? "",
-                phone: org?.phoneNumber ?? "",
-                location: org?.location ?? "",
-                bio: _itemsMarkedForDeletion.contains("biography") ? "" : (org?.biography ?? ""),
-                context: context,
-              );
+  name: _controllers["Organization Name"]?.text ?? org?.orgName ?? "",
+  phone: _controllers["Phone Number"]?.text ?? org?.phoneNumber ?? "",
+  location: _itemsMarkedForDeletion.contains("location") ? "" : (_controllers["Location"]?.text ?? ""),
+  bio: _itemsMarkedForDeletion.contains("biography") ? "" : (_controllers["Biography"]?.text ?? ""),
+  context: context,
+  // الحل: نرسل "" فقط لو ضغطتي حذف، ونرسل null لو ما لمستي الصورة عشان ما تتغير
+  image: _itemsMarkedForDeletion.contains("photo") ? "" : (regVM.pickedImage?.path),
+);
+
+// تأكدي أن هذا السطر موجود عشان الصورة تختفي من الشاشة
               if (_itemsMarkedForDeletion.contains("photo")) regVM.clearPickedImage();
               ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Profile updated successfully! ✅'), backgroundColor: Colors.green));
               await _loadOrgData();
