@@ -12,7 +12,7 @@ class SelectRoleScreen extends StatelessWidget {
       appBar: AppBar(
         backgroundColor: Colors.transparent,
         elevation: 0,
-        toolbarHeight: 40, // تقليل ارتفاع الـ AppBar لرفع المحتوى
+        toolbarHeight: 40, 
         leading: IconButton(
           icon: const Icon(Icons.arrow_back_ios_new, color: Colors.black, size: 20),
           onPressed: () => Navigator.pop(context),
@@ -23,7 +23,7 @@ class SelectRoleScreen extends StatelessWidget {
           padding: const EdgeInsets.symmetric(horizontal: 24),
           child: Column(
             children: [
-              // 1. قسم اللوجو (نفس حجم وشكل اللوج ان)
+              
               Center(
                 child: Image.asset(
                   'assets/images/logo.png',
@@ -32,16 +32,16 @@ class SelectRoleScreen extends StatelessWidget {
                 ),
               ),
               
-              const SizedBox(height: 5), // مسافة صغيرة جداً لرفع النص
+              const SizedBox(height: 5),
               const Text(
                 "Welcome to BuildMate",
                 style: TextStyle(
-                  fontSize: 24, // تصغير بسيط ليناسب الرفع
+                  fontSize: 24, 
                   fontWeight: FontWeight.bold,
                   color: Colors.black87,
                 ),
               ),
-              const SizedBox(height: 35), // مسافة متوازنة قبل الكروت
+              const SizedBox(height: 35), 
 
               const Align(
                 alignment: Alignment.centerLeft,
@@ -60,7 +60,7 @@ class SelectRoleScreen extends StatelessWidget {
               ),
               const SizedBox(height: 25),
 
-              // 2. كرت المتسابق
+              
               _buildModernRoleCard(
                 context: context,
                 title: "Participant",
@@ -72,7 +72,7 @@ class SelectRoleScreen extends StatelessWidget {
 
               const SizedBox(height: 16),
 
-              // 3. كرت المنظمة
+              
               _buildModernRoleCard(
                 context: context,
                 title: "Organization",
