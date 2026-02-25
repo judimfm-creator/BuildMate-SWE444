@@ -99,6 +99,7 @@ class _CreateHackathonViewState extends State<CreateHackathonView> {
   }) {
     return InputDecoration(
       labelText: label,
+      errorMaxLines: 2,
       hintText: hint,
       prefixIcon: Icon(icon, color: purple),
       errorText: errorText,
@@ -137,10 +138,12 @@ class _CreateHackathonViewState extends State<CreateHackathonView> {
 
   Future<void> _pickStartDate() async {
     final now = DateTime.now();
+    final today = DateTime(now.year, now.month, now.day);
+
     final picked = await showDatePicker(
       context: context,
-      initialDate: startDate ?? now,
-      firstDate: DateTime(now.year - 1),
+      initialDate: startDate ?? today,
+      firstDate: today,
       lastDate: DateTime(now.year + 5),
     );
 
@@ -349,8 +352,8 @@ class _CreateHackathonViewState extends State<CreateHackathonView> {
                         validator: (v) {
                           if (v == null || v.trim().isEmpty) return "Required";
                           final n = int.tryParse(v.trim());
-                          if (n == null || n <= 0)
-                            return "Enter a valid number";
+                          if (n == null || n < 2)
+                            return "Team size must be 2 or more";
                           return null;
                         },
                       ),
