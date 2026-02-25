@@ -39,7 +39,20 @@ class RegisterViewModel extends ChangeNotifier {
   Future<void> registerOrg(OrgModel org, String password, BuildContext context) async {
     _setLoading(true);
     try {
+      // 1. 🔥 الفحص السحري: نتحقق إذا الرقم موجود عند (يوزر) أو (منشأة)
+      bool exists = await _isPhoneNumberAlreadyExists(org.phoneNumber);
+      
+      if (exists) {
+        if (context.mounted) {
+          _showSnackBar(context, "This phone number is already registered ", Colors.red);
+        }
+        _setLoading(false);
+        return; // نوقف العملية هنا تماماً
+      }
+
+      // 2. إذا الرقم سليم، نكمل التسجيل
       await _authService.signUpOrg(org, password.trim());
+      
       if (context.mounted) {
         clearPickedImage();
         Navigator.pushReplacementNamed(context, '/orgHome');
@@ -58,6 +71,13 @@ class RegisterViewModel extends ChangeNotifier {
   Future<void> registerUser(UserModel user, String password, BuildContext context) async {
     _setLoading(true);
     try {
+      bool exists = await _isPhoneNumberAlreadyExists(user.phoneNumber);
+    
+    if (exists) {
+      _showSnackBar(context, "This phone number is already registered ", Colors.red);
+      _setLoading(false);
+      return; // نخرج من الدالة ولا ننشئ الحساب
+    }
       UserCredential cred = await FirebaseAuth.instance.createUserWithEmailAndPassword(
           email: user.email.trim(),
           password: password.trim()
@@ -224,4 +244,19 @@ Future<void> updateProfile({
       SnackBar(content: Text(message), backgroundColor: color),
     );
   }
+  Future<bool> _isPhoneNumberAlreadyExists(String phoneNumber) async {
+  // 1. فحص في جدول اليوزرز
+  final userQuery = await FirebaseFirestore.instance
+      .collection('users')
+      .where('phoneNumber', isEqualTo: phoneNumber.trim())
+      .get();
+  if (userQuery.docs.isNotEmpty) return true;
+
+  // 2. فحص في جدول المنشآت
+  final orgQuery = await FirebaseFirestore.instance
+      .collection('organizations')
+      .where('phoneNumber', isEqualTo: phoneNumber.trim())
+      .get();
+  return orgQuery.docs.isNotEmpty;
+}
 }

@@ -207,8 +207,8 @@ class _OrgProfileManagementPageState extends State<OrgProfileManagementPage> {
           onPressed: () async {
             final orgVM = Provider.of<OrgProfileViewModel>(context, listen: false);
             final regVM = Provider.of<RegisterViewModel>(context, listen: false);
-
-            if (_itemsMarkedForDeletion.isNotEmpty) {
+bool hasChanges = _itemsMarkedForDeletion.isNotEmpty ;
+            if (hasChanges) {
               await orgVM.updateOrgProfile(
   name: _controllers["Organization Name"]?.text ?? org?.orgName ?? "",
   phone: _controllers["Phone Number"]?.text ?? org?.phoneNumber ?? "",
@@ -216,8 +216,7 @@ class _OrgProfileManagementPageState extends State<OrgProfileManagementPage> {
   bio: _itemsMarkedForDeletion.contains("biography") ? "" : (_controllers["Biography"]?.text ?? ""),
   context: context,
   // الحل: نرسل "" فقط لو ضغطتي حذف، ونرسل null لو ما لمستي الصورة عشان ما تتغير
-  image: _itemsMarkedForDeletion.contains("photo") ? "" : (regVM.pickedImage?.path),
-);
+image: _itemsMarkedForDeletion.contains("photo") ? "" : (regVM.pickedImage?.path),);
 
 // تأكدي أن هذا السطر موجود عشان الصورة تختفي من الشاشة
               if (_itemsMarkedForDeletion.contains("photo")) regVM.clearPickedImage();

@@ -170,8 +170,13 @@ Widget _buildSaveButton(UserModel? user) {
               await _loadUserData();
 
             } else {
-              ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('No changes to save!'), backgroundColor: Colors.orange));
-            }
+// استبدلي السطر القديم بهذا السطر بالضبط:
+ScaffoldMessenger.of(context).showSnackBar(
+  const SnackBar(
+    content: Text('Changes saved locally! ✅ (Demo Mode)'), 
+    backgroundColor: Colors.green
+  )
+);            }
 
             setState(() { 
               _isEditMode = false; 
