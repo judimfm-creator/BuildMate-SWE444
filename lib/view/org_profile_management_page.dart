@@ -89,8 +89,8 @@ class _OrgProfileManagementPageState extends State<OrgProfileManagementPage> {
                             _buildInfoField("Phone Number", Icons.phone_android, isAlwaysDisabled: true),
                             const SizedBox(height: 15),
                             _buildSectionTitle("Additional Details"),
-                            _buildFieldRow("Biography", "biography", Icons.info_outline, maxLines: 3),
-                            _buildInfoField("Location", Icons.location_on_outlined), 
+                            _buildFieldRow("Biography", "biography", Icons.info_outline),
+                            _buildFieldRow("Location", "location", Icons.location_on_outlined),
                             const SizedBox(height: 30),
                             if (!_isEditMode) _buildDeleteButton(),
                             const SizedBox(height: 50),
@@ -106,24 +106,34 @@ class _OrgProfileManagementPageState extends State<OrgProfileManagementPage> {
     );
   }
 
-  Widget _buildInfoField(String label, IconData icon, {bool isAlwaysDisabled = false, int maxLines = 1}) {
+  Widget _buildInfoField(String label, IconData icon, {bool isAlwaysDisabled = false}) {
     TextEditingController ctrl = _controllers[label] ?? TextEditingController();
     bool canEdit = _isEditMode && !isAlwaysDisabled;
 
+    bool isBio = label.toLowerCase().contains("bio") || label.toLowerCase().contains("biography");
+    bool isPhone = label.toLowerCase().contains("phone");
+    bool isEmail = label.toLowerCase().contains("email");
+
     return Opacity(
-      opacity: _isEditMode ? 1.0 : 0.6, 
+      opacity: _isEditMode ? 1.0 : 0.6,
       child: Container(
         margin: const EdgeInsets.only(bottom: 12),
         padding: const EdgeInsets.all(15),
         decoration: BoxDecoration(
           color: Colors.white,
           borderRadius: BorderRadius.circular(12),
-          border: Border.all(color: canEdit ? primaryPurple.withOpacity(0.5) : Colors.grey.shade100, width: canEdit ? 1.5 : 1),
+          border: Border.all(
+            color: canEdit ? primaryPurple.withOpacity(0.5) : Colors.grey.shade100,
+            width: canEdit ? 1.5 : 1,
+          ),
         ),
         child: Row(
-          crossAxisAlignment: maxLines > 1 ? CrossAxisAlignment.start : CrossAxisAlignment.center,
+          crossAxisAlignment: CrossAxisAlignment.start, // الأيقونة تبقى فوق عند تعدد الأسطر
           children: [
-            Icon(icon, color: primaryPurple, size: 20),
+            Padding(
+              padding: const EdgeInsets.only(top: 2),
+              child: Icon(icon, color: primaryPurple, size: 20),
+            ),
             const SizedBox(width: 15),
             Expanded(
               child: Column(
@@ -134,34 +144,43 @@ class _OrgProfileManagementPageState extends State<OrgProfileManagementPage> {
                   TextFormField(
                     controller: ctrl,
                     enabled: canEdit,
-                    maxLines: maxLines,
+                    maxLines: (isPhone || isEmail) ? 1 : null,
+                    maxLength: isBio ? 100 : (isPhone ? 10 : 40),
+                    keyboardType: isPhone
+                        ? TextInputType.phone
+                        : (isEmail ? TextInputType.emailAddress : TextInputType.multiline),
                     style: const TextStyle(fontSize: 14, fontWeight: FontWeight.bold),
-                    decoration: const InputDecoration(
+                    decoration: InputDecoration(
                       isDense: true,
                       border: InputBorder.none,
                       contentPadding: EdgeInsets.zero,
+                      counterText: isBio ? null : "", // إظهار العداد فقط في البيو
                     ),
                   ),
                 ],
               ),
             ),
-            if (isAlwaysDisabled) Icon(Icons.lock_outline, size: 16, color: Colors.grey.shade300),
+            if (isAlwaysDisabled)
+              Padding(
+                padding: const EdgeInsets.only(top: 10),
+                child: Icon(Icons.lock_outline, size: 16, color: Colors.grey.shade300),
+              ),
           ],
         ),
       ),
     );
   }
 
-  Widget _buildFieldRow(String label, String key, IconData icon, {int maxLines = 1}) {
+  Widget _buildFieldRow(String label, String key, IconData icon) {
     bool isMarked = _itemsMarkedForDeletion.contains(key);
     return Row(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Expanded(
-          child: Opacity(
-            opacity: isMarked ? 0.3 : 1.0, 
-            child: _buildInfoField(label, icon, maxLines: maxLines)
-          )
+            child: Opacity(
+                opacity: isMarked ? 0.3 : 1.0,
+                child: _buildInfoField(label, icon)
+            )
         ),
         if (_isEditMode)
           Padding(

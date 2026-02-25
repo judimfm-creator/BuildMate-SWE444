@@ -48,7 +48,7 @@ class _ProfilePageState extends State<ProfilePage> with SingleTickerProviderStat
     return Scaffold(
       backgroundColor: Colors.white,
       appBar: const BuildMateAppBar(
-        titleText: 'Profile',
+        titleText: '',
         showBack: false,
       ),
       body: StreamBuilder<UserModel?>(
@@ -59,7 +59,6 @@ class _ProfilePageState extends State<ProfilePage> with SingleTickerProviderStat
           }
           final user = snapshot.data;
           
-          // حل مشكلة No user data found
           if (user == null) {
             return const Center(child: Text("No user profile found"));
           }
@@ -142,19 +141,31 @@ class _ProfilePageState extends State<ProfilePage> with SingleTickerProviderStat
               style: TextStyle(fontSize: 13, color: Colors.grey.shade700, height: 1.4)),
           ),
         const SizedBox(height: 10),
-        
+
         Row(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            if (user.linkedin != null && user.linkedin!.isNotEmpty) 
+            if (user.linkedin != null && user.linkedin!.isNotEmpty)
               IconButton(
-                icon: const Icon(FontAwesomeIcons.linkedin, color: Color(0xFF7A62B3)), 
-                onPressed: () => _launchURL(user.linkedin),
+                icon: const Icon(FontAwesomeIcons.linkedin, color: Color(0xFF7A62B3)),
+                onPressed: () async {
+                  final Uri uri = Uri.parse(user.linkedin!);
+                  await launchUrl(
+                    uri,
+                    mode: LaunchMode.inAppBrowserView,
+                  );
+                },
               ),
-            if (user.github != null && user.github!.isNotEmpty) 
+            if (user.github != null && user.github!.isNotEmpty)
               IconButton(
-                icon: const Icon(FontAwesomeIcons.github, color: Color(0xFF7A62B3)), 
-                onPressed: () => _launchURL(user.github),
+                icon: const Icon(FontAwesomeIcons.github, color: Color(0xFF7A62B3)),
+                onPressed: () async {
+                  final Uri uri = Uri.parse(user.github!);
+                  await launchUrl(
+                    uri,
+                    mode: LaunchMode.inAppBrowserView,
+                  );
+                },
               ),
           ],
         )

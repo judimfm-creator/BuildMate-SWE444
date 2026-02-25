@@ -211,18 +211,63 @@ class _ProfileManagementPageState extends State<ProfileManagementPage> {
   Widget _buildInfoField(String label, IconData icon, {bool isAlwaysDisabled = false, int? maxLength}) {
     TextEditingController ctrl = _controllers[label] ?? TextEditingController();
     bool canEdit = _isEditMode && !isAlwaysDisabled;
+
+    bool isBio = label.toLowerCase().contains("bio") || label.toLowerCase().contains("biography");
+    bool isPhone = label.toLowerCase().contains("phone");
+    bool isEmail = label.toLowerCase().contains("email");
+
     return Container(
       margin: const EdgeInsets.only(bottom: 12),
       padding: const EdgeInsets.all(15),
-      decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(12), border: Border.all(color: canEdit ? deepMediumPurple.withOpacity(0.5) : Colors.grey.shade100, width: canEdit ? 1.5 : 1)),
-      child: Row(children: [
-        Icon(icon, color: deepMediumPurple, size: 20),
-        const SizedBox(width: 15),
-        Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-          Text(label, style: TextStyle(color: Colors.grey.shade500, fontSize: 11)),
-          TextFormField(controller: ctrl, enabled: canEdit, maxLength: maxLength, style: const TextStyle(fontSize: 14, fontWeight: FontWeight.bold), decoration: const InputDecoration(isDense: true, border: InputBorder.none, contentPadding: EdgeInsets.zero, counterText: "")),
-        ])),
-      ]),
+      decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(
+              color: canEdit ? deepMediumPurple.withOpacity(0.5) : Colors.grey.shade100,
+              width: canEdit ? 1.5 : 1
+          )
+      ),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start, // الأيقونة تبقى فوق في الـ Wrapping
+        children: [
+          Padding(
+            padding: const EdgeInsets.only(top: 2),
+            child: Icon(icon, color: deepMediumPurple, size: 20),
+          ),
+          const SizedBox(width: 15),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(label, style: TextStyle(color: Colors.grey.shade500, fontSize: 11)),
+                TextFormField(
+                  controller: ctrl,
+                  enabled: canEdit,
+                  // تفعيل الـ Wrapping
+                  maxLines: isPhone ? 1 : null,
+                  // تحديد الطول (10 للجوال، 100 للبيو، 40 للبقية)
+                  maxLength: isBio ? 100 : (isPhone ? 10 : 40),
+                  keyboardType: isPhone
+                      ? TextInputType.phone
+                      : (isEmail ? TextInputType.emailAddress : TextInputType.multiline),
+                  style: const TextStyle(fontSize: 14, fontWeight: FontWeight.bold),
+                  decoration: InputDecoration(
+                    isDense: true,
+                    border: InputBorder.none,
+                    contentPadding: EdgeInsets.zero,
+                    counterText: isBio ? null : "", // إظهار العداد فقط للبيو
+                  ),
+                ),
+              ],
+            ),
+          ),
+          if (isAlwaysDisabled)
+            Padding(
+              padding: const EdgeInsets.only(top: 10),
+              child: Icon(Icons.lock_outline, size: 16, color: Colors.grey.shade300),
+            ),
+        ],
+      ),
     );
   }
 
@@ -261,7 +306,6 @@ class _ProfileManagementPageState extends State<ProfileManagementPage> {
 
   Widget _buildSectionTitle(String title) => Padding(padding: const EdgeInsets.only(bottom: 12, left: 5), child: Text(title, style: TextStyle(color: deepMediumPurple, fontSize: 14, fontWeight: FontWeight.bold)));
 
-  // ✅ الزر المعدل لاستدعاء الدالة الحقيقية
   Widget _buildDeleteButton() => Center(
     child: OutlinedButton.icon(
       onPressed: _handleDeleteAccount, 
