@@ -627,11 +627,7 @@ class _CreateHackathonViewState extends State<CreateHackathonView> {
                   ),
                 ),
 
-                const SizedBox(height: 10),
-                Text(
-                  "Tip: Roles example: Designer, Flutter Dev, UI/UX",
-                  style: theme.textTheme.bodySmall,
-                ),
+
               ],
             ),
           ),
