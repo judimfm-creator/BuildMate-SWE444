@@ -6,6 +6,8 @@ import 'view/create_hackathon_view.dart';
 import 'widgets/org_nav_bar.dart';
 import 'widgets/buildmate_app_bar.dart';
 import 'view/org_profile_page.dart';
+import 'view/org_announced_page.dart';
+import 'view/org_home_page.dart';
 
 class InstitutionHomeScreen extends StatefulWidget {
   const InstitutionHomeScreen({super.key});
@@ -23,21 +25,24 @@ class _InstitutionHomeScreenState extends State<InstitutionHomeScreen> {
 
   // صفحات التابات (بدون صفحة Create لأنها تفتح كـ Route مستقل)
   final List<Widget> _pages = const [
-    Center(child: Text("Home")),
-    Center(child: Text("Announcements")),
+    OrgHomePage(),           // 0 - Home
+    OrgAnnouncedPage(),      // 1 - Announced (Ongoing hackathons)
     Center(child: Text("Teams")),
     OrgProfilePage(), // صفحة بروفايل المنظمة
   ];
 
-  // تحويل navIndex إلى index داخل _pages (لأن زر + في المنتصف ليس صفحة تابعة للـ Index المباشر)
-  int get _pageIndex => (_navIndex > 2) ? _navIndex - 1 : _navIndex;
+  // navIndex 0,1 → pageIndex 0,1 | navIndex 2 → (+) | navIndex 3,4 → pageIndex 2,3
+  int get _pageIndex {
+    if (_navIndex < 2) return _navIndex;
+    if (_navIndex > 2) return _navIndex - 1;
+    return 0; // لا يُستخدم (زر + يفتح route)
+  }
 
   void _onItemTapped(int index) {
-    // زر + (Index 2) يفتح صفحة إنشاء الهاكاثون كشاشة جديدة
     if (index == 2) {
       Navigator.push(
-        context, 
-        MaterialPageRoute(builder: (_) => const CreateHackathonView())
+        context,
+        MaterialPageRoute(builder: (_) => const CreateHackathonView()),
       );
       return;
     }

@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import '../model/hackathon.dart';
 import '../viewmodel/create_hackathon_controller.dart';
 import '../widgets/buildmate_app_bar.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 
 class CreateHackathonView extends StatefulWidget {
   const CreateHackathonView({super.key});
@@ -210,12 +211,21 @@ class _CreateHackathonViewState extends State<CreateHackathonView> {
 
     setState(() => isSubmitting = true);
 
+    final currentUserId = FirebaseAuth.instance.currentUser?.uid;
+    if (currentUserId == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text("You must be logged in")),
+      );
+      return;
+    }
+
     final otherRoles = otherRoleControllers
         .map((c) => c.text.trim())
         .where((t) => t.isNotEmpty)
         .toList();
 
     final hackathon = Hackathon(
+      organizationId: currentUserId,
       name: nameController.text.trim(),
       description: descriptionController.text.trim(),
       domain: selectedDomain == 'Other'
@@ -425,7 +435,7 @@ class _CreateHackathonViewState extends State<CreateHackathonView> {
                             context: context,
                             builder: (context) {
                               List<String> tempSelected =
-                                  List.from(selectedRoles);
+                              List.from(selectedRoles);
 
                               return StatefulBuilder(
                                 builder: (context, setDialogState) {
@@ -615,13 +625,13 @@ class _CreateHackathonViewState extends State<CreateHackathonView> {
                     style: _primaryButtonStyle(),
                     icon: isSubmitting
                         ? const SizedBox(
-                            width: 18,
-                            height: 18,
-                            child: CircularProgressIndicator(
-                              strokeWidth: 2,
-                              color: Colors.white,
-                            ),
-                          )
+                      width: 18,
+                      height: 18,
+                      child: CircularProgressIndicator(
+                        strokeWidth: 2,
+                        color: Colors.white,
+                      ),
+                    )
                         : const Icon(Icons.check_circle_outline),
                     label: Text(isSubmitting ? "Saving..." : "Submit"),
                   ),
@@ -673,8 +683,8 @@ class _CreateHackathonViewState extends State<CreateHackathonView> {
         textInputAction: TextInputAction.next,
         onChanged: onChanged,
         validator: validator ??
-            (value) =>
-                (value == null || value.trim().isEmpty) ? "Required" : null,
+                (value) =>
+            (value == null || value.trim().isEmpty) ? "Required" : null,
         decoration: _fieldDecoration(label: label, icon: icon, hint: hint),
       ),
     );
