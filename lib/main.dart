@@ -19,6 +19,9 @@ import 'package:buildmate/view/complete_profile_view.dart';
 import 'package:buildmate/home_screen.dart';
 import 'package:buildmate/org_home_screen.dart';
 
+
+
+
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   await Firebase.initializeApp();
@@ -62,6 +65,8 @@ class MyApp extends StatelessWidget {
       // نقطة البداية المعتمدة هي صفحة الترحيب (Welcome Screen)
       initialRoute: '/welcome',
 
+
+
       routes: {
         '/welcome': (context) => const WelcomeScreen(),
         '/loginUser': (context) => const LoginScreen(),
@@ -71,6 +76,9 @@ class MyApp extends StatelessWidget {
         '/home': (context) => const HomeScreen(),
         '/orgHome': (context) => const InstitutionHomeScreen(),
         '/completeProfile': (context) => const CompleteProfileView(),
+
+
+
       },
     );
   }

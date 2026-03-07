@@ -15,4 +15,16 @@ class TeamService {
       }).toList();
     });
   }
+
+  Stream<List<TeamModel>> getTeamsByMember(String userId) {
+    return _firestore
+        .collection('teams')
+        .where('memberIds', arrayContains: userId)
+        .snapshots()
+        .map((snapshot) {
+      return snapshot.docs.map((doc) {
+        return TeamModel.fromMap(doc.id, doc.data());
+      }).toList();
+    });
+  }
 }

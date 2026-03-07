@@ -3,21 +3,26 @@ class TeamModel {
   final String hackathonId;
   final String teamName;
   final String? leaderId;
-  final int membersCount;
 
-  // Additional fields for UI / requirements
-  final String? genderPreference; // e.g. Any / Female / Male
-  final List<String> rolesNeeded; // e.g. ["Flutter Developer", "Designer"]
+  // قائمة الأعضاء
+  final List<String> memberIds;
+
+  // Additional fields for UI
+  final String? genderPreference;
+  final List<String> rolesNeeded;
 
   TeamModel({
     required this.id,
     required this.hackathonId,
     required this.teamName,
     this.leaderId,
-    required this.membersCount,
+    this.memberIds = const [],
     this.genderPreference,
     this.rolesNeeded = const [],
   });
+
+  // نحسب عدد الأعضاء تلقائياً
+  int get membersCount => memberIds.length;
 
   factory TeamModel.fromMap(String id, Map<String, dynamic> map) {
     return TeamModel(
@@ -25,9 +30,12 @@ class TeamModel {
       hackathonId: (map['hackathonId'] ?? '') as String,
       teamName: (map['teamName'] ?? 'Team') as String,
       leaderId: map['leaderId'] as String?,
-      membersCount: (map['membersCount'] ?? 0) is int
-          ? (map['membersCount'] ?? 0) as int
-          : ((map['membersCount'] ?? 0) as num).toInt(),
+
+      memberIds: (map['memberIds'] as List?)
+          ?.map((e) => e.toString())
+          .toList() ??
+          const [],
+
       genderPreference: map['genderPreference'] as String?,
       rolesNeeded: (map['rolesNeeded'] as List?)
           ?.map((e) => e.toString())

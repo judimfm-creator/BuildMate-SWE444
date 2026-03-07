@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import '../model/team_model.dart';
 import '../services/team_service.dart';
 import '../widgets/buildmate_app_bar.dart';
+import 'team_members_view.dart';
 
 class HackathonTeamsView extends StatelessWidget {
   final String hackathonId;
@@ -166,43 +167,78 @@ class HackathonTeamsView extends StatelessWidget {
                 : "Roles: Not specified",
           ),
 
-          const SizedBox(height: 18),
+          const SizedBox(height: 14),
 
-          Align(
-            alignment: Alignment.centerRight,
-            child: SizedBox(
-              width: 125,
-              height: 46,
-              child: ElevatedButton.icon(
-                onPressed: () {
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    SnackBar(
-                      content: Text(
-                        isFull
-                            ? "This team is full"
-                            : "Join request flow will be added later",
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              if (team.memberIds.isNotEmpty)
+                OutlinedButton.icon(
+                  onPressed: () {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (_) => TeamMembersView(
+                          memberIds: team.memberIds,
+                        ),
                       ),
+                    );
+                  },
+                  icon: const Icon(Icons.people_outline_rounded, size: 18),
+                  label: const Text(
+                    "View Members",
+                    style: TextStyle(
+                      fontWeight: FontWeight.w600,
                     ),
-                  );
-                },
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: isFull ? Colors.grey : orange,
-                  foregroundColor: Colors.white,
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(14),
                   ),
-                  elevation: 0,
-                ),
-                icon: const Icon(Icons.login_rounded, size: 18),
-                label: const Text(
-                  "Join",
-                  style: TextStyle(
-                    fontSize: 16,
-                    fontWeight: FontWeight.bold,
+                  style: OutlinedButton.styleFrom(
+                    foregroundColor: purple,
+                    side: const BorderSide(color: purple),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 14,
+                      vertical: 12,
+                    ),
+                  ),
+                )
+              else
+                const SizedBox(),
+
+              SizedBox(
+                width: 120,
+                height: 44,
+                child: ElevatedButton.icon(
+                  onPressed: () {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      SnackBar(
+                        content: Text(
+                          isFull
+                              ? "This team is full"
+                              : "Join request flow will be added later",
+                        ),
+                      ),
+                    );
+                  },
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: isFull ? Colors.grey : orange,
+                    foregroundColor: Colors.white,
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(14),
+                    ),
+                    elevation: 0,
+                  ),
+                  icon: const Icon(Icons.login_rounded, size: 18),
+                  label: const Text(
+                    "Join",
+                    style: TextStyle(
+                      fontWeight: FontWeight.bold,
+                    ),
                   ),
                 ),
               ),
-            ),
+            ],
           ),
         ],
       ),

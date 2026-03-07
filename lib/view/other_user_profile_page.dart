@@ -4,8 +4,13 @@ import 'package:font_awesome_flutter/font_awesome_flutter.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 import '../model/user_model.dart';
+import '../model/team_model.dart';
+import '../model/hackathon.dart';
 import '../services/user_service.dart';
+import '../services/team_service.dart';
+import '../services/hackathon_service.dart';
 import '../widgets/buildmate_app_bar.dart';
+import '../widgets/user_hackathon_card.dart';
 
 class OtherUserProfilePage extends StatefulWidget {
   final String userId;
@@ -20,6 +25,8 @@ class _OtherUserProfilePageState extends State<OtherUserProfilePage>
     with SingleTickerProviderStateMixin {
   late TabController _tabController;
   final UserService _userService = UserService();
+  final TeamService _teamService = TeamService();
+  final HackathonService _hackathonService = HackathonService();
 
   final Color primaryPurple = const Color(0xFF7A62B3);
   final Color lightPurpleBG = const Color(0xFFF5F3FF);
@@ -96,10 +103,7 @@ class _OtherUserProfilePageState extends State<OtherUserProfilePage>
                   child: TabBarView(
                     controller: _tabController,
                     children: [
-                      _buildEmptyPlaceholder(
-                        "No ongoing projects",
-                        Icons.rocket_launch_outlined,
-                      ),
+                      _buildOngoingHackathonsTab(),
                       _buildEmptyPlaceholder(
                         "No previous projects",
                         Icons.history,
@@ -239,6 +243,89 @@ class _OtherUserProfilePageState extends State<OtherUserProfilePage>
         Tab(text: "Ongoing"),
         Tab(text: "Previous"),
       ],
+    );
+  }
+
+  Widget _buildOngoingHackathonsTab() {
+    return StreamBuilder<List<TeamModel>>(
+      stream: _teamService.getTeamsByMember(widget.userId),
+      builder: (context, snapshot) {
+        if (snapshot.connectionState == ConnectionState.waiting) {
+          return const Center(child: CircularProgressIndicator());
+        }
+
+        if (snapshot.hasError) {
+          return const Center(
+            child: Text(
+              "Something went wrong",
+              style: TextStyle(fontSize: 14),
+            ),
+          );
+        }
+
+        final teams = snapshot.data ?? [];
+        final hackathonIds = teams
+            .map((team) => team.hackathonId)
+            .where((id) => id.isNotEmpty)
+            .toSet()
+            .toList();
+
+        if (hackathonIds.isEmpty) {
+          return _buildEmptyPlaceholder(
+            "No ongoing hackathons",
+            Icons.rocket_launch_outlined,
+          );
+        }
+
+        return FutureBuilder<List<Hackathon>>(
+          future: _hackathonService.getHackathonsByIds(hackathonIds),
+          builder: (context, hackathonSnapshot) {
+            if (hackathonSnapshot.connectionState == ConnectionState.waiting) {
+              return const Center(child: CircularProgressIndicator());
+            }
+
+            if (hackathonSnapshot.hasError) {
+              return const Center(
+                child: Text(
+                  "Failed to load hackathons",
+                  style: TextStyle(fontSize: 14),
+                ),
+              );
+            }
+
+            final hackathons = hackathonSnapshot.data ?? [];
+            final now = DateTime.now();
+
+            final ongoingHackathons = hackathons.where((hackathon) {
+              final startsBeforeOrNow =
+                  hackathon.startDate.isBefore(now) ||
+                      hackathon.startDate.isAtSameMomentAs(now);
+
+              final endsAfterOrNow =
+                  hackathon.endDate.isAfter(now) ||
+                      hackathon.endDate.isAtSameMomentAs(now);
+
+              return startsBeforeOrNow && endsAfterOrNow;
+            }).toList();
+
+            if (ongoingHackathons.isEmpty) {
+              return _buildEmptyPlaceholder(
+                "No ongoing hackathons",
+                Icons.rocket_launch_outlined,
+              );
+            }
+
+            return ListView.builder(
+              padding: const EdgeInsets.only(top: 12, bottom: 24),
+              itemCount: ongoingHackathons.length,
+              itemBuilder: (context, index) {
+                final hackathon = ongoingHackathons[index];
+                return UserHackathonCard(hackathon: hackathon);
+              },
+            );
+          },
+        );
+      },
     );
   }
 

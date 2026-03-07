@@ -2,10 +2,18 @@ import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:font_awesome_flutter/font_awesome_flutter.dart';
 import 'package:url_launcher/url_launcher.dart';
+import 'package:firebase_auth/firebase_auth.dart';
+
 import 'package:buildmate/viewmodel/profile_view_model.dart';
 import 'package:buildmate/model/user_model.dart';
+import 'package:buildmate/model/team_model.dart';
+import 'package:buildmate/model/hackathon.dart';
 import 'package:buildmate/view/profile_management_page.dart';
 import 'package:buildmate/widgets/buildmate_app_bar.dart';
+
+import '../services/team_service.dart';
+import '../services/hackathon_service.dart';
+import '../widgets/user_hackathon_card.dart';
 
 class ProfilePage extends StatefulWidget {
   const ProfilePage({super.key});
@@ -14,9 +22,12 @@ class ProfilePage extends StatefulWidget {
   State<ProfilePage> createState() => _ProfilePageState();
 }
 
-class _ProfilePageState extends State<ProfilePage> with SingleTickerProviderStateMixin {
+class _ProfilePageState extends State<ProfilePage>
+    with SingleTickerProviderStateMixin {
   late TabController _tabController;
   final ProfileViewModel _viewModel = ProfileViewModel();
+  final TeamService _teamService = TeamService();
+  final HackathonService _hackathonService = HackathonService();
 
   final Color primaryPurple = const Color(0xFF7A62B3);
   final Color lightPurpleBG = const Color(0xFFF5F3FF);
@@ -57,8 +68,9 @@ class _ProfilePageState extends State<ProfilePage> with SingleTickerProviderStat
           if (snapshot.connectionState == ConnectionState.waiting) {
             return const Center(child: CircularProgressIndicator());
           }
+
           final user = snapshot.data;
-          
+
           if (user == null) {
             return const Center(child: Text("No user profile found"));
           }
@@ -72,30 +84,35 @@ class _ProfilePageState extends State<ProfilePage> with SingleTickerProviderStat
                 const SizedBox(height: 20),
                 _buildManageButton(),
                 const SizedBox(height: 35),
-
                 Row(
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
                     Icon(Icons.bolt, color: primaryPurple, size: 24),
                     const SizedBox(width: 8),
-                    const Text("Skills", 
-                      style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Colors.black)),
+                    const Text(
+                      "Skills",
+                      style: TextStyle(
+                        fontSize: 18,
+                        fontWeight: FontWeight.bold,
+                        color: Colors.black,
+                      ),
+                    ),
                   ],
                 ),
                 const SizedBox(height: 15),
-                // ✅ نمرر البيانات كما هي (Array)
                 _buildSkillsChips(user.skills),
-
                 const SizedBox(height: 30),
                 _buildTabBarSection(),
-                
                 SizedBox(
                   height: 300,
                   child: TabBarView(
                     controller: _tabController,
                     children: [
-                      _buildEmptyPlaceholder("No ongoing projects", Icons.rocket_launch_outlined),
-                      _buildEmptyPlaceholder("No previous projects", Icons.history),
+                      _buildOngoingHackathonsTab(),
+                      _buildEmptyPlaceholder(
+                        "No previous projects",
+                        Icons.history,
+                      ),
                     ],
                   ),
                 ),
@@ -126,28 +143,42 @@ class _ProfilePageState extends State<ProfilePage> with SingleTickerProviderStat
           radius: 55,
           backgroundColor: lightPurpleBG,
           backgroundImage: profileImage,
-          child: profileImage == null 
-              ? Icon(Icons.person, size: 50, color: primaryPurple) 
+          child: profileImage == null
+              ? Icon(Icons.person, size: 50, color: primaryPurple)
               : null,
         ),
         const SizedBox(height: 12),
-        Text("@${user.username}", 
-          style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold, color: primaryPurple)),
+        Text(
+          "@${user.username}",
+          style: TextStyle(
+            fontSize: 20,
+            fontWeight: FontWeight.bold,
+            color: primaryPurple,
+          ),
+        ),
         if (user.bio != null && user.bio!.isNotEmpty)
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: 40, vertical: 8),
-            child: Text(user.bio!, 
-              textAlign: TextAlign.center, 
-              style: TextStyle(fontSize: 13, color: Colors.grey.shade700, height: 1.4)),
+            child: Text(
+              user.bio!,
+              textAlign: TextAlign.center,
+              style: TextStyle(
+                fontSize: 13,
+                color: Colors.grey.shade700,
+                height: 1.4,
+              ),
+            ),
           ),
         const SizedBox(height: 10),
-
         Row(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
             if (user.linkedin != null && user.linkedin!.isNotEmpty)
               IconButton(
-                icon: const Icon(FontAwesomeIcons.linkedin, color: Color(0xFF7A62B3)),
+                icon: const Icon(
+                  FontAwesomeIcons.linkedin,
+                  color: Color(0xFF7A62B3),
+                ),
                 onPressed: () async {
                   final Uri uri = Uri.parse(user.linkedin!);
                   await launchUrl(
@@ -158,7 +189,10 @@ class _ProfilePageState extends State<ProfilePage> with SingleTickerProviderStat
               ),
             if (user.github != null && user.github!.isNotEmpty)
               IconButton(
-                icon: const Icon(FontAwesomeIcons.github, color: Color(0xFF7A62B3)),
+                icon: const Icon(
+                  FontAwesomeIcons.github,
+                  color: Color(0xFF7A62B3),
+                ),
                 onPressed: () async {
                   final Uri uri = Uri.parse(user.github!);
                   await launchUrl(
@@ -168,7 +202,7 @@ class _ProfilePageState extends State<ProfilePage> with SingleTickerProviderStat
                 },
               ),
           ],
-        )
+        ),
       ],
     );
   }
@@ -180,24 +214,35 @@ class _ProfilePageState extends State<ProfilePage> with SingleTickerProviderStat
         width: double.infinity,
         height: 45,
         child: ElevatedButton(
-          onPressed: () => Navigator.push(context, 
-            MaterialPageRoute(builder: (context) => const ProfileManagementPage())),
+          onPressed: () => Navigator.push(
+            context,
+            MaterialPageRoute(
+              builder: (context) => const ProfileManagementPage(),
+            ),
+          ),
           style: ElevatedButton.styleFrom(
             backgroundColor: manageButtonGrey,
             elevation: 0,
-            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(12),
+            ),
           ),
-          child: Text("Manage Profile", 
-            style: TextStyle(color: manageButtonText, fontWeight: FontWeight.w600, fontSize: 14)),
+          child: Text(
+            "Manage Profile",
+            style: TextStyle(
+              color: manageButtonText,
+              fontWeight: FontWeight.w600,
+              fontSize: 14,
+            ),
+          ),
         ),
       ),
     );
   }
 
-  // ✅ الميثود المعدلة لقراءة المصفوفة (Array)
   Widget _buildSkillsChips(dynamic skillsData) {
     List<String> skills = [];
-    
+
     if (skillsData is List) {
       skills = skillsData.map((e) => e.toString()).toList();
     } else if (skillsData is String && skillsData.isNotEmpty) {
@@ -212,15 +257,31 @@ class _ProfilePageState extends State<ProfilePage> with SingleTickerProviderStat
         alignment: WrapAlignment.center,
         spacing: 10,
         runSpacing: 10,
-        children: skills.map((skill) => Container(
-          padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 10),
-          decoration: BoxDecoration(
-            color: primaryPurple.withOpacity(0.1),
-            borderRadius: BorderRadius.circular(20),
-            border: Border.all(color: primaryPurple.withOpacity(0.4)),
+        children: skills
+            .map(
+              (skill) => Container(
+            padding: const EdgeInsets.symmetric(
+              horizontal: 18,
+              vertical: 10,
+            ),
+            decoration: BoxDecoration(
+              color: primaryPurple.withOpacity(0.1),
+              borderRadius: BorderRadius.circular(20),
+              border: Border.all(
+                color: primaryPurple.withOpacity(0.4),
+              ),
+            ),
+            child: Text(
+              skill,
+              style: TextStyle(
+                color: primaryPurple,
+                fontSize: 13,
+                fontWeight: FontWeight.bold,
+              ),
+            ),
           ),
-          child: Text(skill, style: TextStyle(color: primaryPurple, fontSize: 13, fontWeight: FontWeight.bold)),
-        )).toList(),
+        )
+            .toList(),
       ),
     );
   }
@@ -232,7 +293,102 @@ class _ProfilePageState extends State<ProfilePage> with SingleTickerProviderStat
       labelColor: primaryPurple,
       unselectedLabelColor: Colors.grey,
       indicatorWeight: 3,
-      tabs: const [Tab(text: "Ongoing"), Tab(text: "Previous")],
+      tabs: const [
+        Tab(text: "Ongoing"),
+        Tab(text: "Previous"),
+      ],
+    );
+  }
+
+  Widget _buildOngoingHackathonsTab() {
+    final currentUser = FirebaseAuth.instance.currentUser;
+
+    if (currentUser == null) {
+      return _buildEmptyPlaceholder(
+        "No ongoing hackathons",
+        Icons.rocket_launch_outlined,
+      );
+    }
+
+    return StreamBuilder<List<TeamModel>>(
+      stream: _teamService.getTeamsByMember(currentUser.uid),
+      builder: (context, snapshot) {
+        if (snapshot.connectionState == ConnectionState.waiting) {
+          return const Center(child: CircularProgressIndicator());
+        }
+
+        if (snapshot.hasError) {
+          return const Center(
+            child: Text(
+              "Something went wrong",
+              style: TextStyle(fontSize: 14),
+            ),
+          );
+        }
+
+        final teams = snapshot.data ?? [];
+        final hackathonIds = teams
+            .map((team) => team.hackathonId)
+            .where((id) => id.isNotEmpty)
+            .toSet()
+            .toList();
+
+        if (hackathonIds.isEmpty) {
+          return _buildEmptyPlaceholder(
+            "No ongoing hackathons",
+            Icons.rocket_launch_outlined,
+          );
+        }
+
+        return FutureBuilder<List<Hackathon>>(
+          future: _hackathonService.getHackathonsByIds(hackathonIds),
+          builder: (context, hackathonSnapshot) {
+            if (hackathonSnapshot.connectionState == ConnectionState.waiting) {
+              return const Center(child: CircularProgressIndicator());
+            }
+
+            if (hackathonSnapshot.hasError) {
+              return const Center(
+                child: Text(
+                  "Failed to load hackathons",
+                  style: TextStyle(fontSize: 14),
+                ),
+              );
+            }
+
+            final hackathons = hackathonSnapshot.data ?? [];
+            final now = DateTime.now();
+
+            final ongoingHackathons = hackathons.where((hackathon) {
+              final startsBeforeOrNow =
+                  hackathon.startDate.isBefore(now) ||
+                      hackathon.startDate.isAtSameMomentAs(now);
+
+              final endsAfterOrNow =
+                  hackathon.endDate.isAfter(now) ||
+                      hackathon.endDate.isAtSameMomentAs(now);
+
+              return startsBeforeOrNow && endsAfterOrNow;
+            }).toList();
+
+            if (ongoingHackathons.isEmpty) {
+              return _buildEmptyPlaceholder(
+                "No ongoing hackathons",
+                Icons.rocket_launch_outlined,
+              );
+            }
+
+            return ListView.builder(
+              padding: const EdgeInsets.only(top: 12, bottom: 24),
+              itemCount: ongoingHackathons.length,
+              itemBuilder: (context, index) {
+                final hackathon = ongoingHackathons[index];
+                return UserHackathonCard(hackathon: hackathon);
+              },
+            );
+          },
+        );
+      },
     );
   }
 
@@ -243,7 +399,13 @@ class _ProfilePageState extends State<ProfilePage> with SingleTickerProviderStat
         children: [
           Icon(icon, size: 40, color: Colors.grey.shade300),
           const SizedBox(height: 10),
-          Text(text, style: TextStyle(color: Colors.grey.shade400, fontSize: 14)),
+          Text(
+            text,
+            style: TextStyle(
+              color: Colors.grey.shade400,
+              fontSize: 14,
+            ),
+          ),
         ],
       ),
     );
