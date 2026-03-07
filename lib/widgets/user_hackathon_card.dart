@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import '../model/hackathon.dart';
-import '../view/hackathon_details_view.dart';
+import '../view/user_hackathon_details_view.dart';
 
 class UserHackathonCard extends StatelessWidget {
   final Hackathon hackathon;
@@ -165,7 +165,7 @@ class UserHackathonCard extends StatelessWidget {
                     Navigator.push(
                       context,
                       MaterialPageRoute(
-                        builder: (_) => HackathonDetailsView(
+                        builder: (_) => UserHackathonDetailsView(
                           hackathon: hackathon,
                         ),
                       ),

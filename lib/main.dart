@@ -78,7 +78,6 @@ class MyApp extends StatelessWidget {
         '/completeProfile': (context) => const CompleteProfileView(),
 
 
-
       },
     );
   }
