@@ -37,8 +37,10 @@ class _RegisterUserViewState extends State<RegisterUserView> {
   // دالة الفحص بصمت لتغيير الستايل (Bold) بدون إظهار الأحمر
   bool _isFieldValid(String label, String value) {
     if (value.trim().isEmpty) return false;
-    if (label == "Full Name")
+    if (label == "Full Name") {
+      final nameRegExp = RegExp(r"^[a-zA-Z\s\u0600-\u06FF]+$");
       return value.trim().split(RegExp(r'\s+')).length >= 3;
+    }
     if (label == "Email Address")
       return RegExp(r"^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.(com|net|org|sa)$")
           .hasMatch(value.trim());
@@ -83,7 +85,10 @@ class _RegisterUserViewState extends State<RegisterUserView> {
                 Icons.badge_outlined,
                 customValidator: (v) {
                   if (v == null || v.trim().isEmpty)
-                    return "Full name is required";
+                    return "Enter your first, middle, and last name";
+                  if (!RegExp(r"^[a-zA-Z\s\u0600-\u06FF]+$").hasMatch(v.trim())) {
+                    return "Only letters are allowed ";
+                  }
                   if (v.trim().split(RegExp(r'\s+')).length < 3)
                     return "Enter your first, middle, and last name ";
                   return null;
@@ -96,28 +101,56 @@ class _RegisterUserViewState extends State<RegisterUserView> {
                 Icons.person_outline,
                 customValidator: (v) {
                   if (v == null || v.trim().isEmpty)
-                    return "Field cannot be empty";
+                    return "minimum 3 characters , spaces are not allowed";
                   if (v.contains(' '))
                     return "Spaces are not allowed"; // ✅ هذا هو شرط منع المسافات
                   if (v.trim().length < 3) return "At least 3 characters";
                   return null;
                 },
               ),
-              _buildField(
-                _emailController,
-                "Email Address",
-                "name@example.com",
-                Icons.email_outlined,
-                type: TextInputType.emailAddress,
-                customValidator: (v) {
-                  if (v == null || v.trim().isEmpty) return "Email is required";
-                  final regex = RegExp(
-                      r"^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.(com|net|org|sa)$");
-                  if (!regex.hasMatch(v.trim()))
-                    return "Invalid email format (e.g. .com, .sa)";
-                  return null;
-                },
-              ),
+            _buildField(
+  _emailController,
+  "Email Address",
+  "Example: sara@gmail.com", // المثال ثابت هنا كـ Helper Text
+  Icons.email_outlined,
+  type: TextInputType.emailAddress,
+  customValidator: (v) {
+    if (v == null || v.trim().isEmpty) {
+      return "Example: sara@gmail.com";
+    }
+
+    String email = v.trim();
+
+    // 1. نسي علامة @
+    if (!email.contains('@')) {
+      return "Follow example: sara@gmail.com";
+    }
+
+    // 2. حط @ بس ما كمل بعدها شي (الدومين)
+    if (email.endsWith('@')) {
+      return "Follow example:sara@gmail.com";
+    }
+
+    // 3. نسي النقطة (.) بعد الـ @
+    String domainPart = email.substring(email.indexOf('@'));
+    if (!domainPart.contains('.')) {
+      return "Follow example:sara@gmail.com";
+    }
+
+    // 4. حط مسافات داخل الإيميل
+    if (email.contains(' ')) {
+      return "Follow example:sara@gmail.com";
+    }
+
+    // 5. الصيغة العامة (للتأكد من النهايات الصحيحة)
+    final regex = RegExp(r"^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.(com|net|org|sa)$");
+    if (!regex.hasMatch(email)) {
+      return "Follow example:sara@gmail.com";
+    }
+
+    return null;
+  },
+),
               _buildField(
                 _phoneController,
                 "Phone Number",
@@ -185,19 +218,21 @@ class _RegisterUserViewState extends State<RegisterUserView> {
       padding: const EdgeInsets.only(bottom: 20),
       child: TextFormField(
         controller: ctrl,
-maxLength: isPhone ? 10 : 40,       
-maxLines: isPhone ? 1 : null,        
-minLines: 1,
+        maxLength: isPhone ? 10 : 40,
+        maxLines: isPhone ? 1 : null,
+        minLines: 1,
 // ✅ التعديل الذكي لنوع لوحة المفاتيح
-keyboardType: isPhone 
-    ? TextInputType.phone // لو كان جوال تطلع أرقام بس
-    : (label == "Email Address" ? TextInputType.emailAddress : TextInputType.multiline),  
-          onChanged: (v) => setState(() {}),
+        keyboardType: isPhone
+            ? TextInputType.phone // لو كان جوال تطلع أرقام بس
+            : (label == "Email Address"
+                ? TextInputType.emailAddress
+                : TextInputType.multiline),
+        onChanged: (v) => setState(() {}),
         decoration: InputDecoration(
           labelText: label,
           helperText: helper,
-counterText: "", // ✅ هذا السطر يخفي العداد نهائياً (0/40)         
- helperStyle: const TextStyle(fontSize: 11, color: Colors.blueGrey),
+          counterText: "", // ✅ هذا السطر يخفي العداد نهائياً (0/40)
+          helperStyle: const TextStyle(fontSize: 11, color: Colors.blueGrey),
           floatingLabelBehavior: FloatingLabelBehavior.always,
           prefixIcon: Icon(icon, color: purple),
           enabledBorder: OutlineInputBorder(
@@ -268,15 +303,21 @@ counterText: "", // ✅ هذا السطر يخفي العداد نهائياً (
           border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
         ),
         validator: (v) {
-          if (v == null || v.isEmpty) return "Required";
+          if (v == null || v.isEmpty) {
+    // هنا السر: إذا كان الحقل هو 'Confirm Password' تطلع الجملة اللي اخترتيها
+    // وإذا كان الباسورد الأساسي تطلع الشروط الطويلة
+    return isConfirm 
+        ? "match the same password above" 
+        : "min 8 chars, include capital letter, number, symbol";
+  }
           if (isConfirm && v != _passwordController.text)
             return "Passwords do not match";
           if (!isConfirm) {
-            if (v.length < 8) return "min 8 characters";
-            if (!v.contains(RegExp(r'[A-Z]'))) return "Add a capital letter";
-            if (!v.contains(RegExp(r'[0-9]'))) return "Add a number";
+            if (v.length < 8) return "min 8 chars, include capital letter, number, symbol";
+            if (!v.contains(RegExp(r'[A-Z]'))) return "min 8 chars, include capital letter, number, symbol";
+            if (!v.contains(RegExp(r'[0-9]'))) return "min 8 chars, include capital letter, number, symbol";
             if (!v.contains(RegExp(r'[!@#$%^&*(),._?":{}|<>]')))
-              return "Add a symbol";
+              return "min 8 chars, include capital letter, number, symbol";
           }
           return null;
         },
@@ -286,7 +327,6 @@ counterText: "", // ✅ هذا السطر يخفي العداد نهائياً (
 
   void _submit() {
     if (_formKey.currentState!.validate()) {
-      
       // ✅ إنشاء الموديل بناءً على تعريف الكلاس الخاص بكِ بدقة
       final user = UserModel(
         uid: "", // يتم توليده تلقائياً في الـ ViewModel بعد التسجيل في فايربيز
@@ -303,9 +343,11 @@ counterText: "", // ✅ هذا السطر يخفي العداد نهائياً (
         linkedin: "",
         github: "",
       );
-      
+
       // إرسال البيانات للـ ViewModel
-      context.read<RegisterViewModel>().registerUser(user, _passwordController.text, context);
+      context
+          .read<RegisterViewModel>()
+          .registerUser(user, _passwordController.text, context);
     }
   }
 }

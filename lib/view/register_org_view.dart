@@ -148,28 +148,54 @@ class _RegisterOrgViewState extends State<RegisterOrgView> {
                 Icons.person_outline,
                 wrap: true, // ✅ راب
                 validator: (v) {
-                  if (v == null || v.isEmpty) return "Username is required";
+                  if (v == null || v.isEmpty) return "minimum 3 characters, spaces are not allowed";
                   if (v.contains(' ')) return "Spaces are not allowed";
                   if (v.trim().length < 3) return "Username must be at least 3 characters";
                   return null;
                 },
               ),
-              _buildField(
-                _emailController,
-                "Email Address",
-                "name@org.com ",
-                Icons.email_outlined,
-                wrap: true, // ✅ راب
-                type: TextInputType.emailAddress,
-                validator: (v) {
-                  if (v == null || v.trim().isEmpty) return "Email is required";
-                  final regex = RegExp(
-                      r"^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.(com|net|org|sa)$");
-                  if (!regex.hasMatch(v.trim()))
-                    return "Invalid email format (use .com, .sa, etc.)";
-                  return null;
-                },
-              ),
+            _buildField(
+  _emailController,
+  "Email Address",
+  "Example:AIOrg@gmail.com", // الـ Helper text اللي تحت الحقل
+  Icons.email_outlined,
+  wrap: true,
+  type: TextInputType.emailAddress,
+  validator: (v) {
+    if (v == null || v.trim().isEmpty) return "Example:AIOrg@gmail.com";
+    
+    String email = v.trim();
+
+    // 1. نسي علامة @
+    if (!email.contains('@')) {
+      return "Follow example:AIOrg@gmail.com";
+    }
+
+    // 2. حط @ بس ما كمل بعدها شي (الدومين)
+    if (email.endsWith('@')) {
+      return "Follow example:AIOrg@gmail.com";
+    }
+
+    // 3. نسي النقطة (.) بعد الـ @
+    String domainPart = email.substring(email.indexOf('@'));
+    if (!domainPart.contains('.')) {
+      return "Follow example:AIOrg@gmail.com";
+    }
+
+    // 4. حط مسافات داخل الإيميل
+    if (email.contains(' ')) {
+      return "Follow example:AIOrg@gmail.com";
+    }
+
+    // 5. الصيغة العامة (للتأكد من النهايات الصحيحة)
+    final regex = RegExp(r"^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.(com|net|org|sa)$");
+    if (!regex.hasMatch(email)) {
+      return "Follow example:AIOrg@gmail.com";
+    }
+
+    return null;
+  },
+),
               _buildField(
                 _phoneController,
                 "Phone Number",
@@ -191,7 +217,7 @@ class _RegisterOrgViewState extends State<RegisterOrgView> {
                 Icons.location_on_outlined,
                 wrap: true, // ✅ راب
                 validator: (v) => (v == null || v.trim().isEmpty)
-                    ? "Location is required"
+                    ? "e.g., Riyadh, KSU Campus"
                     : null,
               ),
               _buildField(
@@ -201,7 +227,7 @@ class _RegisterOrgViewState extends State<RegisterOrgView> {
                 Icons.info_outline,
                 isBio: true, // ✅ 100 حرف وعداد وراب
                 validator: (v) => (v == null || v.trim().isEmpty)
-                    ? "Biography is required"
+                    ? "Brief description of the organization"
                     : null,
               ),
               _buildPassField(
@@ -268,8 +294,12 @@ class _RegisterOrgViewState extends State<RegisterOrgView> {
         decoration: InputDecoration(
           labelText: label,
           helperText: helper,
-          helperStyle: const TextStyle(fontSize: 11, color: Colors.blueGrey),
-          counterText: isBio ? null : "", // ✅ عداد فقط للبيو
+          helperStyle: const TextStyle(fontSize: 11, color: Colors.blueGrey, height: 1.2),
+errorStyle: const TextStyle(fontSize: 11, color: Colors.red, height: 1.2),
+errorMaxLines: 3, 
+helperMaxLines: 3,
+counterText: isBio ? null : "",
+// ✅ عداد فقط للبيو
           floatingLabelBehavior: FloatingLabelBehavior.always,
           prefixIcon: Icon(icon, color: purple),
           enabledBorder: OutlineInputBorder(
@@ -278,7 +308,7 @@ class _RegisterOrgViewState extends State<RegisterOrgView> {
                 color: isValid ? purple.withOpacity(0.5) : Colors.grey.shade300,
                 width: isValid ? 1.5 : 1),
           ),
-          errorBorder: OutlineInputBorder(
+           errorBorder: OutlineInputBorder(
               borderRadius: BorderRadius.circular(12),
               borderSide: const BorderSide(color: Colors.red, width: 1.5)),
           focusedErrorBorder: OutlineInputBorder(
@@ -306,8 +336,11 @@ class _RegisterOrgViewState extends State<RegisterOrgView> {
         decoration: InputDecoration(
           labelText: label,
           helperText: helper,
-          helperStyle: const TextStyle(fontSize: 11, color: Colors.blueGrey),
-          counterText: "", // ✅ بدون عداد
+helperStyle: const TextStyle(fontSize: 11, color: Colors.blueGrey, height: 1.2),
+errorStyle: const TextStyle(fontSize: 11, color: Colors.red, height: 1.2, fontWeight: FontWeight.normal),
+errorMaxLines: 3,
+helperMaxLines: 3,
+counterText: "",
           floatingLabelBehavior: FloatingLabelBehavior.always,
           prefixIcon: Icon(Icons.lock_outline, color: purple),
           suffixIcon: IconButton(
@@ -329,15 +362,20 @@ class _RegisterOrgViewState extends State<RegisterOrgView> {
           border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
         ),
         validator: (v) {
-          if (v == null || v.isEmpty) return "Required";
-          if (isConfirm && v != _passwordController.text)
+   if (v == null || v.isEmpty) {
+    // هنا السر: إذا كان الحقل هو 'Confirm Password' تطلع الجملة اللي اخترتيها
+    // وإذا كان الباسورد الأساسي تطلع الشروط الطويلة
+    return isConfirm 
+        ? "match the same password above" 
+        : "min 8 chars, include capital letter, number, symbol";
+  }          if (isConfirm && v != _passwordController.text)
             return "Passwords do not match";
           if (!isConfirm) {
-            if (v.length < 8) return "Min 8 characters";
-            if (!v.contains(RegExp(r'[A-Z]'))) return "Add a capital letter";
-            if (!v.contains(RegExp(r'[0-9]'))) return "Add a number";
+            if (v.length < 8) return "minimum 8 chars, include capital letter, number, symbol";
+            if (!v.contains(RegExp(r'[A-Z]'))) return "minimum 8 chars, include capital letter, number, symbol";
+            if (!v.contains(RegExp(r'[0-9]'))) return "minimum 8 chars, include capital letter, number, symbol";
             if (!v.contains(RegExp(r'[!@#$%^&*(),._?":{}|<>]')))
-              return "Add a symbol";
+              return "minimum 8 chars, include capital letter, number, symbol";
           }
           return null;
         },
