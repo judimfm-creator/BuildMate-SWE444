@@ -149,8 +149,8 @@ class _RegisterOrgViewState extends State<RegisterOrgView> {
                 wrap: true, // ✅ راب
                 validator: (v) {
                   if (v == null || v.isEmpty) return "minimum 3 characters, spaces are not allowed";
-                  if (v.contains(' ')) return "Spaces are not allowed";
-                  if (v.trim().length < 3) return "Username must be at least 3 characters";
+                  if (v.contains(' ')) return "minimum 3 characters, spaces are not allowed";
+                  if (v.trim().length < 3) return "minimum 3 characters, spaces are not allowed";
                   return null;
                 },
               ),
@@ -367,7 +367,7 @@ counterText: "",
     // وإذا كان الباسورد الأساسي تطلع الشروط الطويلة
     return isConfirm 
         ? "match the same password above" 
-        : "min 8 chars, include capital letter, number, symbol";
+        : "minimum 8 chars, include capital letter, number, symbol";
   }          if (isConfirm && v != _passwordController.text)
             return "Passwords do not match";
           if (!isConfirm) {
