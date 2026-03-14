@@ -37,8 +37,10 @@ class _RegisterUserViewState extends State<RegisterUserView> {
   // دالة الفحص بصمت لتغيير الستايل (Bold) بدون إظهار الأحمر
   bool _isFieldValid(String label, String value) {
     if (value.trim().isEmpty) return false;
-    if (label == "Full Name")
+    if (label == "Full Name") {
+      final nameRegExp = RegExp(r"^[a-zA-Z\s\u0600-\u06FF]+$");
       return value.trim().split(RegExp(r'\s+')).length >= 3;
+    }
     if (label == "Email Address")
       return RegExp(r"^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.(com|net|org|sa)$")
           .hasMatch(value.trim());
@@ -79,13 +81,16 @@ class _RegisterUserViewState extends State<RegisterUserView> {
               _buildField(
                 _fullNameController,
                 "Full Name",
-                "Enter your first, middle, and last name",
+                "Enter your first, middle, last name(Letters only)",
                 Icons.badge_outlined,
                 customValidator: (v) {
                   if (v == null || v.trim().isEmpty)
-                    return "Full name is required";
+                    return "Enter your first, middle, last name(Letters only)";
+                  if (!RegExp(r"^[a-zA-Z\s\u0600-\u06FF]+$").hasMatch(v.trim())) {
+                    return "Enter your first, middle, last name(Letters only)";
+                  }
                   if (v.trim().split(RegExp(r'\s+')).length < 3)
-                    return "Enter your first, middle, and last name ";
+                    return "Enter your first, middle, last name(Letters only)";
                   return null;
                 },
               ),
@@ -96,28 +101,56 @@ class _RegisterUserViewState extends State<RegisterUserView> {
                 Icons.person_outline,
                 customValidator: (v) {
                   if (v == null || v.trim().isEmpty)
-                    return "Field cannot be empty";
+                    return "minimum 3 characters , spaces are not allowed";
                   if (v.contains(' '))
-                    return "Spaces are not allowed"; // ✅ هذا هو شرط منع المسافات
-                  if (v.trim().length < 3) return "At least 3 characters";
+                    return "minimum 3 characters , spaces are not allowed"; // ✅ هذا هو شرط منع المسافات
+                  if (v.trim().length < 3) return "minimum 3 characters , spaces are not allowed";
                   return null;
                 },
               ),
-              _buildField(
-                _emailController,
-                "Email Address",
-                "name@example.com",
-                Icons.email_outlined,
-                type: TextInputType.emailAddress,
-                customValidator: (v) {
-                  if (v == null || v.trim().isEmpty) return "Email is required";
-                  final regex = RegExp(
-                      r"^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.(com|net|org|sa)$");
-                  if (!regex.hasMatch(v.trim()))
-                    return "Invalid email format (e.g. .com, .sa)";
-                  return null;
-                },
-              ),
+            _buildField(
+  _emailController,
+  "Email Address",
+  "Example: sara@gmail.com", // المثال ثابت هنا كـ Helper Text
+  Icons.email_outlined,
+  type: TextInputType.emailAddress,
+  customValidator: (v) {
+    if (v == null || v.trim().isEmpty) {
+      return "Example: sara@gmail.com";
+    }
+
+    String email = v.trim();
+
+    // 1. نسي علامة @
+    if (!email.contains('@')) {
+      return "Follow example: sara@gmail.com";
+    }
+
+    // 2. حط @ بس ما كمل بعدها شي (الدومين)
+    if (email.endsWith('@')) {
+      return "Follow example:sara@gmail.com";
+    }
+
+    // 3. نسي النقطة (.) بعد الـ @
+    String domainPart = email.substring(email.indexOf('@'));
+    if (!domainPart.contains('.')) {
+      return "Follow example:sara@gmail.com";
+    }
+
+    // 4. حط مسافات داخل الإيميل
+    if (email.contains(' ')) {
+      return "Follow example:sara@gmail.com";
+    }
+
+    // 5. الصيغة العامة (للتأكد من النهايات الصحيحة)
+    final regex = RegExp(r"^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.(com|net|org|sa)$");
+    if (!regex.hasMatch(email)) {
+      return "Follow example:sara@gmail.com";
+    }
+
+    return null;
+  },
+),
               _buildField(
                 _phoneController,
                 "Phone Number",
@@ -134,7 +167,7 @@ class _RegisterUserViewState extends State<RegisterUserView> {
               _buildPassField(
                   _passwordController,
                   "Password",
-                  "min 8 chars, include capital letter, number, symbol",
+                  "minimum 8 chars, include capital letter, number, symbol",
                   _isPasswordVisible,
                   () =>
                       setState(() => _isPasswordVisible = !_isPasswordVisible)),
@@ -173,120 +206,189 @@ class _RegisterUserViewState extends State<RegisterUserView> {
     );
   }
 
-  Widget _buildField(
-      TextEditingController ctrl, String label, String helper, IconData icon,
-      {TextInputType type = TextInputType.text,
-      String? Function(String?)? customValidator}) {
-    bool isValid = _isFieldValid(label, ctrl.text);
-    bool isEmail = label == "Email Address";
-    bool isPhone = label == "Phone Number";
+ // helper style موحد لكل الحقول
+final TextStyle helperTextStyle = const TextStyle(
+  fontSize: 11,
+  color: Colors.blueGrey,
+  height: 1.2,
+);
 
-    return Padding(
-      padding: const EdgeInsets.only(bottom: 20),
-      child: TextFormField(
-        controller: ctrl,
-maxLength: isPhone ? 10 : 40,       
-maxLines: isPhone ? 1 : null,        
-minLines: 1,
-// ✅ التعديل الذكي لنوع لوحة المفاتيح
-keyboardType: isPhone 
-    ? TextInputType.phone // لو كان جوال تطلع أرقام بس
-    : (label == "Email Address" ? TextInputType.emailAddress : TextInputType.multiline),  
-          onChanged: (v) => setState(() {}),
-        decoration: InputDecoration(
-          labelText: label,
-          helperText: helper,
-counterText: "", // ✅ هذا السطر يخفي العداد نهائياً (0/40)         
- helperStyle: const TextStyle(fontSize: 11, color: Colors.blueGrey),
-          floatingLabelBehavior: FloatingLabelBehavior.always,
-          prefixIcon: Icon(icon, color: purple),
-          enabledBorder: OutlineInputBorder(
-            borderRadius: BorderRadius.circular(12),
-            borderSide: BorderSide(
-              color: isValid ? purple : Colors.grey.shade300,
-              width: isValid ? 2.5 : 1,
-            ),
-          ),
-          focusedBorder: OutlineInputBorder(
-            borderRadius: BorderRadius.circular(12),
-            borderSide: BorderSide(color: purple, width: 2.5),
-          ),
-          errorBorder: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(12),
-              borderSide: const BorderSide(color: Colors.red, width: 1.5)),
-          focusedErrorBorder: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(12),
-              borderSide: const BorderSide(color: Colors.red, width: 2)),
-          border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+Widget _buildField(
+  TextEditingController ctrl,
+  String label,
+  String helper,
+  IconData icon, {
+  TextInputType type = TextInputType.text,
+  String? Function(String?)? customValidator,
+}) {
+  bool isValid = _isFieldValid(label, ctrl.text);
+
+  return Padding(
+    padding: const EdgeInsets.only(bottom: 20),
+    child: TextFormField(
+      controller: ctrl,
+      keyboardType: type,
+      maxLength: 40,
+      maxLines: 1,
+      onChanged: (v) => setState(() {}),
+      decoration: InputDecoration(
+        labelText: label,
+        helperText: helper,
+        counterText: "",
+        floatingLabelBehavior: FloatingLabelBehavior.always,
+        prefixIcon: Icon(icon, color: purple),
+
+        // helper text نفس الشكل في كل الحقول
+        helperStyle: helperTextStyle,
+
+        // error text
+        errorStyle: const TextStyle(
+          fontSize: 11,
+          color: Colors.red,
+          height: 1.2,
         ),
-        validator: customValidator,
+
+        errorMaxLines: 3,
+        helperMaxLines: 3,
+
+        enabledBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(12),
+          borderSide: BorderSide(
+            color: isValid ? purple : Colors.grey.shade300,
+            width: isValid ? 2.5 : 1,
+          ),
+        ),
+
+        focusedBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(12),
+          borderSide: BorderSide(color: purple, width: 2.5),
+        ),
+
+        errorBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(12),
+          borderSide: const BorderSide(color: Colors.red, width: 1.5),
+        ),
+
+        focusedErrorBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(12),
+          borderSide: const BorderSide(color: Colors.red, width: 2),
+        ),
+
+        border: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(12),
+        ),
       ),
-    );
-  }
+      validator: customValidator,
+    ),
+  );
+}
 
-  Widget _buildPassField(TextEditingController ctrl, String label,
-      String helper, bool visible, VoidCallback toggle,
-      {bool isConfirm = false}) {
-    bool isValid = _isFieldValid(label, ctrl.text);
+Widget _buildPassField(
+  TextEditingController ctrl,
+  String label,
+  String helper,
+  bool visible,
+  VoidCallback toggle, {
+  bool isConfirm = false,
+}) {
+  bool isValid = _isFieldValid(label, ctrl.text);
 
-    return Padding(
-      padding: const EdgeInsets.only(bottom: 20),
-      child: TextFormField(
-        controller: ctrl,
-        obscureText: !visible,
-        maxLength: 40, // ✅ تحديد 40 حرف
-        maxLines: 1,
-        onChanged: (v) => setState(() {}),
-        decoration: InputDecoration(
-          labelText: label,
-          helperText: helper,
-          counterText: "", // ✅ إخفاء العداد في الباسورد أيضاً
-          helperStyle: const TextStyle(fontSize: 11, color: Colors.blueGrey),
-          floatingLabelBehavior: FloatingLabelBehavior.always,
-          prefixIcon: Icon(Icons.lock_outline, color: purple),
-          suffixIcon: IconButton(
-              icon: Icon(visible ? Icons.visibility : Icons.visibility_off,
-                  color: Colors.grey),
-              onPressed: toggle),
-          enabledBorder: OutlineInputBorder(
-            borderRadius: BorderRadius.circular(12),
-            borderSide: BorderSide(
-              color: isValid ? purple : Colors.grey.shade300,
-              width: isValid ? 2.5 : 1,
-            ),
+  return Padding(
+    padding: const EdgeInsets.only(bottom: 20),
+    child: TextFormField(
+      controller: ctrl,
+      obscureText: !visible,
+      maxLength: 40,
+      maxLines: 1,
+      onChanged: (v) => setState(() {}),
+      decoration: InputDecoration(
+        labelText: label,
+        helperText: helper,
+        counterText: "",
+        floatingLabelBehavior: FloatingLabelBehavior.always,
+
+        prefixIcon: Icon(Icons.lock_outline, color: purple),
+
+        suffixIcon: IconButton(
+          icon: Icon(
+            visible ? Icons.visibility : Icons.visibility_off,
+            color: Colors.grey,
           ),
-          focusedBorder: OutlineInputBorder(
-            borderRadius: BorderRadius.circular(12),
-            borderSide: BorderSide(color: purple, width: 2.5),
-          ),
-          errorBorder: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(12),
-              borderSide: const BorderSide(color: Colors.red, width: 1.5)),
-          focusedErrorBorder: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(12),
-              borderSide: const BorderSide(color: Colors.red, width: 2)),
-          border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+          onPressed: toggle,
         ),
-        validator: (v) {
-          if (v == null || v.isEmpty) return "Required";
-          if (isConfirm && v != _passwordController.text)
-            return "Passwords do not match";
-          if (!isConfirm) {
-            if (v.length < 8) return "min 8 characters";
-            if (!v.contains(RegExp(r'[A-Z]'))) return "Add a capital letter";
-            if (!v.contains(RegExp(r'[0-9]'))) return "Add a number";
-            if (!v.contains(RegExp(r'[!@#$%^&*(),._?":{}|<>]')))
-              return "Add a symbol";
+
+        // نفس الستايل لكل الحقول
+        helperStyle: helperTextStyle,
+
+        errorStyle: const TextStyle(
+          fontSize: 11,
+          color: Colors.red,
+          height: 1.2,
+        ),
+
+        helperMaxLines: 3,
+        errorMaxLines: 3,
+
+        enabledBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(12),
+          borderSide: BorderSide(
+            color: isValid ? purple : Colors.grey.shade300,
+            width: isValid ? 2.5 : 1,
+          ),
+        ),
+
+        focusedBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(12),
+          borderSide: BorderSide(color: purple, width: 2.5),
+        ),
+
+        errorBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(12),
+          borderSide: const BorderSide(color: Colors.red, width: 1.5),
+        ),
+
+        focusedErrorBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(12),
+          borderSide: const BorderSide(color: Colors.red, width: 2),
+        ),
+
+        border: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(12),
+        ),
+      ),
+      validator: (v) {
+        if (v == null || v.isEmpty) {
+          return isConfirm
+              ? "match the same password above"
+              : "minimum 8 chars, include capital letter, number, symbol";
+        }
+
+        if (isConfirm && v != _passwordController.text) {
+          return "Passwords do not match";
+        }
+
+        if (!isConfirm) {
+          if (v.length < 8) {
+            return "minimum 8 chars, include capital letter, number, symbol";
           }
-          return null;
-        },
-      ),
-    );
-  }
+          if (!v.contains(RegExp(r'[A-Z]'))) {
+            return "minimum 8 chars, include capital letter, number, symbol";
+          }
+          if (!v.contains(RegExp(r'[0-9]'))) {
+            return "minimum 8 chars, include capital letter, number, symbol";
+          }
+          if (!v.contains(RegExp(r'[!@#$%^&*(),._?":{}|<>]'))) {
+            return "minimum 8 chars, include capital letter, number, symbol";
+          }
+        }
 
+        return null;
+      },
+    ),
+  );
+}
   void _submit() {
     if (_formKey.currentState!.validate()) {
-      
       // ✅ إنشاء الموديل بناءً على تعريف الكلاس الخاص بكِ بدقة
       final user = UserModel(
         uid: "", // يتم توليده تلقائياً في الـ ViewModel بعد التسجيل في فايربيز
@@ -303,9 +405,11 @@ counterText: "", // ✅ هذا السطر يخفي العداد نهائياً (
         linkedin: "",
         github: "",
       );
-      
+
       // إرسال البيانات للـ ViewModel
-      context.read<RegisterViewModel>().registerUser(user, _passwordController.text, context);
+      context
+          .read<RegisterViewModel>()
+          .registerUser(user, _passwordController.text, context);
     }
   }
 }
