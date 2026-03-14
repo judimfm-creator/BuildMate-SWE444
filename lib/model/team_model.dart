@@ -4,12 +4,12 @@ class TeamModel {
   final String teamName;
   final String? leaderId;
 
-  // قائمة الأعضاء
   final List<String> memberIds;
-
-  // Additional fields for UI
   final String? genderPreference;
   final List<String> rolesNeeded;
+
+  // New: pending join requests
+  final List<String> pendingRequests;
 
   TeamModel({
     required this.id,
@@ -19,9 +19,9 @@ class TeamModel {
     this.memberIds = const [],
     this.genderPreference,
     this.rolesNeeded = const [],
+    this.pendingRequests = const [],
   });
 
-  // نحسب عدد الأعضاء تلقائياً
   int get membersCount => memberIds.length;
 
   factory TeamModel.fromMap(String id, Map<String, dynamic> map) {
@@ -30,14 +30,16 @@ class TeamModel {
       hackathonId: (map['hackathonId'] ?? '') as String,
       teamName: (map['teamName'] ?? 'Team') as String,
       leaderId: map['leaderId'] as String?,
-
       memberIds: (map['memberIds'] as List?)
           ?.map((e) => e.toString())
           .toList() ??
           const [],
-
       genderPreference: map['genderPreference'] as String?,
       rolesNeeded: (map['rolesNeeded'] as List?)
+          ?.map((e) => e.toString())
+          .toList() ??
+          const [],
+      pendingRequests: (map['pendingRequests'] as List?)
           ?.map((e) => e.toString())
           .toList() ??
           const [],

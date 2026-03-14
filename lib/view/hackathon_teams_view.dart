@@ -1,22 +1,39 @@
 import 'package:flutter/material.dart';
+
+import '../model/hackathon.dart';
 import '../model/team_model.dart';
 import '../services/team_service.dart';
 import '../widgets/buildmate_app_bar.dart';
 import 'team_members_view.dart';
 
 class HackathonTeamsView extends StatelessWidget {
-  final String hackathonId;
-  final int teamSize;
+  final Hackathon hackathon;
 
   const HackathonTeamsView({
     super.key,
-    required this.hackathonId,
-    required this.teamSize,
+    required this.hackathon,
   });
+
+  DateTime _dateOnly(DateTime date) {
+    return DateTime(date.year, date.month, date.day);
+  }
+
+  bool _isRegistrationOpen(Hackathon hackathon) {
+    final today = _dateOnly(DateTime.now());
+    final open = _dateOnly(hackathon.applicationOpenDate);
+    final deadline = _dateOnly(hackathon.applicationDeadline);
+
+    final opened = today.isAtSameMomentAs(open) || today.isAfter(open);
+    final notClosed =
+        today.isAtSameMomentAs(deadline) || today.isBefore(deadline);
+
+    return opened && notClosed;
+  }
 
   @override
   Widget build(BuildContext context) {
     final teamService = TeamService();
+    final bool registrationOpen = _isRegistrationOpen(hackathon);
 
     return Scaffold(
       backgroundColor: const Color(0xFFF8F7FB),
@@ -25,57 +42,93 @@ class HackathonTeamsView extends StatelessWidget {
         showBack: true,
         onBack: () => Navigator.pop(context),
       ),
-      body: StreamBuilder<List<TeamModel>>(
-        stream: teamService.getTeamsByHackathon(hackathonId),
-        builder: (context, snapshot) {
-          if (snapshot.hasError) {
-            return const Center(
-              child: Text(
-                "Something went wrong",
-                style: TextStyle(fontSize: 16),
+      body: Column(
+        children: [
+          if (!registrationOpen)
+            Container(
+              width: double.infinity,
+              margin: const EdgeInsets.fromLTRB(16, 16, 16, 0),
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                color: const Color(0xFFFFF4E5),
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(color: const Color(0xFFFFD8A8)),
               ),
-            );
-          }
-
-          if (snapshot.connectionState == ConnectionState.waiting) {
-            return const Center(child: CircularProgressIndicator());
-          }
-
-          final teams = snapshot.data ?? [];
-
-          if (teams.isEmpty) {
-            return const Center(
-              child: Text(
-                "No teams yet",
-                style: TextStyle(
-                  fontSize: 16,
-                  color: Colors.black54,
-                ),
+              child: const Row(
+                children: [
+                  Icon(Icons.info_outline, color: Color(0xFFE67E22)),
+                  SizedBox(width: 8),
+                  Expanded(
+                    child: Text(
+                      "Registration is closed. You can still view teams, but you cannot join now.",
+                      style: TextStyle(
+                        fontSize: 13,
+                        color: Color(0xFF8A5A00),
+                        fontWeight: FontWeight.w500,
+                      ),
+                    ),
+                  ),
+                ],
               ),
-            );
-          }
+            ),
+          Expanded(
+            child: StreamBuilder<List<TeamModel>>(
+              stream: teamService.getTeamsByHackathon(hackathon.id ?? ''),
+              builder: (context, snapshot) {
+                if (snapshot.hasError) {
+                  return const Center(
+                    child: Text(
+                      "Something went wrong",
+                      style: TextStyle(fontSize: 16),
+                    ),
+                  );
+                }
 
-          return ListView.builder(
-            padding: const EdgeInsets.all(16),
-            itemCount: teams.length,
-            itemBuilder: (context, index) {
-              final team = teams[index];
-              final bool isFull = team.membersCount >= teamSize;
-              final int availableSlots =
-              (teamSize - team.membersCount).clamp(0, teamSize);
+                if (snapshot.connectionState == ConnectionState.waiting) {
+                  return const Center(child: CircularProgressIndicator());
+                }
 
-              return Padding(
-                padding: const EdgeInsets.only(bottom: 14),
-                child: _buildTeamCard(
-                  context,
-                  team,
-                  isFull,
-                  availableSlots,
-                ),
-              );
-            },
-          );
-        },
+                final teams = snapshot.data ?? [];
+
+                if (teams.isEmpty) {
+                  return const Center(
+                    child: Text(
+                      "No teams yet",
+                      style: TextStyle(
+                        fontSize: 16,
+                        color: Colors.black54,
+                      ),
+                    ),
+                  );
+                }
+
+                return ListView.builder(
+                  padding: const EdgeInsets.all(16),
+                  itemCount: teams.length,
+                  itemBuilder: (context, index) {
+                    final team = teams[index];
+                    final bool isFull =
+                        team.membersCount >= hackathon.teamSize;
+                    final int availableSlots =
+                    (hackathon.teamSize - team.membersCount)
+                        .clamp(0, hackathon.teamSize);
+
+                    return Padding(
+                      padding: const EdgeInsets.only(bottom: 14),
+                      child: _buildTeamCard(
+                        context,
+                        team,
+                        isFull,
+                        availableSlots,
+                        registrationOpen,
+                      ),
+                    );
+                  },
+                );
+              },
+            ),
+          ),
+        ],
       ),
     );
   }
@@ -85,13 +138,27 @@ class HackathonTeamsView extends StatelessWidget {
       TeamModel team,
       bool isFull,
       int availableSlots,
+      bool registrationOpen,
       ) {
     const Color purple = Color(0xFF7A62B3);
     const Color lightPurple = Color(0xFFF1ECFB);
     const Color orange = Color(0xFFFFB22C);
 
     final String genderText =
-    (team.genderPreference?.isNotEmpty == true) ? team.genderPreference! : "Any";
+    (team.genderPreference?.isNotEmpty == true)
+        ? team.genderPreference!
+        : "Any";
+
+    String joinButtonText = "Join";
+    Color joinButtonColor = orange;
+
+    if (!registrationOpen) {
+      joinButtonText = "Closed";
+      joinButtonColor = Colors.grey;
+    } else if (isFull) {
+      joinButtonText = "Full";
+      joinButtonColor = Colors.grey;
+    }
 
     return Container(
       decoration: BoxDecoration(
@@ -146,7 +213,7 @@ class HackathonTeamsView extends StatelessWidget {
               Expanded(
                 child: _buildInfoColumn(
                   icon: Icons.people_alt_outlined,
-                  text: "Members: ${team.membersCount} / $teamSize",
+                  text: "Members: ${team.membersCount} / ${hackathon.teamSize}",
                 ),
               ),
               Expanded(
@@ -187,9 +254,7 @@ class HackathonTeamsView extends StatelessWidget {
                   icon: const Icon(Icons.people_outline_rounded, size: 18),
                   label: const Text(
                     "View Members",
-                    style: TextStyle(
-                      fontWeight: FontWeight.w600,
-                    ),
+                    style: TextStyle(fontWeight: FontWeight.w600),
                   ),
                   style: OutlinedButton.styleFrom(
                     foregroundColor: purple,
@@ -214,15 +279,17 @@ class HackathonTeamsView extends StatelessWidget {
                     ScaffoldMessenger.of(context).showSnackBar(
                       SnackBar(
                         content: Text(
-                          isFull
+                          !registrationOpen
+                              ? "Registration is currently closed"
+                              : isFull
                               ? "This team is full"
-                              : "Join request flow will be added later",
+                              : "Join request flow will be handled later",
                         ),
                       ),
                     );
                   },
                   style: ElevatedButton.styleFrom(
-                    backgroundColor: isFull ? Colors.grey : orange,
+                    backgroundColor: joinButtonColor,
                     foregroundColor: Colors.white,
                     shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(14),
@@ -230,11 +297,9 @@ class HackathonTeamsView extends StatelessWidget {
                     elevation: 0,
                   ),
                   icon: const Icon(Icons.login_rounded, size: 18),
-                  label: const Text(
-                    "Join",
-                    style: TextStyle(
-                      fontWeight: FontWeight.bold,
-                    ),
+                  label: Text(
+                    joinButtonText,
+                    style: const TextStyle(fontWeight: FontWeight.bold),
                   ),
                 ),
               ),

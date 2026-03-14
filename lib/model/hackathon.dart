@@ -1,4 +1,4 @@
-import 'package:cloud_firestore/cloud_firestore.dart'; // ← هذا
+import 'package:cloud_firestore/cloud_firestore.dart';
 
 class Hackathon {
   final String? id;
@@ -12,6 +12,9 @@ class Hackathon {
   final String mode;
   final List<String> rolesNeeded;
   final String educationCriteria;
+
+  final DateTime applicationOpenDate;
+  final DateTime applicationDeadline;
   final DateTime startDate;
   final DateTime endDate;
 
@@ -27,6 +30,8 @@ class Hackathon {
     required this.mode,
     required this.rolesNeeded,
     required this.educationCriteria,
+    required this.applicationOpenDate,
+    required this.applicationDeadline,
     required this.startDate,
     required this.endDate,
   });
@@ -43,12 +48,16 @@ class Hackathon {
       'mode': mode,
       'rolesNeeded': rolesNeeded,
       'educationCriteria': educationCriteria,
+      'applicationOpenDate': applicationOpenDate.toIso8601String(),
+      'applicationDeadline': applicationDeadline.toIso8601String(),
       'startDate': startDate.toIso8601String(),
       'endDate': endDate.toIso8601String(),
     };
   }
+
   factory Hackathon.fromFirestore(DocumentSnapshot doc) {
     final data = doc.data() as Map<String, dynamic>;
+
     return Hackathon(
       id: doc.id,
       organizationId: data['organizationId'] ?? '',
@@ -61,6 +70,15 @@ class Hackathon {
       mode: data['mode'] ?? '',
       rolesNeeded: List<String>.from(data['rolesNeeded'] ?? []),
       educationCriteria: data['educationCriteria'] ?? '',
+
+      applicationOpenDate: data['applicationOpenDate'] != null
+          ? DateTime.parse(data['applicationOpenDate'])
+          : DateTime.parse(data['startDate']),
+
+      applicationDeadline: data['applicationDeadline'] != null
+          ? DateTime.parse(data['applicationDeadline'])
+          : DateTime.parse(data['startDate']),
+
       startDate: DateTime.parse(data['startDate']),
       endDate: DateTime.parse(data['endDate']),
     );

@@ -27,4 +27,48 @@ class TeamService {
       }).toList();
     });
   }
+
+  Future<void> sendJoinRequest({
+    required String teamId,
+    required String userId,
+    required int teamSize,
+  }) async {
+    final teamRef = _firestore.collection('teams').doc(teamId);
+
+    await _firestore.runTransaction((transaction) async {
+      final snapshot = await transaction.get(teamRef);
+
+      if (!snapshot.exists) {
+        throw Exception("Team not found");
+      }
+
+      final data = snapshot.data() as Map<String, dynamic>;
+
+      final memberIds = (data['memberIds'] as List?)
+          ?.map((e) => e.toString())
+          .toList() ??
+          [];
+
+      final pendingRequests = (data['pendingRequests'] as List?)
+          ?.map((e) => e.toString())
+          .toList() ??
+          [];
+
+      if (memberIds.contains(userId)) {
+        throw Exception("You are already a member of this team");
+      }
+
+      if (pendingRequests.contains(userId)) {
+        throw Exception("You already sent a request");
+      }
+
+      if (memberIds.length >= teamSize) {
+        throw Exception("This team is full");
+      }
+
+      transaction.update(teamRef, {
+        'pendingRequests': FieldValue.arrayUnion([userId]),
+      });
+    });
+  }
 }

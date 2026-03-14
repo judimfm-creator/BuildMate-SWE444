@@ -15,6 +15,12 @@ class UserHackathonDetailsView extends StatelessWidget {
   static const Color borderPurple = Color(0xFFE8DFF8);
   static const Color green = Color(0xFF7CB342);
   static const Color lightGreen = Color(0xFFEAF7DF);
+  static const Color orange = Color(0xFFF39C12);
+  static const Color lightOrange = Color(0xFFFFF3E0);
+  static const Color blue = Color(0xFF1E88E5);
+  static const Color lightBlue = Color(0xFFEAF4FF);
+  static const Color grey = Color(0xFF757575);
+  static const Color lightGrey = Color(0xFFF3F3F3);
 
   String _formatDate(DateTime date) {
     return "${date.day.toString().padLeft(2, '0')}/"
@@ -22,8 +28,81 @@ class UserHackathonDetailsView extends StatelessWidget {
         "${date.year}";
   }
 
+  Map<String, dynamic> _getHackathonStatus() {
+    final now = DateTime.now();
+    final today = DateTime(now.year, now.month, now.day);
+
+    final registrationOpen = DateTime(
+      hackathon.applicationOpenDate.year,
+      hackathon.applicationOpenDate.month,
+      hackathon.applicationOpenDate.day,
+    );
+
+    final registrationDeadline = DateTime(
+      hackathon.applicationDeadline.year,
+      hackathon.applicationDeadline.month,
+      hackathon.applicationDeadline.day,
+    );
+
+    final start = DateTime(
+      hackathon.startDate.year,
+      hackathon.startDate.month,
+      hackathon.startDate.day,
+    );
+
+    final end = DateTime(
+      hackathon.endDate.year,
+      hackathon.endDate.month,
+      hackathon.endDate.day,
+    );
+
+    if (today.isBefore(registrationOpen)) {
+      return {
+        'label': 'Upcoming Registration',
+        'color': orange,
+        'bgColor': lightOrange,
+      };
+    }
+
+    if ((today.isAtSameMomentAs(registrationOpen) ||
+        today.isAfter(registrationOpen)) &&
+        (today.isAtSameMomentAs(registrationDeadline) ||
+            today.isBefore(registrationDeadline))) {
+      return {
+        'label': 'Registration Open',
+        'color': blue,
+        'bgColor': lightBlue,
+      };
+    }
+
+    if ((today.isAtSameMomentAs(start) || today.isAfter(start)) &&
+        (today.isAtSameMomentAs(end) || today.isBefore(end))) {
+      return {
+        'label': 'Ongoing',
+        'color': green,
+        'bgColor': lightGreen,
+      };
+    }
+
+    if (today.isAfter(end)) {
+      return {
+        'label': 'Completed',
+        'color': grey,
+        'bgColor': lightGrey,
+      };
+    }
+
+    return {
+      'label': 'Upcoming',
+      'color': orange,
+      'bgColor': lightOrange,
+    };
+  }
+
   @override
   Widget build(BuildContext context) {
+    final status = _getHackathonStatus();
+
     return Scaffold(
       backgroundColor: Colors.white,
       appBar: BuildMateAppBar(
@@ -36,7 +115,7 @@ class UserHackathonDetailsView extends StatelessWidget {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            _buildTopBanner(),
+            _buildTopBanner(status),
             const SizedBox(height: 18),
             _buildTitleBlock(),
             const SizedBox(height: 22),
@@ -79,7 +158,28 @@ class UserHackathonDetailsView extends StatelessWidget {
 
             const SizedBox(height: 18),
 
-            _sectionTitle("Important Dates"),
+            _sectionTitle("Team Registration"),
+            _softCard(
+              child: Column(
+                children: [
+                  _infoRow(
+                    Icons.how_to_reg_outlined,
+                    "Registration Opens",
+                    _formatDate(hackathon.applicationOpenDate),
+                  ),
+                  _divider(),
+                  _infoRow(
+                    Icons.event_busy_outlined,
+                    "Registration Deadline",
+                    _formatDate(hackathon.applicationDeadline),
+                  ),
+                ],
+              ),
+            ),
+
+            const SizedBox(height: 18),
+
+            _sectionTitle("Hackathon Dates"),
             _softCard(
               child: Column(
                 children: [
@@ -142,7 +242,7 @@ class UserHackathonDetailsView extends StatelessWidget {
     );
   }
 
-  Widget _buildTopBanner() {
+  Widget _buildTopBanner(Map<String, dynamic> status) {
     return Container(
       width: double.infinity,
       height: 150,
@@ -166,24 +266,24 @@ class UserHackathonDetailsView extends StatelessWidget {
             child: Container(
               padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
               decoration: BoxDecoration(
-                color: lightGreen,
+                color: status['bgColor'],
                 borderRadius: BorderRadius.circular(20),
                 border: Border.all(
-                  color: green.withOpacity(0.35),
+                  color: (status['color'] as Color).withOpacity(0.35),
                 ),
               ),
               child: Row(
                 mainAxisSize: MainAxisSize.min,
-                children: const [
+                children: [
                   CircleAvatar(
                     radius: 4,
-                    backgroundColor: green,
+                    backgroundColor: status['color'],
                   ),
-                  SizedBox(width: 6),
+                  const SizedBox(width: 6),
                   Text(
-                    "Ongoing",
+                    status['label'],
                     style: TextStyle(
-                      color: Color(0xFF4E8A1C),
+                      color: status['color'],
                       fontSize: 12,
                       fontWeight: FontWeight.w600,
                     ),
