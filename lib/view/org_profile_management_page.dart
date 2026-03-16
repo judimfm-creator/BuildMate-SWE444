@@ -11,7 +11,8 @@ class OrgProfileManagementPage extends StatefulWidget {
   const OrgProfileManagementPage({super.key});
 
   @override
-  State<OrgProfileManagementPage> createState() => _OrgProfileManagementPageState();
+  State<OrgProfileManagementPage> createState() =>
+      _OrgProfileManagementPageState();
 }
 
 class _OrgProfileManagementPageState extends State<OrgProfileManagementPage> {
@@ -38,12 +39,18 @@ class _OrgProfileManagementPageState extends State<OrgProfileManagementPage> {
     viewModel.orgDataStream.first.then((org) {
       if (org != null && mounted) {
         setState(() {
-          _controllers["Organization Name"] = TextEditingController(text: org.orgName);
-          _controllers["Username"] = TextEditingController(text: org.username ?? "");
-          _controllers["Phone Number"] = TextEditingController(text: org.phoneNumber);
-          _controllers["Location"] = TextEditingController(text: org.location ?? "");
-          _controllers["Biography"] = TextEditingController(text: org.biography ?? "");
-          _controllers["Email Address"] = TextEditingController(text: FirebaseAuth.instance.currentUser?.email ?? "");
+          _controllers["Organization Name"] =
+              TextEditingController(text: org.orgName);
+          _controllers["Username"] =
+              TextEditingController(text: org.username ?? "");
+          _controllers["Phone Number"] =
+              TextEditingController(text: org.phoneNumber);
+          _controllers["Location"] =
+              TextEditingController(text: org.location ?? "");
+          _controllers["Biography"] =
+              TextEditingController(text: org.biography ?? "");
+          _controllers["Email Address"] = TextEditingController(
+              text: FirebaseAuth.instance.currentUser?.email ?? "");
           _itemsMarkedForDeletion.clear();
           _isInitialized = true;
         });
@@ -67,7 +74,9 @@ class _OrgProfileManagementPageState extends State<OrgProfileManagementPage> {
           appBar: BuildMateAppBar(
             showBack: true,
             onBack: () => Navigator.pop(context),
-            onLogout: () async => await Provider.of<RegisterViewModel>(context, listen: false).logout(context),
+            onLogout: () async =>
+                await Provider.of<RegisterViewModel>(context, listen: false)
+                    .logout(context),
           ),
           body: !_isInitialized
               ? const Center(child: CircularProgressIndicator())
@@ -83,14 +92,20 @@ class _OrgProfileManagementPageState extends State<OrgProfileManagementPage> {
                             _buildAvatarSection(org),
                             const SizedBox(height: 25),
                             _buildSectionTitle("Organization Info"),
-                            _buildInfoField("Organization Name", Icons.business_rounded),
+                            _buildInfoField(
+                                "Organization Name", Icons.business_rounded),
                             _buildInfoField("Username", Icons.person_outline),
-                            _buildInfoField("Email Address", Icons.email_outlined, isAlwaysDisabled: true),
-                            _buildInfoField("Phone Number", Icons.phone_android, isAlwaysDisabled: true),
+                            _buildInfoField(
+                                "Email Address", Icons.email_outlined,
+                                isAlwaysDisabled: true),
+                            _buildInfoField("Phone Number", Icons.phone_android,
+                                isAlwaysDisabled: true),
                             const SizedBox(height: 15),
                             _buildSectionTitle("Additional Details"),
-                            _buildFieldRow("Biography", "biography", Icons.info_outline),
-                            _buildInfoField("Location", Icons.location_on_outlined),
+                            _buildFieldRow(
+                                "Biography", "biography", Icons.info_outline),
+                            _buildInfoField(
+                                "Location", Icons.location_on_outlined),
                             const SizedBox(height: 30),
                             if (!_isEditMode) _buildDeleteButton(),
                             const SizedBox(height: 50),
@@ -106,11 +121,13 @@ class _OrgProfileManagementPageState extends State<OrgProfileManagementPage> {
     );
   }
 
-  Widget _buildInfoField(String label, IconData icon, {bool isAlwaysDisabled = false}) {
+  Widget _buildInfoField(String label, IconData icon,
+      {bool isAlwaysDisabled = false}) {
     TextEditingController ctrl = _controllers[label] ?? TextEditingController();
     bool canEdit = _isEditMode && !isAlwaysDisabled;
 
-    bool isBio = label.toLowerCase().contains("bio") || label.toLowerCase().contains("biography");
+    bool isBio = label.toLowerCase().contains("bio") ||
+        label.toLowerCase().contains("biography");
     bool isPhone = label.toLowerCase().contains("phone");
     bool isEmail = label.toLowerCase().contains("email");
 
@@ -123,12 +140,14 @@ class _OrgProfileManagementPageState extends State<OrgProfileManagementPage> {
           color: Colors.white,
           borderRadius: BorderRadius.circular(12),
           border: Border.all(
-            color: canEdit ? primaryPurple.withOpacity(0.5) : Colors.grey.shade100,
+            color:
+                canEdit ? primaryPurple.withOpacity(0.5) : Colors.grey.shade100,
             width: canEdit ? 1.5 : 1,
           ),
         ),
         child: Row(
-          crossAxisAlignment: CrossAxisAlignment.start, // الأيقونة تبقى فوق عند تعدد الأسطر
+          crossAxisAlignment:
+              CrossAxisAlignment.start, // الأيقونة تبقى فوق عند تعدد الأسطر
           children: [
             Padding(
               padding: const EdgeInsets.only(top: 2),
@@ -139,7 +158,9 @@ class _OrgProfileManagementPageState extends State<OrgProfileManagementPage> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text(label, style: TextStyle(color: Colors.grey.shade500, fontSize: 11)),
+                  Text(label,
+                      style:
+                          TextStyle(color: Colors.grey.shade500, fontSize: 11)),
                   const SizedBox(height: 2),
                   TextFormField(
                     controller: ctrl,
@@ -148,13 +169,17 @@ class _OrgProfileManagementPageState extends State<OrgProfileManagementPage> {
                     maxLength: isBio ? 100 : (isPhone ? 10 : 40),
                     keyboardType: isPhone
                         ? TextInputType.phone
-                        : (isEmail ? TextInputType.emailAddress : TextInputType.multiline),
-                    style: const TextStyle(fontSize: 14, fontWeight: FontWeight.bold),
+                        : (isEmail
+                            ? TextInputType.emailAddress
+                            : TextInputType.multiline),
+                    style: const TextStyle(
+                        fontSize: 14, fontWeight: FontWeight.bold),
                     decoration: InputDecoration(
                       isDense: true,
                       border: InputBorder.none,
                       contentPadding: EdgeInsets.zero,
-                      counterText: isBio ? null : "", // إظهار العداد فقط في البيو
+                      counterText:
+                          isBio ? null : "", // إظهار العداد فقط في البيو
                     ),
                   ),
                 ],
@@ -163,7 +188,8 @@ class _OrgProfileManagementPageState extends State<OrgProfileManagementPage> {
             if (isAlwaysDisabled)
               Padding(
                 padding: const EdgeInsets.only(top: 10),
-                child: Icon(Icons.lock_outline, size: 16, color: Colors.grey.shade300),
+                child: Icon(Icons.lock_outline,
+                    size: 16, color: Colors.grey.shade300),
               ),
           ],
         ),
@@ -179,16 +205,17 @@ class _OrgProfileManagementPageState extends State<OrgProfileManagementPage> {
         Expanded(
             child: Opacity(
                 opacity: isMarked ? 0.3 : 1.0,
-                child: _buildInfoField(label, icon)
-            )
-        ),
+                child: _buildInfoField(label, icon))),
         if (_isEditMode)
           Padding(
             padding: const EdgeInsets.only(top: 10, left: 5),
             child: IconButton(
-              icon: Icon(isMarked ? Icons.undo : Icons.close, color: isMarked ? Colors.blue : Colors.red),
+              icon: Icon(isMarked ? Icons.undo : Icons.close,
+                  color: isMarked ? Colors.blue : Colors.red),
               onPressed: () => setState(() {
-                isMarked ? _itemsMarkedForDeletion.remove(key) : _itemsMarkedForDeletion.add(key);
+                isMarked
+                    ? _itemsMarkedForDeletion.remove(key)
+                    : _itemsMarkedForDeletion.add(key);
               }),
             ),
           ),
@@ -199,36 +226,68 @@ class _OrgProfileManagementPageState extends State<OrgProfileManagementPage> {
   Widget _buildSaveButton(OrgModel? org) {
     return Container(
       padding: const EdgeInsets.all(20),
-      decoration: BoxDecoration(color: Colors.white, boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.05), blurRadius: 10, offset: const Offset(0, -5))]),
+      decoration: BoxDecoration(color: Colors.white, boxShadow: [
+        BoxShadow(
+            color: Colors.black.withOpacity(0.05),
+            blurRadius: 10,
+            offset: const Offset(0, -5))
+      ]),
       child: SizedBox(
-        width: double.infinity, height: 50,
+        width: double.infinity,
+        height: 50,
         child: ElevatedButton(
-          style: ElevatedButton.styleFrom(backgroundColor: primaryPurple, shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12))),
+          style: ElevatedButton.styleFrom(
+              backgroundColor: primaryPurple,
+              shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(12))),
           onPressed: () async {
-            final orgVM = Provider.of<OrgProfileViewModel>(context, listen: false);
-            final regVM = Provider.of<RegisterViewModel>(context, listen: false);
-bool hasChanges = _itemsMarkedForDeletion.isNotEmpty ;
+            final orgVM =
+                Provider.of<OrgProfileViewModel>(context, listen: false);
+            final regVM =
+                Provider.of<RegisterViewModel>(context, listen: false);
+            bool hasChanges = _itemsMarkedForDeletion.isNotEmpty;
             if (hasChanges) {
               await orgVM.updateOrgProfile(
-  name: _controllers["Organization Name"]?.text ?? org?.orgName ?? "",
-  phone: _controllers["Phone Number"]?.text ?? org?.phoneNumber ?? "",
-  location: _itemsMarkedForDeletion.contains("location") ? "" : (_controllers["Location"]?.text ?? ""),
-  bio: _itemsMarkedForDeletion.contains("biography") ? "" : (_controllers["Biography"]?.text ?? ""),
-  context: context,
-  // الحل: نرسل "" فقط لو ضغطتي حذف، ونرسل null لو ما لمستي الصورة عشان ما تتغير
-image: _itemsMarkedForDeletion.contains("photo") ? "" : (regVM.pickedImage?.path),);
+                name: _controllers["Organization Name"]?.text ??
+                    org?.orgName ??
+                    "",
+                phone: _controllers["Phone Number"]?.text ??
+                    org?.phoneNumber ??
+                    "",
+                location: _itemsMarkedForDeletion.contains("location")
+                    ? ""
+                    : (_controllers["Location"]?.text ?? ""),
+                bio: _itemsMarkedForDeletion.contains("biography")
+                    ? ""
+                    : (_controllers["Biography"]?.text ?? ""),
+                context: context,
+                // الحل: نرسل "" فقط لو ضغطتي حذف، ونرسل null لو ما لمستي الصورة عشان ما تتغير
+                image: _itemsMarkedForDeletion.contains("photo")
+                    ? ""
+                    : (regVM.pickedImage?.path),
+              );
 
 // تأكدي أن هذا السطر موجود عشان الصورة تختفي من الشاشة
-              if (_itemsMarkedForDeletion.contains("photo")) regVM.clearPickedImage();
-              ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Profile updated successfully! ✅'), backgroundColor: Colors.green));
+              if (_itemsMarkedForDeletion.contains("photo"))
+                regVM.clearPickedImage();
+              ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
+                  content: Text('Profile updated successfully! ✅'),
+                  backgroundColor: Colors.green));
               await _loadOrgData();
             } else {
-              ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Changes saved locally! ✅ (Demo Mode)'), backgroundColor: Colors.green));
+              ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
+                  content: Text('Changes saved locally! ✅ (Demo Mode)'),
+                  backgroundColor: Colors.green));
             }
 
-            setState(() { _isEditMode = false; _itemsMarkedForDeletion.clear(); });
+            setState(() {
+              _isEditMode = false;
+              _itemsMarkedForDeletion.clear();
+            });
           },
-          child: const Text("SAVE CHANGES", style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+          child: const Text("SAVE CHANGES",
+              style:
+                  TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
         ),
       ),
     );
@@ -238,26 +297,72 @@ image: _itemsMarkedForDeletion.contains("photo") ? "" : (regVM.pickedImage?.path
     bool isMarked = _itemsMarkedForDeletion.contains("photo");
     ImageProvider? imageProvider;
     if (org?.profilePhotoPath != null && org!.profilePhotoPath!.isNotEmpty) {
-      imageProvider = org.profilePhotoPath!.startsWith('http') ? NetworkImage(org.profilePhotoPath!) : FileImage(File(org.profilePhotoPath!)) as ImageProvider;
+      imageProvider = org.profilePhotoPath!.startsWith('http')
+          ? NetworkImage(org.profilePhotoPath!)
+          : FileImage(File(org.profilePhotoPath!)) as ImageProvider;
     }
-    return Center(child: Stack(children: [
-      Opacity(opacity: isMarked ? 0.3 : 1.0, child: CircleAvatar(radius: 50, backgroundColor: primaryPurple.withOpacity(0.1), backgroundImage: imageProvider, child: imageProvider == null ? Icon(Icons.business, size: 50, color: primaryPurple) : null)),
-      if (_isEditMode && imageProvider != null) Positioned(top: 0, right: 0, child: GestureDetector(onTap: () => setState(() => isMarked ? _itemsMarkedForDeletion.remove("photo") : _itemsMarkedForDeletion.add("photo")), child: CircleAvatar(radius: 14, backgroundColor: isMarked ? Colors.blue : Colors.red, child: Icon(isMarked ? Icons.undo : Icons.close, size: 14, color: Colors.white))))
+    return Center(
+        child: Stack(children: [
+      Opacity(
+          opacity: isMarked ? 0.3 : 1.0,
+          child: CircleAvatar(
+              radius: 50,
+              backgroundColor: primaryPurple.withOpacity(0.1),
+              backgroundImage: imageProvider,
+              child: imageProvider == null
+                  ? Icon(Icons.business, size: 50, color: primaryPurple)
+                  : null)),
+      if (_isEditMode && imageProvider != null)
+        Positioned(
+            top: 0,
+            right: 0,
+            child: GestureDetector(
+                onTap: () => setState(() => isMarked
+                    ? _itemsMarkedForDeletion.remove("photo")
+                    : _itemsMarkedForDeletion.add("photo")),
+                child: CircleAvatar(
+                    radius: 14,
+                    backgroundColor: isMarked ? Colors.blue : Colors.red,
+                    child: Icon(isMarked ? Icons.undo : Icons.close,
+                        size: 14, color: Colors.white))))
     ]));
   }
 
-  Widget _buildEditToggle() => Padding(padding: const EdgeInsets.symmetric(horizontal: 25, vertical: 15), child: Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [Text("Enable Editing Mode", style: TextStyle(color: _isEditMode ? primaryPurple : Colors.grey.shade600, fontWeight: FontWeight.bold)), Switch(value: _isEditMode, activeColor: primaryPurple, onChanged: (v) => setState(() { _isEditMode = v; }))]));
-  Widget _buildSectionTitle(String title) => Padding(padding: const EdgeInsets.only(bottom: 12, left: 5), child: Text(title, style: TextStyle(color: primaryPurple, fontSize: 14, fontWeight: FontWeight.bold)));
+  Widget _buildEditToggle() => Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 25, vertical: 15),
+      child: Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [
+        Text("Enable Editing Mode",
+            style: TextStyle(
+                color: _isEditMode ? primaryPurple : Colors.grey.shade600,
+                fontWeight: FontWeight.bold)),
+        Switch(
+            value: _isEditMode,
+            activeColor: primaryPurple,
+            onChanged: (v) => setState(() {
+                  _isEditMode = v;
+                }))
+      ]));
+  Widget _buildSectionTitle(String title) => Padding(
+      padding: const EdgeInsets.only(bottom: 12, left: 5),
+      child: Text(title,
+          style: TextStyle(
+              color: primaryPurple,
+              fontSize: 14,
+              fontWeight: FontWeight.bold)));
 
   // ✅ تفعيل حذف الحساب الحقيقي للمنشأة (نفس نظام اليوزر)
   Widget _buildDeleteButton() => Center(
-    child: OutlinedButton.icon(
-      onPressed: _handleDeleteAccount, 
-      icon: Icon(Icons.delete_forever_outlined, color: deleteRed), 
-      label: Text("Delete Account", style: TextStyle(color: deleteRed, fontWeight: FontWeight.bold)), 
-      style: OutlinedButton.styleFrom(side: BorderSide(color: deleteRed.withOpacity(0.4)), shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)), padding: const EdgeInsets.symmetric(horizontal: 25, vertical: 12))
-    )
-  );
+      child: OutlinedButton.icon(
+          onPressed: _handleDeleteAccount,
+          icon: Icon(Icons.delete_forever_outlined, color: deleteRed),
+          label: Text("Delete Account",
+              style: TextStyle(color: deleteRed, fontWeight: FontWeight.bold)),
+          style: OutlinedButton.styleFrom(
+              side: BorderSide(color: deleteRed.withOpacity(0.4)),
+              shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(10)),
+              padding:
+                  const EdgeInsets.symmetric(horizontal: 25, vertical: 12))));
 
   Future<void> _handleDeleteAccount() async {
     final confirmDelete = await showDialog<bool>(
@@ -265,10 +370,16 @@ image: _itemsMarkedForDeletion.contains("photo") ? "" : (regVM.pickedImage?.path
       builder: (context) => AlertDialog(
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(15)),
         title: const Text("Confirm Account Deletion"),
-        content: const Text("Are you sure you want to permanently delete your organization account? This action cannot be undone."),
+        content: const Text(
+            "Are you sure you want to permanently delete your organization account? This action cannot be undone."),
         actions: [
-          TextButton(onPressed: () => Navigator.pop(context, false), child: const Text("Cancel")),
-          TextButton(onPressed: () => Navigator.pop(context, true), child: const Text("Yes, Delete", style: TextStyle(color: Colors.red))),
+          TextButton(
+              onPressed: () => Navigator.pop(context, false),
+              child: const Text("Cancel")),
+          TextButton(
+              onPressed: () => Navigator.pop(context, true),
+              child: const Text("Yes, Delete",
+                  style: TextStyle(color: Colors.red))),
         ],
       ),
     );
@@ -282,7 +393,6 @@ image: _itemsMarkedForDeletion.contains("photo") ? "" : (regVM.pickedImage?.path
     );
 
     if (password == null) return;
-
 
     final orgVM = Provider.of<OrgProfileViewModel>(context, listen: false);
     final userEmail = FirebaseAuth.instance.currentUser?.email ?? "";
@@ -298,26 +408,29 @@ image: _itemsMarkedForDeletion.contains("photo") ? "" : (regVM.pickedImage?.path
         );
         await Future.delayed(const Duration(seconds: 1));
         if (context.mounted) {
-          Navigator.pushNamedAndRemoveUntil(context, '/loginUser', (route) => false);
+          Navigator.pushNamedAndRemoveUntil(
+              context, '/loginUser', (route) => false);
         }
       }
     } on FirebaseAuthException catch (e) {
       if (context.mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text(e.message ?? "Failed to delete account"), backgroundColor: Colors.red),
+          SnackBar(
+              content: Text(e.message ?? "Failed to delete account"),
+              backgroundColor: Colors.red),
         );
       }
     }
   }
 }
 
-
 // ✅ Widget مستقل للـ dialog — نفس نظام اليوزر
 class _OrgDeletePasswordDialog extends StatefulWidget {
   const _OrgDeletePasswordDialog();
 
   @override
-  State<_OrgDeletePasswordDialog> createState() => _OrgDeletePasswordDialogState();
+  State<_OrgDeletePasswordDialog> createState() =>
+      _OrgDeletePasswordDialogState();
 }
 
 class _OrgDeletePasswordDialogState extends State<_OrgDeletePasswordDialog> {
@@ -370,8 +483,10 @@ class _OrgDeletePasswordDialogState extends State<_OrgDeletePasswordDialog> {
             labelText: "Password",
             errorText: _serverError,
             suffixIcon: IconButton(
-              icon: Icon(_obscurePassword ? Icons.visibility_off : Icons.visibility),
-              onPressed: () => setState(() => _obscurePassword = !_obscurePassword),
+              icon: Icon(
+                  _obscurePassword ? Icons.visibility_off : Icons.visibility),
+              onPressed: () =>
+                  setState(() => _obscurePassword = !_obscurePassword),
             ),
           ),
           onChanged: (_) {
@@ -386,7 +501,9 @@ class _OrgDeletePasswordDialogState extends State<_OrgDeletePasswordDialog> {
         ),
       ),
       actions: [
-        TextButton(onPressed: () => Navigator.pop(context, null), child: const Text("Cancel")),
+        TextButton(
+            onPressed: () => Navigator.pop(context, null),
+            child: const Text("Cancel")),
         TextButton(
           onPressed: () => _tryDelete(context),
           child: const Text("Delete", style: TextStyle(color: Colors.red)),

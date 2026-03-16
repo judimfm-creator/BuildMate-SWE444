@@ -2,10 +2,12 @@ import 'package:flutter/material.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:provider/provider.dart';
 
+
 // ViewModels
 import 'package:buildmate/viewmodel/register_view_model.dart';
 import 'package:buildmate/viewmodel/profile_view_model.dart';
-import 'package:buildmate/viewmodel/org_profile_view_model.dart'; 
+import 'package:buildmate/viewmodel/org_profile_view_model.dart';
+import 'package:buildmate/viewmodel/org_hackathons_view_model.dart';
 
 // Screens & Views
 import 'package:buildmate/auth/welcome_screen.dart';
@@ -17,6 +19,9 @@ import 'package:buildmate/view/complete_profile_view.dart';
 import 'package:buildmate/home_screen.dart';
 import 'package:buildmate/org_home_screen.dart';
 
+
+
+
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   await Firebase.initializeApp();
@@ -26,7 +31,8 @@ void main() async {
       providers: [
         ChangeNotifierProvider(create: (_) => RegisterViewModel()),
         ChangeNotifierProvider(create: (_) => ProfileViewModel()),
-        ChangeNotifierProvider(create: (_) => OrgProfileViewModel()), 
+        ChangeNotifierProvider(create: (_) => OrgProfileViewModel()),
+        ChangeNotifierProvider(create: (_) => OrgHackathonsViewModel()),
       ],
       child: const MyApp(),
     ),
@@ -59,6 +65,8 @@ class MyApp extends StatelessWidget {
       // نقطة البداية المعتمدة هي صفحة الترحيب (Welcome Screen)
       initialRoute: '/welcome',
 
+
+
       routes: {
         '/welcome': (context) => const WelcomeScreen(),
         '/loginUser': (context) => const LoginScreen(),
@@ -68,6 +76,8 @@ class MyApp extends StatelessWidget {
         '/home': (context) => const HomeScreen(),
         '/orgHome': (context) => const InstitutionHomeScreen(),
         '/completeProfile': (context) => const CompleteProfileView(),
+
+
       },
     );
   }

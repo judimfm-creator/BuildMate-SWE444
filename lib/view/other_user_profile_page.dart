@@ -2,37 +2,34 @@ import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:font_awesome_flutter/font_awesome_flutter.dart';
 import 'package:url_launcher/url_launcher.dart';
-import 'package:firebase_auth/firebase_auth.dart';
 
-import 'package:buildmate/viewmodel/profile_view_model.dart';
-import 'package:buildmate/model/user_model.dart';
-import 'package:buildmate/model/team_model.dart';
-import 'package:buildmate/model/hackathon.dart';
-import 'package:buildmate/view/profile_management_page.dart';
-import 'package:buildmate/widgets/buildmate_app_bar.dart';
-
+import '../model/user_model.dart';
+import '../model/team_model.dart';
+import '../model/hackathon.dart';
+import '../services/user_service.dart';
 import '../services/team_service.dart';
 import '../services/hackathon_service.dart';
+import '../widgets/buildmate_app_bar.dart';
 import '../widgets/user_hackathon_card.dart';
 
-class ProfilePage extends StatefulWidget {
-  const ProfilePage({super.key});
+class OtherUserProfilePage extends StatefulWidget {
+  final String userId;
+
+  const OtherUserProfilePage({super.key, required this.userId});
 
   @override
-  State<ProfilePage> createState() => _ProfilePageState();
+  State<OtherUserProfilePage> createState() => _OtherUserProfilePageState();
 }
 
-class _ProfilePageState extends State<ProfilePage>
+class _OtherUserProfilePageState extends State<OtherUserProfilePage>
     with SingleTickerProviderStateMixin {
   late TabController _tabController;
-  final ProfileViewModel _viewModel = ProfileViewModel();
+  final UserService _userService = UserService();
   final TeamService _teamService = TeamService();
   final HackathonService _hackathonService = HackathonService();
 
   final Color primaryPurple = const Color(0xFF7A62B3);
   final Color lightPurpleBG = const Color(0xFFF5F3FF);
-  final Color manageButtonGrey = const Color(0xFFF2F2F2);
-  final Color manageButtonText = const Color(0xFF616161);
 
   @override
   void initState() {
@@ -58,12 +55,13 @@ class _ProfilePageState extends State<ProfilePage>
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: Colors.white,
-      appBar: const BuildMateAppBar(
-        titleText: '',
-        showBack: false,
+      appBar: BuildMateAppBar(
+        titleText: "Profile",
+        showBack: true,
+        onBack: () => Navigator.pop(context),
       ),
       body: StreamBuilder<UserModel?>(
-        stream: _viewModel.userDataStream,
+        stream: _userService.streamUserById(widget.userId),
         builder: (context, snapshot) {
           if (snapshot.connectionState == ConnectionState.waiting) {
             return const Center(child: CircularProgressIndicator());
@@ -71,91 +69,50 @@ class _ProfilePageState extends State<ProfilePage>
 
           final user = snapshot.data;
           if (user == null) {
-            return const Center(child: Text("No user profile found"));
+            return const Center(child: Text("User profile not found"));
           }
 
-          return CustomScrollView(
-            // لضمان عدم وجود مسافات تلقائية في الأعلى
-            slivers: [
-              // 1. البار الثابت (الاسم) ملاصق للـ AppBar العلوي
-              SliverAppBar(
-                pinned: false,
-                floating: false,
-                backgroundColor: primaryPurple.withOpacity(0.05),
-                surfaceTintColor: primaryPurple.withOpacity(0.05),
-                elevation: 0,
-                // تقليل الارتفاع ليصبح شريطاً نحيفاً وملاصقاً
-                toolbarHeight: 38,
-                expandedHeight: 38,
-                automaticallyImplyLeading: false,
-                // إزالة أي مسافات إضافية
-                primary: false,
-                flexibleSpace: FlexibleSpaceBar(
-                  centerTitle: true,
-                  titlePadding: EdgeInsets.zero,
-                  title: Container(
-                    alignment: Alignment.center,
-                    child: Text(
-                      user.fullName,
+          return SingleChildScrollView(
+            physics: const BouncingScrollPhysics(),
+            child: Column(
+              children: [
+                const SizedBox(height: 20),
+                _buildProfileHeader(user),
+                const SizedBox(height: 35),
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Icon(Icons.bolt, color: primaryPurple, size: 24),
+                    const SizedBox(width: 8),
+                    const Text(
+                      "Skills",
                       style: TextStyle(
-                        color: primaryPurple,
-                        fontWeight: FontWeight.w800,
-                        fontSize: 16,
-                        letterSpacing: 0.5,
+                        fontSize: 18,
+                        fontWeight: FontWeight.bold,
+                        color: Colors.black,
                       ),
                     ),
+                  ],
+                ),
+                const SizedBox(height: 15),
+                _buildSkillsChips(user.skills),
+                const SizedBox(height: 30),
+                _buildTabBarSection(),
+                SizedBox(
+                  height: 300,
+                  child: TabBarView(
+                    controller: _tabController,
+                    children: [
+                      _buildOngoingHackathonsTab(),
+                      _buildEmptyPlaceholder(
+                        "No previous projects",
+                        Icons.history,
+                      ),
+                    ],
                   ),
                 ),
-              ),
-
-              // 2. محتوى الصفحة
-              SliverToBoxAdapter(
-                child: Column(
-                  children: [
-                    // تم تقليل المسافة هنا لتبدأ الصورة مباشرة تحت الاسم الثابت بشكل أنيق
-                    const SizedBox(height: 20),
-
-                    _buildProfileHeader(user),
-                    const SizedBox(height: 25),
-                    _buildManageButton(),
-                    const SizedBox(height: 40),
-
-                    // عنوان المهارات
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        Icon(Icons.bolt, color: primaryPurple, size: 24),
-                        const SizedBox(width: 8),
-                        const Text(
-                          "Skills",
-                          style: TextStyle(
-                            fontSize: 18,
-                            fontWeight: FontWeight.bold,
-                            color: Colors.black,
-                          ),
-                        ),
-                      ],
-                    ),
-                    const SizedBox(height: 15),
-                    _buildSkillsChips(user.skills),
-                    const SizedBox(height: 35),
-                    _buildTabBarSection(),
-                  ],
-                ),
-              ),
-
-              // 3. التابات
-              SliverFillRemaining(
-                hasScrollBody: true,
-                child: TabBarView(
-                  controller: _tabController,
-                  children: [
-                    _buildOngoingHackathonsTab(),
-                    _buildEmptyPlaceholder("No previous projects", Icons.history),
-                  ],
-                ),
-              ),
-            ],
+              ],
+            ),
           );
         },
       ),
@@ -217,13 +174,7 @@ class _ProfilePageState extends State<ProfilePage>
                   FontAwesomeIcons.linkedin,
                   color: Color(0xFF7A62B3),
                 ),
-                onPressed: () async {
-                  final Uri uri = Uri.parse(user.linkedin!);
-                  await launchUrl(
-                    uri,
-                    mode: LaunchMode.inAppBrowserView,
-                  );
-                },
+                onPressed: () => _launchURL(user.linkedin),
               ),
             if (user.github != null && user.github!.isNotEmpty)
               IconButton(
@@ -231,50 +182,11 @@ class _ProfilePageState extends State<ProfilePage>
                   FontAwesomeIcons.github,
                   color: Color(0xFF7A62B3),
                 ),
-                onPressed: () async {
-                  final Uri uri = Uri.parse(user.github!);
-                  await launchUrl(
-                    uri,
-                    mode: LaunchMode.inAppBrowserView,
-                  );
-                },
+                onPressed: () => _launchURL(user.github),
               ),
           ],
         ),
       ],
-    );
-  }
-
-  Widget _buildManageButton() {
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 25),
-      child: SizedBox(
-        width: double.infinity,
-        height: 45,
-        child: ElevatedButton(
-          onPressed: () => Navigator.push(
-            context,
-            MaterialPageRoute(
-              builder: (context) => const ProfileManagementPage(),
-            ),
-          ),
-          style: ElevatedButton.styleFrom(
-            backgroundColor: manageButtonGrey,
-            elevation: 0,
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(12),
-            ),
-          ),
-          child: Text(
-            "Manage Profile",
-            style: TextStyle(
-              color: manageButtonText,
-              fontWeight: FontWeight.w600,
-              fontSize: 14,
-            ),
-          ),
-        ),
-      ),
     );
   }
 
@@ -298,16 +210,12 @@ class _ProfilePageState extends State<ProfilePage>
         children: skills
             .map(
               (skill) => Container(
-            padding: const EdgeInsets.symmetric(
-              horizontal: 18,
-              vertical: 10,
-            ),
+            padding:
+            const EdgeInsets.symmetric(horizontal: 18, vertical: 10),
             decoration: BoxDecoration(
               color: primaryPurple.withOpacity(0.1),
               borderRadius: BorderRadius.circular(20),
-              border: Border.all(
-                color: primaryPurple.withOpacity(0.4),
-              ),
+              border: Border.all(color: primaryPurple.withOpacity(0.4)),
             ),
             child: Text(
               skill,
@@ -339,17 +247,8 @@ class _ProfilePageState extends State<ProfilePage>
   }
 
   Widget _buildOngoingHackathonsTab() {
-    final currentUser = FirebaseAuth.instance.currentUser;
-
-    if (currentUser == null) {
-      return _buildEmptyPlaceholder(
-        "No ongoing hackathons",
-        Icons.rocket_launch_outlined,
-      );
-    }
-
     return StreamBuilder<List<TeamModel>>(
-      stream: _teamService.getTeamsByMember(currentUser.uid),
+      stream: _teamService.getTeamsByMember(widget.userId),
       builder: (context, snapshot) {
         if (snapshot.connectionState == ConnectionState.waiting) {
           return const Center(child: CircularProgressIndicator());
@@ -439,10 +338,7 @@ class _ProfilePageState extends State<ProfilePage>
           const SizedBox(height: 10),
           Text(
             text,
-            style: TextStyle(
-              color: Colors.grey.shade400,
-              fontSize: 14,
-            ),
+            style: TextStyle(color: Colors.grey.shade400, fontSize: 14),
           ),
         ],
       ),
