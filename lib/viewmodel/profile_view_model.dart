@@ -72,8 +72,7 @@ class ProfileViewModel extends ChangeNotifier {
     try {
       String uid = _auth.currentUser?.uid ?? "";
       if (uid.isNotEmpty) {
-        await _firestore.collection('users').doc(uid).update({
-          'fullName': name.trim(),
+        await _firestore.collection('users').doc(uid).update({          'fullName': name.trim(),
           'username': username.trim(),
           'phoneNumber': phone.trim(),
           'bio': bio.trim(),

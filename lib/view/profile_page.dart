@@ -70,54 +70,92 @@ class _ProfilePageState extends State<ProfilePage>
           }
 
           final user = snapshot.data;
-
           if (user == null) {
             return const Center(child: Text("No user profile found"));
           }
 
-          return SingleChildScrollView(
-            physics: const BouncingScrollPhysics(),
-            child: Column(
-              children: [
-                const SizedBox(height: 20),
-                _buildProfileHeader(user),
-                const SizedBox(height: 20),
-                _buildManageButton(),
-                const SizedBox(height: 35),
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    Icon(Icons.bolt, color: primaryPurple, size: 24),
-                    const SizedBox(width: 8),
-                    const Text(
-                      "Skills",
+          return CustomScrollView(
+            // لضمان عدم وجود مسافات تلقائية في الأعلى
+            slivers: [
+              // 1. البار الثابت (الاسم) ملاصق للـ AppBar العلوي
+              SliverAppBar(
+                pinned: false,
+                floating: false,
+                backgroundColor: primaryPurple.withOpacity(0.05),
+                surfaceTintColor: primaryPurple.withOpacity(0.05),
+                elevation: 0,
+                // تقليل الارتفاع ليصبح شريطاً نحيفاً وملاصقاً
+                toolbarHeight: 38,
+                expandedHeight: 38,
+                automaticallyImplyLeading: false,
+                // إزالة أي مسافات إضافية
+                primary: false,
+                flexibleSpace: FlexibleSpaceBar(
+                  centerTitle: true,
+                  titlePadding: EdgeInsets.zero,
+                  title: Container(
+                    alignment: Alignment.center,
+                    child: Text(
+                      user.fullName,
                       style: TextStyle(
-                        fontSize: 18,
-                        fontWeight: FontWeight.bold,
-                        color: Colors.black,
+                        color: primaryPurple,
+                        fontWeight: FontWeight.w800,
+                        fontSize: 16,
+                        letterSpacing: 0.5,
                       ),
                     ),
-                  ],
-                ),
-                const SizedBox(height: 15),
-                _buildSkillsChips(user.skills),
-                const SizedBox(height: 30),
-                _buildTabBarSection(),
-                SizedBox(
-                  height: 300,
-                  child: TabBarView(
-                    controller: _tabController,
-                    children: [
-                      _buildOngoingHackathonsTab(),
-                      _buildEmptyPlaceholder(
-                        "No previous projects",
-                        Icons.history,
-                      ),
-                    ],
                   ),
                 ),
-              ],
-            ),
+              ),
+
+              // 2. محتوى الصفحة
+              SliverToBoxAdapter(
+                child: Column(
+                  children: [
+                    // تم تقليل المسافة هنا لتبدأ الصورة مباشرة تحت الاسم الثابت بشكل أنيق
+                    const SizedBox(height: 20),
+
+                    _buildProfileHeader(user),
+                    const SizedBox(height: 25),
+                    _buildManageButton(),
+                    const SizedBox(height: 40),
+
+                    // عنوان المهارات
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Icon(Icons.bolt, color: primaryPurple, size: 24),
+                        const SizedBox(width: 8),
+                        const Text(
+                          "Skills",
+                          style: TextStyle(
+                            fontSize: 18,
+                            fontWeight: FontWeight.bold,
+                            color: Colors.black,
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 15),
+                    _buildSkillsChips(user.skills),
+                    const SizedBox(height: 35),
+                    _buildTabBarSection(),
+                  ],
+                ),
+              ),
+
+              // 3. التابات
+              SliverFillRemaining(
+                hasScrollBody: true,
+                child: TabBarView(
+                  controller: _tabController,
+                  children: [
+                    _buildOngoingHackathonsTab(),
+                    _buildEmptyPlaceholder("No previous projects", Icons.history),
+                  ],
+                ),
+              ),
+            ],
           );
         },
       ),

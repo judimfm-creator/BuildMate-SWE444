@@ -18,6 +18,7 @@ class ProfileManagementPage extends StatefulWidget {
 class _ProfileManagementPageState extends State<ProfileManagementPage> {
   late ProfileViewModel _viewModel;
   final _formKey = GlobalKey<FormState>();
+  final TextEditingController _skillController = TextEditingController();
 
   final Color deepMediumPurple = const Color(0xFF7A62B3);
   final Color deleteRed = const Color(0xFFD9534F);
@@ -133,23 +134,41 @@ class _ProfileManagementPageState extends State<ProfileManagementPage> {
       },
     );
   }
-Widget _buildSaveButton(UserModel? user) {
+
+  Widget _buildSaveButton(UserModel? user) {
     return Container(
       padding: const EdgeInsets.all(20),
-      decoration: BoxDecoration(color: Colors.white, boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.05), blurRadius: 10, offset: const Offset(0, -5))]),
+      decoration: BoxDecoration(
+          color: Colors.white,
+          boxShadow: [
+            BoxShadow(
+                color: Colors.black.withOpacity(0.05),
+                blurRadius: 10,
+                offset: const Offset(0, -5)
+            )
+          ]
+      ),
       child: SizedBox(
-        width: double.infinity, height: 50,
+        width: double.infinity,
+        height: 50,
         child: ElevatedButton(
-          style: ElevatedButton.styleFrom(backgroundColor: deepMediumPurple, shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12))),
+          style: ElevatedButton.styleFrom(
+              backgroundColor: deepMediumPurple,
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12))
+          ),
           onPressed: () async {
-            final vm = Provider.of<RegisterViewModel>(context, listen: false);
-            // تم تعديل الشرط ليشمل وضع التعديل لضمان الحفظ
-            bool hasChanges = _itemsMarkedForDeletion.isNotEmpty || _isEditMode;
+            // 1. فحص المدخلات (الشروط اللي طابقناها مع كرييت اكاونت)
+            if (_formKey.currentState!.validate()) {
+              final vm = Provider.of<RegisterViewModel>(context, listen: false);
 
-            if (hasChanges) {
-              List<String> finalSkills = _selectedSkills.where((s) => !_itemsMarkedForDeletion.contains("skill_$s")).toList();
+              // 2. معالجة المهارات (تصفية المهارات اللي اخترتي حذفها)
+              List<String> finalSkills = _selectedSkills
+                  .where((s) => !_itemsMarkedForDeletion.contains("skill_$s"))
+                  .toList();
+
+              // 3. استدعاء دالة زميلتك (تحديث شامل للباك اند)
+              // نمرر لها كل الحقول، وإذا الحقل محدد للحذف نرسل نص فارغ ""
               await vm.updateProfile(
-                // تم تعديل هذه السطور لتقرأ من الكنترولر وتدعم الحذف
                 bio: _itemsMarkedForDeletion.contains("bio") ? "" : (_controllers["Biography"]?.text ?? ""),
                 city: _itemsMarkedForDeletion.contains("city") ? "" : (_controllers["City"]?.text ?? ""),
                 linkedin: _itemsMarkedForDeletion.contains("linkedin") ? "" : (_controllers["LinkedIn"]?.text ?? ""),
@@ -157,31 +176,25 @@ Widget _buildSaveButton(UserModel? user) {
                 skills: finalSkills,
                 gender: _selectedGender ?? "",
                 context: context,
+                // تمرير حالة حذف الصورة لدالة زميلتك
                 deletePhoto: _itemsMarkedForDeletion.contains("photo"),
               );
 
-              if (_itemsMarkedForDeletion.contains("photo")) {
-                vm.clearPickedImage();
-              }           
-
-              ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Profile updated successfully! ✅'), backgroundColor: Colors.green));
-              
-              // 🔥 هذا السطر هو اللي يخلي الصورة تختفي من الشاشة فوراً
+              // 4. تحديث البيانات في واجهتك فوراً بعد الحفظ
               await _loadUserData();
 
-            } else {
-// استبدلي السطر القديم بهذا السطر بالضبط:
-ScaffoldMessenger.of(context).showSnackBar(
-  const SnackBar(
-    content: Text('Changes saved locally! ✅ (Demo Mode)'), 
-    backgroundColor: Colors.green
-  )
-);            }
+              // 5. إغلاق وضع التعديل وتصفير قائمة الحذف
+              setState(() {
+                _isEditMode = false;
+                _itemsMarkedForDeletion.clear();
+                // تصفير الصورة المختارة في موديل زميلتك بعد الحفظ
+                vm.clearPickedImage();
+              });
 
-            setState(() { 
-              _isEditMode = false; 
-              _itemsMarkedForDeletion.clear(); 
-            });
+              ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(content: Text('Profile updated successfully! ✅'), backgroundColor: Colors.green)
+              );
+            }
           },
           child: const Text("SAVE CHANGES", style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
         ),
@@ -190,22 +203,114 @@ ScaffoldMessenger.of(context).showSnackBar(
   }
 
   Widget _buildSkillsSection() {
-    return Wrap(
-      spacing: 10, runSpacing: 10,
-      children: _selectedSkills.map((skill) {
-        bool isMarked = _itemsMarkedForDeletion.contains("skill_$skill");
-        return Opacity(
-          opacity: isMarked ? 0.3 : 1.0,
-          child: InputChip(
-            label: Text(skill),
-            backgroundColor: isMarked ? Colors.grey.shade200 : deepMediumPurple.withOpacity(0.1),
-            labelStyle: TextStyle(color: isMarked ? Colors.grey : deepMediumPurple, fontWeight: FontWeight.bold),
-            onDeleted: _isEditMode ? () => _toggleDeletion("skill_$skill") : null,
-            deleteIcon: Icon(isMarked ? Icons.undo : Icons.cancel, size: 18, color: isMarked ? Colors.blue : Colors.red),
-            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12), side: BorderSide(color: isMarked ? Colors.grey : deepMediumPurple, width: 1.5)),
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        // 1. عرض المهارات الموجودة (Chips) - نفس الترتيب
+        Wrap(
+          spacing: 10,
+          runSpacing: 10,
+          children: _selectedSkills.map((skill) {
+            bool isMarked = _itemsMarkedForDeletion.contains("skill_$skill");
+            return Opacity(
+              opacity: isMarked ? 0.3 : 1.0,
+              child: InputChip(
+                label: Text(skill),
+                backgroundColor: isMarked ? Colors.grey.shade200 : deepMediumPurple.withOpacity(0.1),
+                labelStyle: TextStyle(
+                  color: isMarked ? Colors.grey : deepMediumPurple,
+                  fontWeight: FontWeight.bold,
+                  fontSize: 13,
+                ),
+                // أيقونة الحذف تظهر فقط في وضع التعديل
+                onDeleted: _isEditMode ? () => _toggleDeletion("skill_$skill") : null,
+                deleteIcon: Icon(
+                  isMarked ? Icons.undo : Icons.cancel,
+                  size: 18,
+                  color: isMarked ? Colors.blue : Colors.red,
+                ),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(12),
+                  side: BorderSide(
+                    color: isMarked ? Colors.grey : deepMediumPurple,
+                    width: 1.5,
+                  ),
+                ),
+              ),
+            );
+          }).toList(),
+        ),
+
+        // 2. حقل "Add Skill" - يظهر في وضع التعديل بنفس ستايل Complete Profile
+        if (_isEditMode) ...[
+          const SizedBox(height: 15),
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 15, vertical: 4),
+            decoration: BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.circular(12),
+              border: Border.all(color: Colors.grey.shade100, width: 1),
+              // إضافة ظل خفيف ليطابق ستايل حقول الإدخال عندك
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.black.withOpacity(0.02),
+                  blurRadius: 5,
+                  offset: const Offset(0, 2),
+                )
+              ],
+            ),
+            child: Row(
+              children: [
+                Icon(Icons.star_border, color: deepMediumPurple, size: 20),
+                const SizedBox(width: 15),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      const Text("Add Skill", style: TextStyle(color: Color(0xFF9E9E9E), fontSize: 11)),
+                      TextFormField(
+                        controller: _skillController,
+                        style: const TextStyle(fontSize: 14, fontWeight: FontWeight.bold),
+                        decoration: InputDecoration(
+                          hintText: "e.g. Flutter",
+                          hintStyle: TextStyle(color: Colors.grey.shade400, fontSize: 13, fontWeight: FontWeight.normal),
+                          border: InputBorder.none,
+                          isDense: true,
+                          contentPadding: const EdgeInsets.symmetric(vertical: 4),
+                        ),
+                        onFieldSubmitted: (val) {
+                          if (val.trim().isNotEmpty) {
+                            setState(() {
+                              if (!_selectedSkills.contains(val.trim())) {
+                                _selectedSkills.add(val.trim());
+                              }
+                              _skillController.clear();
+                            });
+                          }
+                        },
+                      ),
+                    ],
+                  ),
+                ),
+                IconButton(
+                  icon: Icon(Icons.add_circle, color: deepMediumPurple),
+                  onPressed: () {
+                    if (_skillController.text.trim().isNotEmpty) {
+                      setState(() {
+                        if (!_selectedSkills.contains(_skillController.text.trim())) {
+                          _selectedSkills.add(_skillController.text.trim());
+                        }
+                        _skillController.clear();
+                      });
+                    }
+                  },
+                ),
+              ],
+            ),
           ),
-        );
-      }).toList(),
+        ],
+      ],
     );
   }
 
@@ -242,7 +347,7 @@ ScaffoldMessenger.of(context).showSnackBar(
           )
       ),
       child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start, // الأيقونة تبقى فوق في الـ Wrapping
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Padding(
             padding: const EdgeInsets.only(top: 2),
@@ -257,9 +362,7 @@ ScaffoldMessenger.of(context).showSnackBar(
                 TextFormField(
                   controller: ctrl,
                   enabled: canEdit,
-                  // تفعيل الـ Wrapping
                   maxLines: isPhone ? 1 : null,
-                  // تحديد الطول (10 للجوال، 100 للبيو، 40 للبقية)
                   maxLength: isBio ? 100 : (isPhone ? 10 : 40),
                   keyboardType: isPhone
                       ? TextInputType.phone
@@ -269,8 +372,39 @@ ScaffoldMessenger.of(context).showSnackBar(
                     isDense: true,
                     border: InputBorder.none,
                     contentPadding: EdgeInsets.zero,
-                    counterText: isBio ? null : "", // إظهار العداد فقط للبيو
+                    counterText: isBio ? null : "",
+                    errorStyle: const TextStyle(fontSize: 10, color: Colors.red),
                   ),
+                  // ✅ مطابقة الشروط والرسائل حرفياً مع Create Account
+                  validator: (value) {
+                    if (!canEdit) return null;
+                    String v = value?.trim() ?? "";
+
+                    if (label == "Full Name") {
+                      if (v.isEmpty) return "Enter your first, middle, last name(Letters only)";
+                      if (!RegExp(r"^[a-zA-Z\s\u0600-\u06FF]+$").hasMatch(v)) return "Enter your first, middle, last name(Letters only)";
+                      if (v.split(RegExp(r'\s+')).length < 3) return "Enter your first, middle, last name(Letters only)";
+                    }
+
+                    if (label == "Username") {
+                      if (v.isEmpty) return "minimum 3 characters , spaces are not allowed";
+                      if (v.contains(' ')) return "minimum 3 characters , spaces are not allowed";
+                      if (v.length < 3) return "minimum 3 characters , spaces are not allowed";
+                    }
+
+                    if (label == "LinkedIn") {
+                      if (v.isNotEmpty && !v.contains("linkedin.com/")) {
+                        return "Please enter a valid LinkedIn URL";
+                      }
+                    }
+
+                    if (label == "GitHub") {
+                      if (v.isNotEmpty && !v.contains("github.com/")) {
+                        return "Please enter a valid GitHub URL";
+                      }
+                    }
+                    return null;
+                  },
                 ),
               ],
             ),
@@ -286,15 +420,73 @@ ScaffoldMessenger.of(context).showSnackBar(
   }
 
   Widget _buildAvatarSection(UserModel? user) {
+    // استدعاء الـ ViewModel اللي فيه شغل زميلتك
+    final registerVm = Provider.of<RegisterViewModel>(context);
     bool isMarked = _itemsMarkedForDeletion.contains("photo");
+
     ImageProvider? imageProvider;
-    if (user?.profilePhotoPath != null && user!.profilePhotoPath!.isNotEmpty) {
-      imageProvider = user.profilePhotoPath!.startsWith('http') ? NetworkImage(user.profilePhotoPath!) : FileImage(File(user.profilePhotoPath!)) as ImageProvider;
+
+    // أولاً: نتحقق إذا فيه صورة اختارتها زميلتك بـ "pickedImage"
+    if (registerVm.pickedImage != null) {
+      imageProvider = FileImage(registerVm.pickedImage!);
     }
-    return Center(child: Stack(children: [
-      Opacity(opacity: isMarked ? 0.3 : 1.0, child: CircleAvatar(radius: 50, backgroundColor: deepMediumPurple.withOpacity(0.1), backgroundImage: imageProvider, child: imageProvider == null ? Icon(Icons.person, size: 50, color: deepMediumPurple) : null)),
-      if (_isEditMode && imageProvider != null) Positioned(top: 0, right: 0, child: GestureDetector(onTap: () => _toggleDeletion("photo"), child: CircleAvatar(radius: 14, backgroundColor: isMarked ? Colors.blue : Colors.red, child: Icon(isMarked ? Icons.undo : Icons.close, size: 14, color: Colors.white))))
-    ]));
+    // ثانياً: إذا ما فيه، نعرض الصورة اللي جاية من السيرفر أصلاً
+    else if (user?.profilePhotoPath != null && user!.profilePhotoPath!.isNotEmpty) {
+      imageProvider = user.profilePhotoPath!.startsWith('http')
+          ? NetworkImage(user.profilePhotoPath!)
+          : FileImage(File(user.profilePhotoPath!)) as ImageProvider;
+    }
+
+    return Center(
+      child: Stack(
+        children: [
+          Opacity(
+            opacity: isMarked ? 0.3 : 1.0,
+            child: CircleAvatar(
+              radius: 50,
+              backgroundColor: deepMediumPurple.withOpacity(0.1),
+              backgroundImage: imageProvider,
+              child: imageProvider == null
+                  ? Icon(Icons.person, size: 50, color: deepMediumPurple)
+                  : null,
+            ),
+          ),
+          if (_isEditMode) ...[
+            // زر الكاميرا (مطابق لـ Complete Profile ويستدعي شغل زميلتك)
+            Positioned(
+              bottom: 0,
+              right: 0,
+              child: GestureDetector(
+                onTap: () => registerVm.pickImage(ImageSource.gallery), // ميثود زميلتك
+                child: CircleAvatar(
+                  radius: 16,
+                  backgroundColor: deepMediumPurple,
+                  child: const Icon(Icons.camera_alt, size: 16, color: Colors.white),
+                ),
+              ),
+            ),
+            // زر الحذف (من كودك الأصلي)
+            if (imageProvider != null)
+              Positioned(
+                top: 0,
+                right: 0,
+                child: GestureDetector(
+                  onTap: () => _toggleDeletion("photo"),
+                  child: CircleAvatar(
+                    radius: 14,
+                    backgroundColor: isMarked ? Colors.blue : Colors.red,
+                    child: Icon(
+                        isMarked ? Icons.undo : Icons.close,
+                        size: 14,
+                        color: Colors.white
+                    ),
+                  ),
+                ),
+              ),
+          ],
+        ],
+      ),
+    );
   }
 
   Widget _buildEditToggle() => Padding(padding: const EdgeInsets.symmetric(horizontal: 25, vertical: 15), child: Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [Text("Enable Editing Mode", style: TextStyle(color: _isEditMode ? deepMediumPurple : Colors.grey.shade600, fontWeight: FontWeight.bold)), Switch(value: _isEditMode, activeColor: deepMediumPurple, onChanged: (v) => setState(() { _isEditMode = v; }))]));
