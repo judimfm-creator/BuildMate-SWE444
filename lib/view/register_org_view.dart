@@ -66,7 +66,6 @@ class _RegisterOrgViewState extends State<RegisterOrgView> {
   @override
   Widget build(BuildContext context) {
     final vm = context.watch<RegisterViewModel>();
-
     return Scaffold(
       backgroundColor: Colors.white,
       appBar: AppBar(
@@ -162,7 +161,7 @@ class _RegisterOrgViewState extends State<RegisterOrgView> {
   wrap: true,
   type: TextInputType.emailAddress,
   validator: (v) {
-    if (v == null || v.trim().isEmpty) return "Example:AIOrg@gmail.com";
+    if (v == null  ||v.trim().isEmpty) return "Example:AIOrg@gmail.com";
     
     String email = v.trim();
 
@@ -170,7 +169,6 @@ class _RegisterOrgViewState extends State<RegisterOrgView> {
     if (!email.contains('@')) {
       return "Follow example:AIOrg@gmail.com";
     }
-
     // 2. حط @ بس ما كمل بعدها شي (الدومين)
     if (email.endsWith('@')) {
       return "Follow example:AIOrg@gmail.com";
@@ -375,7 +373,7 @@ counterText: "",
             if (!v.contains(RegExp(r'[A-Z]'))) return "minimum 8 chars, include capital letter, number, symbol";
             if (!v.contains(RegExp(r'[0-9]'))) return "minimum 8 chars, include capital letter, number, symbol";
             if (!v.contains(RegExp(r'[!@#$%^&*(),._?":{}|<>]')))
-              return "minimum 8 chars, include capital letter, number, symbol";
+            return "minimum 8 chars, include capital letter, number, symbol";
           }
           return null;
         },

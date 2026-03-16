@@ -47,8 +47,7 @@ class _RegisterUserViewState extends State<RegisterUserView> {
     if (label == "Phone Number")
       return RegExp(r'^05\d{8}$').hasMatch(value.trim());
     if (label == "Username") return value.trim().length >= 3;
-    if (label == "Password" || label == "Confirm Password") {
-      return value.length >= 8 &&
+if (label == "Password" || label == "Confirm Password") { // ✅ Fixed      return value.length >= 8 &&
           value.contains(RegExp(r'[A-Z]')) &&
           value.contains(RegExp(r'[0-9]'));
     }
@@ -115,7 +114,7 @@ class _RegisterUserViewState extends State<RegisterUserView> {
   Icons.email_outlined,
   type: TextInputType.emailAddress,
   customValidator: (v) {
-    if (v == null || v.trim().isEmpty) {
+    if (v == null  ||v.trim().isEmpty) {
       return "Example: sara@gmail.com";
     }
 
@@ -222,14 +221,15 @@ Widget _buildField(
   String? Function(String?)? customValidator,
 }) {
   bool isValid = _isFieldValid(label, ctrl.text);
+  bool isPhone = label == "Phone Number";
 
   return Padding(
     padding: const EdgeInsets.only(bottom: 20),
     child: TextFormField(
       controller: ctrl,
       keyboardType: type,
-      maxLength: 40,
-      maxLines: 1,
+      maxLength: isPhone ? 10 : 40,
+      maxLines: isPhone ? 1 : null,
       onChanged: (v) => setState(() {}),
       decoration: InputDecoration(
         labelText: label,
@@ -357,7 +357,7 @@ Widget _buildPassField(
         ),
       ),
       validator: (v) {
-        if (v == null || v.isEmpty) {
+        if (v == null  ||v.isEmpty) {
           return isConfirm
               ? "match the same password above"
               : "minimum 8 chars, include capital letter, number, symbol";
@@ -366,7 +366,6 @@ Widget _buildPassField(
         if (isConfirm && v != _passwordController.text) {
           return "Passwords do not match";
         }
-
         if (!isConfirm) {
           if (v.length < 8) {
             return "minimum 8 chars, include capital letter, number, symbol";
