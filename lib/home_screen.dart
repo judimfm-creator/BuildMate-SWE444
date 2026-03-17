@@ -8,6 +8,7 @@ import 'package:buildmate/widgets/org_nav_bar.dart';
 import 'package:buildmate/widgets/buildmate_app_bar.dart';
 import 'package:buildmate/view/profile_page.dart';
 import 'package:buildmate/view/org_profile_page.dart';
+import 'package:buildmate/view/explore_user_view.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -59,16 +60,19 @@ class _HomeScreenState extends State<HomeScreen> {
 
     final List<Widget> userPages = [
       const Center(child: Text("Home")),      // 0
-      const Center(child: Text("Hackathons")),// 1
+      const ExploreUserView(),// 1
       const Center(child: Text("Teams")),     // 2
       const ProfilePage(),                   // 3 - صفحة Hailah22
     ];
 
-    return Scaffold(
+   return Scaffold(
       backgroundColor: Colors.white,
-      appBar: BuildMateAppBar(
-        onLogout: () => Provider.of<RegisterViewModel>(context, listen: false).logout(context),
-      ),
+      // التعديل هنا: نخفي الـ AppBar فقط إذا كنا في صفحة البروفايل (رقم 3)
+      appBar: (!_isOrg && _selectedIndex == 3) 
+          ? null 
+          : BuildMateAppBar(
+              onLogout: () => Provider.of<RegisterViewModel>(context, listen: false).logout(context),
+            ),
       body: IndexedStack(
         index: _selectedIndex,
         children: _isOrg ? orgPages : userPages,
