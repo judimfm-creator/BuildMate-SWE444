@@ -27,7 +27,7 @@ class HackathonDetailsView extends StatelessWidget {
     return Scaffold(
       backgroundColor: Colors.white,
       appBar: BuildMateAppBar(
-        titleText: hackathon.name,
+        titleText: "Hackathon Details",
         showBack: true,
         onBack: () => Navigator.pop(context),
       ),
@@ -141,18 +141,14 @@ class HackathonDetailsView extends StatelessWidget {
 
                 const SizedBox(height: 16),
 
-                _sectionTitle("Location"),
-                const SizedBox(height: 10),
-                _infoCard([
-                  _row(Icons.location_city_outlined, "City", hackathon.city),
-                  _row(Icons.place_outlined, "Location", hackathon.location),
-                ]),
-
-                const SizedBox(height: 16),
-
                 _sectionTitle("Important Dates"),
                 const SizedBox(height: 10),
                 _infoCard([
+                  _row(
+                    Icons.timer_outlined,
+                    "Registration Deadline",
+                    _formatDate(hackathon.applicationDeadline),
+                  ),
                   _row(
                     Icons.event_outlined,
                     "Start Date",
@@ -163,6 +159,15 @@ class HackathonDetailsView extends StatelessWidget {
                     "End Date",
                     _formatDate(hackathon.endDate),
                   ),
+                ]),
+
+                const SizedBox(height: 16),
+
+                _sectionTitle("Location"),
+                const SizedBox(height: 10),
+                _infoCard([
+                  _row(Icons.location_city_outlined, "City", hackathon.city),
+                  _row(Icons.place_outlined, "Location", hackathon.location),
                 ]),
 
                 const SizedBox(height: 16),
@@ -243,7 +248,7 @@ class HackathonDetailsView extends StatelessWidget {
                   ),
                 ),
 
-                const SizedBox(height: 30),
+                const SizedBox(height: 40),
               ],
             ),
           );

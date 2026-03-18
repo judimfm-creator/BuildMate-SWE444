@@ -17,6 +17,9 @@ class Hackathon {
   final DateTime applicationDeadline;
   final DateTime startDate;
   final DateTime endDate;
+  
+  // ✅ الحقل اللي بنخزن فيه اسم المنشأة للعرض
+  String? organizationName;
 
   Hackathon({
     this.id,
@@ -34,7 +37,42 @@ class Hackathon {
     required this.applicationDeadline,
     required this.startDate,
     required this.endDate,
+    this.organizationName,
   });
+
+  // ميثود مساعدة لتحويل التاريخ بأمان من أي نوع (String أو Timestamp)
+  static DateTime _parseDate(dynamic date) {
+    if (date is Timestamp) {
+      return date.toDate();
+    } else if (date is String) {
+      return DateTime.parse(date);
+    }
+    return DateTime.now(); // قيمة افتراضية في حال الخطأ
+  }
+
+  factory Hackathon.fromFirestore(DocumentSnapshot doc) {
+    final data = doc.data() as Map<String, dynamic>? ?? {};
+
+    return Hackathon(
+      id: doc.id,
+      organizationId: data['organizationId'] ?? '',
+      name: data['name'] ?? '',
+      description: data['description'] ?? '',
+      domain: data['domain'] ?? '',
+      teamSize: (data['teamSize'] is int) ? data['teamSize'] : int.tryParse(data['teamSize'].toString()) ?? 0,
+      city: data['city'] ?? '',
+      location: data['location'] ?? '',
+      mode: data['mode'] ?? '',
+      rolesNeeded: List<String>.from(data['rolesNeeded'] ?? []),
+      educationCriteria: data['educationCriteria'] ?? '',
+
+      // ✅ استخدام الميثود المساعدة لضمان عدم حدوث كراش في التواريخ
+      applicationOpenDate: _parseDate(data['applicationOpenDate'] ?? data['startDate']),
+      applicationDeadline: _parseDate(data['applicationDeadline'] ?? data['startDate']),
+      startDate: _parseDate(data['startDate']),
+      endDate: _parseDate(data['endDate']),
+    );
+  }
 
   Map<String, dynamic> toJson() {
     return {
@@ -53,34 +91,5 @@ class Hackathon {
       'startDate': startDate.toIso8601String(),
       'endDate': endDate.toIso8601String(),
     };
-  }
-
-  factory Hackathon.fromFirestore(DocumentSnapshot doc) {
-    final data = doc.data() as Map<String, dynamic>;
-
-    return Hackathon(
-      id: doc.id,
-      organizationId: data['organizationId'] ?? '',
-      name: data['name'] ?? '',
-      description: data['description'] ?? '',
-      domain: data['domain'] ?? '',
-      teamSize: data['teamSize'] ?? 0,
-      city: data['city'] ?? '',
-      location: data['location'] ?? '',
-      mode: data['mode'] ?? '',
-      rolesNeeded: List<String>.from(data['rolesNeeded'] ?? []),
-      educationCriteria: data['educationCriteria'] ?? '',
-
-      applicationOpenDate: data['applicationOpenDate'] != null
-          ? DateTime.parse(data['applicationOpenDate'])
-          : DateTime.parse(data['startDate']),
-
-      applicationDeadline: data['applicationDeadline'] != null
-          ? DateTime.parse(data['applicationDeadline'])
-          : DateTime.parse(data['startDate']),
-
-      startDate: DateTime.parse(data['startDate']),
-      endDate: DateTime.parse(data['endDate']),
-    );
   }
 }
