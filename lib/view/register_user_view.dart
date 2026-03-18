@@ -41,11 +41,13 @@ class _RegisterUserViewState extends State<RegisterUserView> {
       final nameRegExp = RegExp(r"^[a-zA-Z\s\u0600-\u06FF]+$");
       return value.trim().split(RegExp(r'\s+')).length >= 3;
     }
-    if (label == "Email Address")
+    if (label == "Email Address") {
       return RegExp(r"^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.(com|net|org|sa)$")
           .hasMatch(value.trim());
-    if (label == "Phone Number")
+    }
+    if (label == "Phone Number") {
       return RegExp(r'^05\d{8}$').hasMatch(value.trim());
+    }
     if (label == "Username") return value.trim().length >= 3;
 if (label == "Password" || label == "Confirm Password") { // ✅ Fixed      return value.length >= 8 &&
           value.contains(RegExp(r'[A-Z]')) &&
@@ -83,13 +85,15 @@ if (label == "Password" || label == "Confirm Password") { // ✅ Fixed      retu
                 "Enter your first, middle, last name(Letters only)",
                 Icons.badge_outlined,
                 customValidator: (v) {
-                  if (v == null || v.trim().isEmpty)
+                  if (v == null || v.trim().isEmpty) {
                     return "Enter your first, middle, last name(Letters only)";
+                  }
                   if (!RegExp(r"^[a-zA-Z\s\u0600-\u06FF]+$").hasMatch(v.trim())) {
                     return "Enter your first, middle, last name(Letters only)";
                   }
-                  if (v.trim().split(RegExp(r'\s+')).length < 3)
+                  if (v.trim().split(RegExp(r'\s+')).length < 3) {
                     return "Enter your first, middle, last name(Letters only)";
+                  }
                   return null;
                 },
               ),
@@ -99,10 +103,12 @@ if (label == "Password" || label == "Confirm Password") { // ✅ Fixed      retu
                 "minimum 3 characters , spaces are not allowed",
                 Icons.person_outline,
                 customValidator: (v) {
-                  if (v == null || v.trim().isEmpty)
+                  if (v == null || v.trim().isEmpty) {
                     return "minimum 3 characters , spaces are not allowed";
-                  if (v.contains(' '))
+                  }
+                  if (v.contains(' ')) {
                     return "minimum 3 characters , spaces are not allowed"; // ✅ هذا هو شرط منع المسافات
+                  }
                   if (v.trim().length < 3) return "minimum 3 characters , spaces are not allowed";
                   return null;
                 },
@@ -158,8 +164,9 @@ if (label == "Password" || label == "Confirm Password") { // ✅ Fixed      retu
                 type: TextInputType.phone,
                 customValidator: (v) {
                   final regex = RegExp(r'^05\d{8}$');
-                  if (v == null || !regex.hasMatch(v.trim()))
+                  if (v == null || !regex.hasMatch(v.trim())) {
                     return "must be 10 digits starting with 05";
+                  }
                   return null;
                 },
               ),

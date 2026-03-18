@@ -45,4 +45,41 @@ class OrgHackathonsViewModel extends ChangeNotifier {
   Future<void> deleteHackathon(String id) async {
     await _firestore.collection('hackathons').doc(id).delete();
   }
+Stream<List<Hackathon>> get exploreHackathonsStream {
+    return _firestore.collection('hackathons').snapshots().asyncMap((snap) async {
+      final now = DateTime.now();
+      List<Hackathon> list = [];
+
+      for (var doc in snap.docs) {
+        final hack = Hackathon.fromFirestore(doc);
+        
+        // 1. شرط اختفاء الهكاثون (لو انتهى وقت التسجيل)
+        if (hack.applicationDeadline.isAfter(now)) {
+          
+          String orgNameFromDB = "Loading..."; // نص مؤقت فقط أثناء الجلب
+          try {
+            // 2. الجلب من كولكشن organizations
+            final orgDoc = await _firestore
+                .collection('organizations')
+                .doc(hack.organizationId)
+                .get();
+            
+            if (orgDoc.exists) {
+              // ✅ التعديل المهم: استخدام 'orgName' كما في الصورة
+              orgNameFromDB = orgDoc.data()?['orgName'] ?? 'Unknown Organization';
+            } else {
+              orgNameFromDB = "Organization Not Found";
+            }
+          } catch (e) {
+            orgNameFromDB = "Error fetching name";
+          }
+
+          hack.organizationName = orgNameFromDB; 
+          list.add(hack);
+        }
+      }
+      return list;
+    });
+  }
+
 }

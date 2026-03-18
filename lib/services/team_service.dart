@@ -1,5 +1,6 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import '../model/team_model.dart';
+import '../model/team_post_model.dart';
 
 class TeamService {
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
@@ -45,13 +46,13 @@ class TeamService {
       final data = snapshot.data() as Map<String, dynamic>;
 
       final memberIds = (data['memberIds'] as List?)
-          ?.map((e) => e.toString())
-          .toList() ??
+              ?.map((e) => e.toString())
+              .toList() ??
           [];
 
       final pendingRequests = (data['pendingRequests'] as List?)
-          ?.map((e) => e.toString())
-          .toList() ??
+              ?.map((e) => e.toString())
+              .toList() ??
           [];
 
       if (memberIds.contains(userId)) {
@@ -70,5 +71,9 @@ class TeamService {
         'pendingRequests': FieldValue.arrayUnion([userId]),
       });
     });
+  }
+
+  Future<DocumentReference> createTeamPost(TeamPostModel post) async {
+    return await _firestore.collection('team_posts').add(post.toMap());
   }
 }

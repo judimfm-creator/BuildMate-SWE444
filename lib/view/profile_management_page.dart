@@ -25,7 +25,7 @@ class _ProfileManagementPageState extends State<ProfileManagementPage> {
 
   bool _isEditMode = false;
   bool _isInitialized = false;
-  bool _obscurePassword = true;
+  final bool _obscurePassword = true;
 
   final Set<String> _itemsMarkedForDeletion = {};
   final Map<String, TextEditingController> _controllers = {};
@@ -491,7 +491,7 @@ class _ProfileManagementPageState extends State<ProfileManagementPage> {
     );
   }
 
-  Widget _buildEditToggle() => Padding(padding: const EdgeInsets.symmetric(horizontal: 25, vertical: 15), child: Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [Text("Enable Editing Mode", style: TextStyle(color: _isEditMode ? deepMediumPurple : Colors.grey.shade600, fontWeight: FontWeight.bold)), Switch(value: _isEditMode, activeColor: deepMediumPurple, onChanged: (v) => setState(() { _isEditMode = v; }))]));
+  Widget _buildEditToggle() => Padding(padding: const EdgeInsets.symmetric(horizontal: 25, vertical: 15), child: Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [Text("Enable Editing Mode", style: TextStyle(color: _isEditMode ? deepMediumPurple : Colors.grey.shade600, fontWeight: FontWeight.bold)), Switch(value: _isEditMode, activeThumbColor: deepMediumPurple, onChanged: (v) => setState(() { _isEditMode = v; }))]));
   
   Widget _buildGenderDropdown() => Container(
     margin: const EdgeInsets.only(bottom: 12), padding: const EdgeInsets.all(15), 

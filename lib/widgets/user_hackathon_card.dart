@@ -17,11 +17,10 @@ class UserHackathonCard extends StatelessWidget {
     return "${d.year}-${d.month.toString().padLeft(2, '0')}-${d.day.toString().padLeft(2, '0')}";
   }
 
-  Widget _infoRow(IconData icon, String text) {
+  Widget _infoRow(IconData icon, String text, {Color? textColor}) {
     return Row(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        const SizedBox(width: 0),
         Icon(icon, size: 13, color: _purple),
         const SizedBox(width: 5),
         Expanded(
@@ -29,7 +28,7 @@ class UserHackathonCard extends StatelessWidget {
             text,
             style: TextStyle(
               fontSize: 11,
-              color: Colors.grey.shade700,
+              color: textColor ?? Colors.grey.shade700,
               height: 1.3,
             ),
             maxLines: 2,
@@ -88,19 +87,42 @@ class UserHackathonCard extends StatelessWidget {
                           fontWeight: FontWeight.bold,
                           color: _purple,
                         ),
-                        maxLines: 2,
+                        maxLines: 1,
                         overflow: TextOverflow.ellipsis,
+                      ),
+                      const SizedBox(height: 3),
+                      Row(
+                        children: [
+                          const Icon(Icons.business_outlined, size: 13, color: _purple),
+                          const SizedBox(width: 4),
+                          Text(
+                            hackathon.organizationName ?? "Fetching...",
+                            style: const TextStyle(
+                              fontSize: 12,
+                              fontWeight: FontWeight.w600,
+                              color: _purple,
+                            ),
+                          ),
+                        ],
                       ),
                       const SizedBox(height: 5),
                       Text(
                         hackathon.description,
                         style: TextStyle(
-                          fontSize: 12,
+                          fontSize: 11,
                           color: Colors.grey.shade600,
                           height: 1.4,
                         ),
                         maxLines: 2,
                         overflow: TextOverflow.ellipsis,
+                      ),
+                      
+                      const SizedBox(height: 6),
+                      // ✅ إضافة تاريخ انتهاء التسجيل هنا بلون مميز
+                      _infoRow(
+                        Icons.timer_outlined, 
+                        "Deadline: ${_formatDate(hackathon.applicationDeadline)}",
+                        textColor: Colors.deepOrangeAccent, // لون برتقالي لشد الانتباه
                       ),
                     ],
                   ),
@@ -141,7 +163,7 @@ class UserHackathonCard extends StatelessWidget {
                     children: [
                       _infoRow(
                         Icons.groups_outlined,
-                        "Team: ${hackathon.teamSize}",
+                        "Team Size: ${hackathon.teamSize}",
                       ),
                       const SizedBox(height: 5),
                       _infoRow(

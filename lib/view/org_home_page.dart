@@ -48,7 +48,7 @@ class OrgHomePage extends StatelessWidget {
                           fontSize: 14, color: Colors.grey.shade500),
                     ),
                   ),
-                  Icon(Icons.search, color: _purple),
+                  const Icon(Icons.search, color: _purple),
                   const SizedBox(width: 12),
                 ],
               ),
@@ -135,7 +135,7 @@ class _HackathonSection extends StatelessWidget {
               ),
               GestureDetector(
                 onTap: onExploreTap,
-                child: Row(
+                child: const Row(
                   children: [
                     Text(
                       "Explore more",
@@ -145,7 +145,7 @@ class _HackathonSection extends StatelessWidget {
                         fontWeight: FontWeight.w500,
                       ),
                     ),
-                    const SizedBox(width: 3),
+                    SizedBox(width: 3),
                     Icon(Icons.arrow_forward, size: 14, color: _orange),
                   ],
                 ),

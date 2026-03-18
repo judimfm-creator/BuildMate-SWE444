@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-import 'package:firebase_auth/firebase_auth.dart';
 import '../viewmodel/register_view_model.dart';
 import 'view/create_hackathon_view.dart';
 import 'widgets/org_nav_bar.dart';

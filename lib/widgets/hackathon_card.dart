@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import '../../model/hackathon.dart';
 import '../view/hackathon_details_view.dart';
 
-/// كارد كامل يُستخدم في صفحة Announced وصفحة Past
 class HackathonCard extends StatelessWidget {
   final Hackathon hackathon;
   final bool isPast;
@@ -22,7 +21,7 @@ class HackathonCard extends StatelessWidget {
   static const Color _orange = Color(0xFFFFA726);
 
   String _formatDate(DateTime d) =>
-      "${d.day.toString().padLeft(2, '0')}/${d.month.toString().padLeft(2, '0')}/${d.year}";
+      "${d.year}-${d.month.toString().padLeft(2, '0')}-${d.day.toString().padLeft(2, '0')}";
 
   @override
   Widget build(BuildContext context) {
@@ -30,7 +29,8 @@ class HackathonCard extends StatelessWidget {
       onTap: () => Navigator.push(
         context,
         MaterialPageRoute(
-            builder: (_) => HackathonDetailsView(hackathon: hackathon)),
+          builder: (_) => HackathonDetailsView(hackathon: hackathon),
+        ),
       ),
       child: Container(
         margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
@@ -48,7 +48,7 @@ class HackathonCard extends StatelessWidget {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // ── Header ──
+            // ── Top: icon + name + description ──
             Padding(
               padding: const EdgeInsets.fromLTRB(14, 14, 14, 10),
               child: Row(
@@ -61,8 +61,11 @@ class HackathonCard extends StatelessWidget {
                       color: _purple.withOpacity(0.12),
                       borderRadius: BorderRadius.circular(12),
                     ),
-                    child: const Icon(Icons.emoji_events_outlined,
-                        color: _purple, size: 32),
+                    child: const Icon(
+                      Icons.emoji_events_outlined,
+                      color: _purple,
+                      size: 32,
+                    ),
                   ),
                   const SizedBox(width: 12),
                   Expanded(
@@ -97,14 +100,16 @@ class HackathonCard extends StatelessWidget {
               ),
             ),
 
+            // ── Divider ──
             Divider(
-                color: _purple.withOpacity(0.15),
-                thickness: 1,
-                indent: 14,
-                endIndent: 14,
-                height: 1),
+              color: _purple.withOpacity(0.15),
+              thickness: 1,
+              indent: 14,
+              endIndent: 14,
+              height: 1,
+            ),
 
-            // ── Info ──
+            // ── Info grid ──
             Padding(
               padding: const EdgeInsets.fromLTRB(14, 10, 14, 10),
               child: Row(
@@ -114,15 +119,15 @@ class HackathonCard extends StatelessWidget {
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        _infoRow(Icons.location_on_outlined,
+                        _infoChip(Icons.location_on_outlined,
                             "${hackathon.city}, ${hackathon.location}"),
                         const SizedBox(height: 5),
-                        _infoRow(
+                        _infoChip(
                           Icons.calendar_today_outlined,
                           "${_formatDate(hackathon.startDate)} → ${_formatDate(hackathon.endDate)}",
                         ),
                         const SizedBox(height: 5),
-                        _infoRow(Icons.public_outlined, hackathon.mode),
+                        _infoChip(Icons.public_outlined, hackathon.mode),
                       ],
                     ),
                   ),
@@ -131,18 +136,18 @@ class HackathonCard extends StatelessWidget {
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        _infoRow(Icons.groups_outlined,
-                            "Team: ${hackathon.teamSize}"),
+                        _infoChip(
+                            Icons.groups_outlined, "Team: ${hackathon.teamSize}"),
                         const SizedBox(height: 5),
-                        _infoRow(
+                        _infoChip(
                           Icons.work_outline,
                           hackathon.rolesNeeded.length <= 2
                               ? hackathon.rolesNeeded.join(", ")
                               : "${hackathon.rolesNeeded.take(2).join(", ")} +${hackathon.rolesNeeded.length - 2}",
                         ),
                         const SizedBox(height: 5),
-                        _infoRow(Icons.school_outlined,
-                            hackathon.educationCriteria),
+                        _infoChip(
+                            Icons.school_outlined, hackathon.educationCriteria),
                       ],
                     ),
                   ),
@@ -150,7 +155,7 @@ class HackathonCard extends StatelessWidget {
               ),
             ),
 
-            // ── Action Button ──
+            // ── Action button ──
             Padding(
               padding: const EdgeInsets.fromLTRB(14, 0, 14, 14),
               child: Align(
@@ -168,8 +173,7 @@ class HackathonCard extends StatelessWidget {
                       elevation: 0,
                       shape: RoundedRectangleBorder(
                           borderRadius: BorderRadius.circular(10)),
-                      padding:
-                      const EdgeInsets.symmetric(horizontal: 14),
+                      padding: const EdgeInsets.symmetric(horizontal: 14),
                       textStyle: const TextStyle(
                           fontSize: 13, fontWeight: FontWeight.w600),
                     ),
@@ -187,8 +191,7 @@ class HackathonCard extends StatelessWidget {
                       elevation: 0,
                       shape: RoundedRectangleBorder(
                           borderRadius: BorderRadius.circular(10)),
-                      padding:
-                      const EdgeInsets.symmetric(horizontal: 16),
+                      padding: const EdgeInsets.symmetric(horizontal: 16),
                       textStyle: const TextStyle(
                           fontSize: 13, fontWeight: FontWeight.w600),
                     ),
@@ -202,22 +205,25 @@ class HackathonCard extends StatelessWidget {
     );
   }
 
-  Widget _infoRow(IconData icon, String text) => Row(
-    crossAxisAlignment: CrossAxisAlignment.start,
-    children: [
-      Icon(icon, size: 13, color: _purple),
-      const SizedBox(width: 5),
-      Expanded(
-        child: Text(
-          text,
-          style: TextStyle(
+  Widget _infoChip(IconData icon, String text) {
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Icon(icon, size: 13, color: _purple),
+        const SizedBox(width: 5),
+        Expanded(
+          child: Text(
+            text,
+            style: TextStyle(
               fontSize: 11,
               color: Colors.grey.shade700,
-              height: 1.3),
-          maxLines: 2,
-          overflow: TextOverflow.ellipsis,
+              height: 1.3,
+            ),
+            maxLines: 2,
+            overflow: TextOverflow.ellipsis,
+          ),
         ),
-      ),
-    ],
-  );
+      ],
+    );
+  }
 }

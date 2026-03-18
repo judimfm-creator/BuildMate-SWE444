@@ -21,7 +21,7 @@ class _OrgProfileManagementPageState extends State<OrgProfileManagementPage> {
 
   bool _isEditMode = false;
   bool _isInitialized = false;
-  bool _obscurePassword = true;
+  final bool _obscurePassword = true;
 
   final Set<String> _itemsMarkedForDeletion = {};
   final Map<String, TextEditingController> _controllers = {};
@@ -268,8 +268,9 @@ class _OrgProfileManagementPageState extends State<OrgProfileManagementPage> {
               );
 
 // تأكدي أن هذا السطر موجود عشان الصورة تختفي من الشاشة
-              if (_itemsMarkedForDeletion.contains("photo"))
+              if (_itemsMarkedForDeletion.contains("photo")) {
                 regVM.clearPickedImage();
+              }
               ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
                   content: Text('Profile updated successfully! ✅'),
                   backgroundColor: Colors.green));
@@ -337,7 +338,7 @@ class _OrgProfileManagementPageState extends State<OrgProfileManagementPage> {
                 fontWeight: FontWeight.bold)),
         Switch(
             value: _isEditMode,
-            activeColor: primaryPurple,
+            activeThumbColor: primaryPurple,
             onChanged: (v) => setState(() {
                   _isEditMode = v;
                 }))
