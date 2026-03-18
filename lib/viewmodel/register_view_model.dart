@@ -116,6 +116,8 @@ class RegisterViewModel extends ChangeNotifier {
 
   // ✅ التعديل هنا: حذفنا الـ Navigator عشان ما تطلعين للهوم بيج
 Future<void> updateProfile({
+  String? name,
+  String? username,
   required String bio,
   required dynamic skills,
   required String city,
@@ -137,6 +139,8 @@ Future<void> updateProfile({
       return;
     }
     Map<String, dynamic> dataToUpdate = {
+      'fullName': name ?? '',
+      'username': username ?? '',
       'bio': bio.trim(),
       'skills': skills,
       'city': city.trim(),
@@ -146,6 +150,13 @@ Future<void> updateProfile({
       'profileSetupComplete': true,
       'updatedAt': FieldValue.serverTimestamp(),
     };
+
+    if (name != null && name.isNotEmpty) {
+      dataToUpdate['fullName'] = name.trim();
+    }
+    if (username != null && username.isNotEmpty) {
+      dataToUpdate['username'] = username.trim();
+    }
 
     if (deletePhoto) {
       dataToUpdate['profilePhotoPath'] = FieldValue.delete();; // يحذف فقط لو أرسلنا deletePhoto = true

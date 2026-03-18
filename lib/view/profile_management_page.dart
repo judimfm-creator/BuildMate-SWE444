@@ -169,6 +169,8 @@ class _ProfileManagementPageState extends State<ProfileManagementPage> {
               // 3. استدعاء دالة زميلتك (تحديث شامل للباك اند)
               // نمرر لها كل الحقول، وإذا الحقل محدد للحذف نرسل نص فارغ ""
               await vm.updateProfile(
+                name: _controllers["Full Name"]?.text,     // 👈 أضيفي هذا السطر (سحب الاسم من التكست فيلد)
+                username: _controllers["Username"]?.text,
                 bio: _itemsMarkedForDeletion.contains("bio") ? "" : (_controllers["Biography"]?.text ?? ""),
                 city: _itemsMarkedForDeletion.contains("city") ? "" : (_controllers["City"]?.text ?? ""),
                 linkedin: _itemsMarkedForDeletion.contains("linkedin") ? "" : (_controllers["LinkedIn"]?.text ?? ""),

@@ -144,15 +144,17 @@ class _ProfilePageState extends State<ProfilePage>
                 ),
               ),
 
-              // 3. التابات
-              SliverFillRemaining(
-                hasScrollBody: true,
-                child: TabBarView(
-                  controller: _tabController,
-                  children: [
-                    _buildOngoingHackathonsTab(),
-                    _buildEmptyPlaceholder("No previous projects", Icons.history),
-                  ],
+              SliverToBoxAdapter(
+                child: SizedBox(
+                  // نعطي ارتفاعاً كافياً للتابات لكي تظهر كاملة
+                  height: 500, // يمكنكِ تعديل هذا الرقم حسب طول المحتوى المتوقع
+                  child: TabBarView(
+                    controller: _tabController,
+                    children: [
+                      _buildOngoingHackathonsTab(),
+                      _buildEmptyPlaceholder("No previous projects", Icons.history),
+                    ],
+                  ),
                 ),
               ),
             ],
