@@ -867,7 +867,7 @@ class _CreateHackathonViewState extends State<CreateHackathonView> {
     return Padding(
       padding: const EdgeInsets.only(bottom: 12),
       child: DropdownButtonFormField<String>(
-        value: value,
+        initialValue: value,
         items: items
             .map((e) => DropdownMenuItem<String>(value: e, child: Text(e)))
             .toList(),

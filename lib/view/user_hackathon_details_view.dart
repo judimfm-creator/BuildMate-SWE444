@@ -253,7 +253,7 @@ class UserHackathonDetailsView extends StatelessWidget {
       ),
       child: Stack(
         children: [
-          Align(
+          const Align(
             alignment: Alignment.center,
             child: Icon(
               Icons.emoji_events_outlined,
@@ -350,8 +350,8 @@ class UserHackathonDetailsView extends StatelessWidget {
   }
 
   Widget _divider() {
-    return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 8),
+    return const Padding(
+      padding: EdgeInsets.symmetric(vertical: 8),
       child: Divider(
         height: 1,
         thickness: 1,

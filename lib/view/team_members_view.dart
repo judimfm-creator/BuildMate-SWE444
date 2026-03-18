@@ -72,7 +72,7 @@ class TeamMembersView extends StatelessWidget {
                   ),
 
                   title: Text(
-                    user?.username?.isNotEmpty == true
+                    user?.username.isNotEmpty == true
                         ? "@${user!.username}"
                         : "Unknown User",
                     style: const TextStyle(

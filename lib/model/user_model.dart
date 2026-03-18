@@ -8,7 +8,7 @@ class UserModel {
   final String? bio;
   final String? city;
   final String? gender;
-  final dynamic skills; // ✅ يدعم المصفوفة والنص
+  final dynamic skills; //  يدعم المصفوفة والنص
   final String? linkedin; 
   final String? github;
 

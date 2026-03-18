@@ -50,16 +50,19 @@ class _RegisterOrgViewState extends State<RegisterOrgView> {
 
   bool _isFieldValid(String label, String value) {
     if (value.isEmpty) return false;
-    if (label == "Email Address")
+    if (label == "Email Address") {
       return RegExp(r"^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.(com|net|org|sa)$")
           .hasMatch(value.trim());
-    if (label == "Phone Number")
+    }
+    if (label == "Phone Number") {
       return RegExp(r'^05\d{8}$').hasMatch(value.trim());
+    }
     if (label == "Username") return value.trim().length >= 3;
-    if (label == "Password")
+    if (label == "Password") {
       return value.length >= 8 &&
           value.contains(RegExp(r'[A-Z]')) &&
           value.contains(RegExp(r'[0-9]'));
+    }
     return value.trim().isNotEmpty;
   }
 
@@ -203,8 +206,9 @@ class _RegisterOrgViewState extends State<RegisterOrgView> {
                 type: TextInputType.phone,
                 validator: (v) {
                   final regex = RegExp(r'^05\d{8}$');
-                  if (v == null || !regex.hasMatch(v.trim()))
+                  if (v == null || !regex.hasMatch(v.trim())) {
                     return "must start with 05 and be 10 digits";
+                  }
                   return null;
                 },
               ),
@@ -366,14 +370,16 @@ counterText: "",
     return isConfirm 
         ? "match the same password above" 
         : "minimum 8 chars, include capital letter, number, symbol";
-  }          if (isConfirm && v != _passwordController.text)
-            return "Passwords do not match";
+  }          if (isConfirm && v != _passwordController.text) {
+    return "Passwords do not match";
+  }
           if (!isConfirm) {
             if (v.length < 8) return "minimum 8 chars, include capital letter, number, symbol";
             if (!v.contains(RegExp(r'[A-Z]'))) return "minimum 8 chars, include capital letter, number, symbol";
             if (!v.contains(RegExp(r'[0-9]'))) return "minimum 8 chars, include capital letter, number, symbol";
-            if (!v.contains(RegExp(r'[!@#$%^&*(),._?":{}|<>]')))
-            return "minimum 8 chars, include capital letter, number, symbol";
+            if (!v.contains(RegExp(r'[!@#$%^&*(),._?":{}|<>]'))) {
+              return "minimum 8 chars, include capital letter, number, symbol";
+            }
           }
           return null;
         },

@@ -18,7 +18,7 @@ class _CompleteProfileViewState extends State<CompleteProfileView> {
   final _linkedinController = TextEditingController();
   final _githubController = TextEditingController();
 
-  List<String> _selectedSkills = [];
+  final List<String> _selectedSkills = [];
   final List<String> _predefinedSkills = [
     "UI/UX",
     "Flutter",
@@ -26,7 +26,7 @@ class _CompleteProfileViewState extends State<CompleteProfileView> {
     "Java",
     "Teamwork"
   ];
-  List<TextEditingController> _otherSkillControllers = [];
+  final List<TextEditingController> _otherSkillControllers = [];
 
   String? _selectedGender;
   final Color deepMediumPurple = const Color(0xFF7A62B3);
@@ -183,8 +183,9 @@ class _CompleteProfileViewState extends State<CompleteProfileView> {
                       " Example: https://linkedin.com/in/Sara-Mohammed",
                   validator: (val) {
                 if (val == null || val.isEmpty) return null;
-                if (!val.toLowerCase().contains("linkedin.com/"))
+                if (!val.toLowerCase().contains("linkedin.com/")) {
                   return "Enter a valid LinkedIn URL";
+                }
                 return null;
               }),
               _buildManagementField("GitHub Profile", "https://github.com/...",
@@ -193,8 +194,9 @@ class _CompleteProfileViewState extends State<CompleteProfileView> {
                   exampleText: "Example: https://github.com/Sara-Mohammed",
                   validator: (val) {
                 if (val == null || val.isEmpty) return null;
-                if (!val.toLowerCase().contains("github.com/"))
+                if (!val.toLowerCase().contains("github.com/")) {
                   return "Enter a valid GitHub URL";
+                }
                 return null;
               }),
               _buildSectionTitle("Gender"),
@@ -388,8 +390,9 @@ class _CompleteProfileViewState extends State<CompleteProfileView> {
 
     List<String> finalSkillsList = [..._selectedSkills];
     for (var controller in _otherSkillControllers) {
-      if (controller.text.trim().isNotEmpty)
+      if (controller.text.trim().isNotEmpty) {
         finalSkillsList.add(controller.text.trim());
+      }
     }
 
     await context.read<RegisterViewModel>().updateProfile(

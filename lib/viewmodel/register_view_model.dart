@@ -148,7 +148,7 @@ Future<void> updateProfile({
     };
 
     if (deletePhoto) {
-      dataToUpdate['profilePhotoPath'] = FieldValue.delete();; // يحذف فقط لو أرسلنا deletePhoto = true
+      dataToUpdate['profilePhotoPath'] = FieldValue.delete(); // يحذف فقط لو أرسلنا deletePhoto = true
     } else if (_pickedImage != null) {
       dataToUpdate['profilePhotoPath'] = _pickedImage!.path; // يحدث لو اخترنا صورة جديدة
     }

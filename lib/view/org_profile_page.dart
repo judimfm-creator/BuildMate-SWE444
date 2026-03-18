@@ -61,7 +61,7 @@ class _OrgProfilePageState extends State<OrgProfilePage> {
 
                   _buildTabBarSection(),
 
-                  SizedBox(
+                  const SizedBox(
                     height: 300,
                     child: TabBarView(
                       children: [
