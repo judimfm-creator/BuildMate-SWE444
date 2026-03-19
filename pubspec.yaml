@@ -11,6 +11,9 @@ dependencies:
   flutter:
     sdk: flutter
 
+
+  intl: ^0.19.0
+
   # مكتبة اختيار الصور من الاستوديو
   image_picker: ^1.0.7
 
