@@ -9,6 +9,8 @@ import 'package:buildmate/widgets/buildmate_app_bar.dart';
 import 'package:buildmate/view/profile_page.dart';
 import 'package:buildmate/view/org_profile_page.dart';
 import 'package:buildmate/view/explore_user_view.dart';
+import 'package:buildmate/view/user_home_page.dart';
+import 'package:buildmate/view/org_home_page.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -59,7 +61,7 @@ class _HomeScreenState extends State<HomeScreen> {
     ];
 
     final List<Widget> userPages = [
-      const Center(child: Text("Home")),      // 0
+      const UserHomePage(),      // 0
       const ExploreUserView(),// 1
       const Center(child: Text("Teams")),     // 2
       const ProfilePage(),                   // 3 - صفحة Hailah22

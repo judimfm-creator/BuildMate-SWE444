@@ -9,37 +9,52 @@ class OrgHackathonsViewModel extends ChangeNotifier {
 
   /// الهاكاثونز الحالية — endDate بعد اليوم
   Stream<List<Hackathon>> get ongoingStream {
-    if (_orgId == null) return const Stream.empty();
+    // 1. التعديل الأهم: جلب الـ ID الحالي داخل الـ Stream نفسه لضمان تحديثه
+    final String? currentUid = FirebaseAuth.instance.currentUser?.uid;
+
+    // 2. إذا لم يجد ID، نعيد قائمة فارغة واضحة بدل Stream.empty المحيّر
+    if (currentUid == null) {
+      return Stream.value([]); 
+    }
+
     return _firestore
         .collection('hackathons')
-        .where('organizationId', isEqualTo: _orgId)
+        // 3. التأكد من مطابقة اسم الحقل 'organizationId' كما هو في قاعدة البيانات
+        .where('organizationId', isEqualTo: currentUid) 
         .snapshots()
         .map((snap) {
-      final now = DateTime.now();
-      return snap.docs
-          .map((d) => Hackathon.fromFirestore(d))
-          .where((h) => h.endDate.isAfter(now))
-          .toList()
-        ..sort((a, b) => a.startDate.compareTo(b.startDate));
-    });
+          final now = DateTime.now();
+          
+          // تحويل البيانات من Firestore إلى قائمة Hackathon
+          final list = snap.docs
+              .map((d) => Hackathon.fromFirestore(d))
+              .where((h) => h.endDate.isAfter(now))
+              .toList();
+
+          // ترتيب الهكاثونات حسب تاريخ البداية
+          list.sort((a, b) => a.startDate.compareTo(b.startDate));
+          
+          return list;
+        });
   }
 
-  /// الهاكاثونز المنتهية — endDate قبل أو يساوي اليوم
-  Stream<List<Hackathon>> get pastStream {
-    if (_orgId == null) return const Stream.empty();
-    return _firestore
-        .collection('hackathons')
-        .where('organizationId', isEqualTo: _orgId)
-        .snapshots()
-        .map((snap) {
-      final now = DateTime.now();
-      return snap.docs
-          .map((d) => Hackathon.fromFirestore(d))
-          .where((h) => !h.endDate.isAfter(now))
-          .toList()
-        ..sort((a, b) => b.endDate.compareTo(a.endDate));
-    });
-  }
+ Stream<List<Hackathon>> get pastStream {
+  final String? currentUid = FirebaseAuth.instance.currentUser?.uid; // التعديل هنا أيضاً
+  if (currentUid == null) return Stream.value([]); 
+
+  return _firestore
+      .collection('hackathons')
+      .where('organizationId', isEqualTo: currentUid)
+      .snapshots()
+      .map((snap) {
+        final now = DateTime.now();
+        return snap.docs
+            .map((d) => Hackathon.fromFirestore(d))
+            .where((h) => !h.endDate.isAfter(now)) // الهكاثونات المنتهية
+            .toList()
+          ..sort((a, b) => b.endDate.compareTo(a.endDate));
+      });
+}
 
   /// حذف هاكاثون
   Future<void> deleteHackathon(String id) async {

@@ -14,7 +14,7 @@ class OrgHomePage extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final vm = context.read<OrgHackathonsViewModel>();
+    final vm = context.watch<OrgHackathonsViewModel>();
 
     return SingleChildScrollView(
       padding: const EdgeInsets.symmetric(vertical: 16),
@@ -184,7 +184,7 @@ class _HackathonSection extends StatelessWidget {
             }
 
             return SizedBox(
-              height: 185,
+              height: 200,
               child: ListView.builder(
                 scrollDirection: Axis.horizontal,
                 padding: const EdgeInsets.symmetric(horizontal: 16),
