@@ -4,10 +4,12 @@ import 'package:flutter/material.dart';
 
 class CreateTeamPostScreen extends StatefulWidget {
   final String hackathonId;
+  final int hackathonTeamSize;
 
   const CreateTeamPostScreen({
     super.key,
     required this.hackathonId,
+    required this.hackathonTeamSize,
   });
 
   @override
@@ -15,34 +17,24 @@ class CreateTeamPostScreen extends StatefulWidget {
 }
 
 class _CreateTeamPostScreenState extends State<CreateTeamPostScreen> {
-  final _formKey = GlobalKey<FormState>();
+  final GlobalKey<FormState> _formKey = GlobalKey<FormState>();
 
   final TextEditingController _teamNameController = TextEditingController();
   final TextEditingController _roleController = TextEditingController();
 
-  final TextEditingController _fullNameController = TextEditingController();
-  final TextEditingController _emailController = TextEditingController();
-  final TextEditingController _universityController = TextEditingController();
-  final TextEditingController _majorController = TextEditingController();
-  final TextEditingController _skillsController = TextEditingController();
-  final TextEditingController _motivationController = TextEditingController();
+  static const Color _purple = Color(0xFF6D56B3);
+  static const Color _lightBackground = Color(0xFFF8F7FB);
+  static const Color _borderColor = Color(0xFFE6E1F3);
 
   String? _selectedGender;
   bool _isLoading = false;
 
   final RegExp _lettersOnlyRegex = RegExp(r'^[A-Za-z ]+$');
-  final RegExp _emailRegex = RegExp(r'^[^@\s]+@[^@\s]+\.[^@\s]+$');
 
   @override
   void dispose() {
     _teamNameController.dispose();
     _roleController.dispose();
-    _fullNameController.dispose();
-    _emailController.dispose();
-    _universityController.dispose();
-    _majorController.dispose();
-    _skillsController.dispose();
-    _motivationController.dispose();
     super.dispose();
   }
 
@@ -51,54 +43,82 @@ class _CreateTeamPostScreenState extends State<CreateTeamPostScreen> {
   }
 
   Future<void> _submit() async {
-    if (!_formKey.currentState!.validate()) return;
+    if (_isLoading) return;
+
+    final isValid = _formKey.currentState?.validate() ?? false;
+    if (!isValid) return;
+
+    final user = FirebaseAuth.instance.currentUser;
+
+    if (user == null) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('User is not logged in.'),
+        ),
+      );
+      return;
+    }
 
     try {
       setState(() {
         _isLoading = true;
       });
 
-      final user = FirebaseAuth.instance.currentUser;
+      final firestore = FirebaseFirestore.instance;
 
-      if (user == null) {
+      final existingTeam = await firestore
+          .collection('team_posts')
+          .where('hackathonId', isEqualTo: widget.hackathonId)
+          .where('createdBy', isEqualTo: user.uid)
+          .get();
+
+      if (existingTeam.docs.isNotEmpty) {
         if (!mounted) return;
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('User is not logged in')),
+          const SnackBar(
+            content: Text(
+              'You have already created a team post for this hackathon.',
+            ),
+          ),
         );
         return;
       }
 
-      final teamPostRef =
-          await FirebaseFirestore.instance.collection('team_posts').add({
+      final userDoc = await firestore.collection('users').doc(user.uid).get();
+      final userData = userDoc.data() ?? {};
+
+      final String leaderName =
+          (userData['fullName'] ?? user.displayName ?? 'Unknown Leader')
+              .toString();
+
+      final String teamName = _teamNameController.text.trim();
+      final String myRole = _roleController.text.trim();
+
+      await firestore.collection('team_posts').add({
         'hackathonId': widget.hackathonId,
         'createdBy': user.uid,
-        'teamName': _teamNameController.text.trim(),
+        'leaderId': user.uid,
+        'leaderName': leaderName,
+        'teamName': teamName,
         'genderPreference': _selectedGender,
-        'myRole': _roleController.text.trim(),
+        'myRole': myRole,
+        'neededRoles': [myRole],
+        'description': 'Team is looking for members to join.',
+        'members': [user.uid],
+        'currentMembers': 1,
+        'maxMembers': widget.hackathonTeamSize,
+        'isTeamComplete': widget.hackathonTeamSize == 1,
+        'submittedToInstitution': false,
+        'status': 'open',
         'createdAt': FieldValue.serverTimestamp(),
-      });
-
-      await FirebaseFirestore.instance.collection('registrations').add({
-        'hackathonId': widget.hackathonId,
-        'teamPostId': teamPostRef.id,
-        'userId': user.uid,
-        'fullName': _fullNameController.text.trim(),
-        'email': _emailController.text.trim(),
-        'university': _universityController.text.trim(),
-        'major': _majorController.text.trim(),
-        'skills': _skillsController.text.trim(),
-        'motivation': _motivationController.text.trim(),
-        'status': 'pending',
-        'submittedAt': FieldValue.serverTimestamp(),
       });
 
       if (!mounted) return;
 
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
-          content: Text(
-            'Team post created and registration form submitted successfully',
-          ),
+          content: Text('Team post created successfully.'),
         ),
       );
 
@@ -106,7 +126,9 @@ class _CreateTeamPostScreenState extends State<CreateTeamPostScreen> {
     } catch (e) {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Failed to submit: $e')),
+        SnackBar(
+          content: Text('Failed to create team post: $e'),
+        ),
       );
     } finally {
       if (mounted) {
@@ -149,10 +171,20 @@ class _CreateTeamPostScreenState extends State<CreateTeamPostScreen> {
       labelText: label,
       helperText: helperText,
       helperMaxLines: 2,
+      errorMaxLines: 2,
+      filled: true,
+      fillColor: Colors.white,
       border: OutlineInputBorder(
         borderRadius: BorderRadius.circular(12),
       ),
-      errorMaxLines: 2,
+      enabledBorder: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(12),
+        borderSide: const BorderSide(color: _borderColor),
+      ),
+      focusedBorder: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(12),
+        borderSide: const BorderSide(color: _purple, width: 1.4),
+      ),
     );
   }
 
@@ -161,9 +193,9 @@ class _CreateTeamPostScreenState extends State<CreateTeamPostScreen> {
       width: double.infinity,
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: const Color(0xFFF8F7FB),
+        color: _lightBackground,
         borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: const Color(0xFFE6E1F3)),
+        border: Border.all(color: _borderColor),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -178,7 +210,10 @@ class _CreateTeamPostScreenState extends State<CreateTeamPostScreen> {
       appBar: AppBar(
         title: const Text('Create Team Post'),
         centerTitle: true,
+        backgroundColor: _purple,
+        foregroundColor: Colors.white,
       ),
+      backgroundColor: Colors.white,
       body: SingleChildScrollView(
         padding: const EdgeInsets.all(16),
         child: Form(
@@ -189,11 +224,12 @@ class _CreateTeamPostScreenState extends State<CreateTeamPostScreen> {
             children: [
               _sectionTitle(
                 'Team Post Information',
-                'This section creates the team post for the selected hackathon.',
+                'Create a team post for this hackathon so other users can join your team.',
               ),
               _buildSectionCard([
                 TextFormField(
                   controller: _teamNameController,
+                  textInputAction: TextInputAction.next,
                   decoration: _inputDecoration(
                     'Team Name',
                     'Letters only, at least one word.',
@@ -207,11 +243,8 @@ class _CreateTeamPostScreenState extends State<CreateTeamPostScreen> {
                     if (!_containsOnlyLetters(text)) {
                       return 'Team name must contain letters only';
                     }
-                    if (text
-                        .split(RegExp(r'\s+'))
-                        .where((e) => e.isNotEmpty)
-                        .isEmpty) {
-                      return 'Enter at least one word';
+                    if (text.length < 2) {
+                      return 'Team name is too short';
                     }
                     return null;
                   },
@@ -224,16 +257,24 @@ class _CreateTeamPostScreenState extends State<CreateTeamPostScreen> {
                     'Select either Male or Female.',
                   ),
                   items: const [
-                    DropdownMenuItem(value: 'Male', child: Text('Male')),
-                    DropdownMenuItem(value: 'Female', child: Text('Female')),
+                    DropdownMenuItem(
+                      value: 'Male',
+                      child: Text('Male'),
+                    ),
+                    DropdownMenuItem(
+                      value: 'Female',
+                      child: Text('Female'),
+                    ),
                   ],
-                  onChanged: (value) {
-                    setState(() {
-                      _selectedGender = value;
-                    });
-                  },
+                  onChanged: _isLoading
+                      ? null
+                      : (value) {
+                          setState(() {
+                            _selectedGender = value;
+                          });
+                        },
                   validator: (value) {
-                    if (value == null) {
+                    if (value == null || value.isEmpty) {
                       return 'Please select gender';
                     }
                     return null;
@@ -242,6 +283,7 @@ class _CreateTeamPostScreenState extends State<CreateTeamPostScreen> {
                 const SizedBox(height: 16),
                 TextFormField(
                   controller: _roleController,
+                  textInputAction: TextInputAction.done,
                   decoration: _inputDecoration(
                     'My Role',
                     'Letters only.',
@@ -255,138 +297,39 @@ class _CreateTeamPostScreenState extends State<CreateTeamPostScreen> {
                     if (!_containsOnlyLetters(text)) {
                       return 'Role must contain letters only';
                     }
+                    if (text.length < 2) {
+                      return 'Role is too short';
+                    }
                     return null;
+                  },
+                  onFieldSubmitted: (_) {
+                    _submit();
                   },
                 ),
               ]),
-
               const SizedBox(height: 24),
-
-              _sectionTitle(
-                'Registration Form',
-                'This information will be visible to the institution for evaluation.',
-              ),
-              _buildSectionCard([
-                TextFormField(
-                  controller: _fullNameController,
-                  decoration: _inputDecoration(
-                    'Full Name',
-                    'Letters only, at least one word.',
-                  ),
-                  validator: (value) {
-                    final text = value?.trim() ?? '';
-
-                    if (text.isEmpty) {
-                      return 'Full name is required';
-                    }
-                    if (!_containsOnlyLetters(text)) {
-                      return 'Full name must contain letters only';
-                    }
-                    return null;
-                  },
-                ),
-                const SizedBox(height: 16),
-                TextFormField(
-                  controller: _emailController,
-                  keyboardType: TextInputType.emailAddress,
-                  decoration: _inputDecoration(
-                    'Email',
-                    'Must be a valid email format, for example: name@example.com',
-                  ),
-                  validator: (value) {
-                    final text = value?.trim() ?? '';
-
-                    if (text.isEmpty) {
-                      return 'Email is required';
-                    }
-                    if (!_emailRegex.hasMatch(text)) {
-                      return 'Enter a valid email address';
-                    }
-                    return null;
-                  },
-                ),
-                const SizedBox(height: 16),
-                TextFormField(
-                  controller: _universityController,
-                  decoration: _inputDecoration(
-                    'University',
-                    'Required field.',
-                  ),
-                  validator: (value) {
-                    if (value == null || value.trim().isEmpty) {
-                      return 'University is required';
-                    }
-                    return null;
-                  },
-                ),
-                const SizedBox(height: 16),
-                TextFormField(
-                  controller: _majorController,
-                  decoration: _inputDecoration(
-                    'Major',
-                    'Required field.',
-                  ),
-                  validator: (value) {
-                    if (value == null || value.trim().isEmpty) {
-                      return 'Major is required';
-                    }
-                    return null;
-                  },
-                ),
-                const SizedBox(height: 16),
-                TextFormField(
-                  controller: _skillsController,
-                  maxLines: 3,
-                  decoration: _inputDecoration(
-                    'Skills',
-                    'Minimum 30 characters.',
-                  ),
-                  validator: (value) {
-                    final text = value?.trim() ?? '';
-
-                    if (text.isEmpty) {
-                      return 'Skills are required';
-                    }
-                    if (text.length < 30) {
-                      return 'Skills must be at least 30 characters';
-                    }
-                    return null;
-                  },
-                ),
-                const SizedBox(height: 16),
-                TextFormField(
-                  controller: _motivationController,
-                  maxLines: 4,
-                  decoration: _inputDecoration(
-                    'Motivation',
-                    'Minimum 30 characters.',
-                  ),
-                  validator: (value) {
-                    final text = value?.trim() ?? '';
-
-                    if (text.isEmpty) {
-                      return 'Motivation is required';
-                    }
-                    if (text.length < 30) {
-                      return 'Motivation must be at least 30 characters';
-                    }
-                    return null;
-                  },
-                ),
-              ]),
-
-              const SizedBox(height: 24),
-
               SizedBox(
                 width: double.infinity,
                 height: 50,
                 child: ElevatedButton(
                   onPressed: _isLoading ? null : _submit,
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: _purple,
+                    foregroundColor: Colors.white,
+                    disabledBackgroundColor: _purple.withValues(alpha: 0.5),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                  ),
                   child: _isLoading
                       ? const SizedBox(
-                          height: 20,
-                          width: 20,
-                          child: CircularProgressIndicator(strokeWidth: 2),
+                          height: 22,
+                          width: 22,
+                          child: CircularProgressIndicator(
+                            strokeWidth: 2.2,
+                            valueColor:
+                                AlwaysStoppedAnimation<Color>(Colors.white),
+                          ),
                         )
                       : const Text('Create Team Post'),
                 ),

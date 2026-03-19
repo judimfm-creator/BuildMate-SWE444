@@ -1,355 +1,256 @@
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
-
-import '../model/hackathon.dart';
-import '../model/team_model.dart';
-import '../services/team_service.dart';
-import '../widgets/buildmate_app_bar.dart';
-import 'team_members_view.dart';
+import 'join_team_request_view.dart';
 
 class HackathonTeamsView extends StatelessWidget {
-  final Hackathon hackathon;
+  final String hackathonId;
+  final int hackathonTeamSize;
 
   const HackathonTeamsView({
     super.key,
-    required this.hackathon,
+    required this.hackathonId,
+    required this.hackathonTeamSize,
   });
 
-  DateTime _dateOnly(DateTime date) {
-    return DateTime(date.year, date.month, date.day);
-  }
-
-  bool _isRegistrationOpen(Hackathon hackathon) {
-    final today = _dateOnly(DateTime.now());
-    final open = _dateOnly(hackathon.applicationOpenDate);
-    final deadline = _dateOnly(hackathon.applicationDeadline);
-
-    final opened = today.isAtSameMomentAs(open) || today.isAfter(open);
-    final notClosed =
-        today.isAtSameMomentAs(deadline) || today.isBefore(deadline);
-
-    return opened && notClosed;
-  }
+  static const Color _purple = Color(0xFF6D56B3);
+  static const Color _lightPurple = Color(0xFFF0EEFF);
 
   @override
   Widget build(BuildContext context) {
-    final teamService = TeamService();
-    final bool registrationOpen = _isRegistrationOpen(hackathon);
-
     return Scaffold(
-      backgroundColor: const Color(0xFFF8F7FB),
-      appBar: BuildMateAppBar(
-        titleText: "Teams",
-        showBack: true,
-        onBack: () => Navigator.pop(context),
+      appBar: AppBar(
+        title: const Text('Hackathon Teams'),
+        centerTitle: true,
+        backgroundColor: _purple,
+        foregroundColor: Colors.white,
       ),
-      body: Column(
-        children: [
-          if (!registrationOpen)
-            Container(
-              width: double.infinity,
-              margin: const EdgeInsets.fromLTRB(16, 16, 16, 0),
-              padding: const EdgeInsets.all(12),
-              decoration: BoxDecoration(
-                color: const Color(0xFFFFF4E5),
-                borderRadius: BorderRadius.circular(12),
-                border: Border.all(color: const Color(0xFFFFD8A8)),
+      backgroundColor: Colors.white,
+      body: StreamBuilder<QuerySnapshot<Map<String, dynamic>>>(
+        stream: FirebaseFirestore.instance
+            .collection('team_posts')
+            .where('hackathonId', isEqualTo: hackathonId)
+            .snapshots(),
+        builder: (context, snapshot) {
+          if (snapshot.connectionState == ConnectionState.waiting) {
+            return const Center(
+              child: CircularProgressIndicator(),
+            );
+          }
+
+          if (snapshot.hasError) {
+            return const Center(
+              child: Text('Something went wrong while loading teams.'),
+            );
+          }
+
+          final allDocs = snapshot.data?.docs ?? [];
+
+          final docs = allDocs.where((doc) {
+            final data = doc.data();
+
+            final int currentMembers = _parseInt(data['currentMembers']);
+            final int storedMaxMembers = _parseInt(data['maxMembers']);
+            final int maxMembers =
+                storedMaxMembers > 0 ? storedMaxMembers : hackathonTeamSize;
+
+            final bool submittedToInstitution =
+                data['submittedToInstitution'] == true;
+
+            final bool isComplete = currentMembers >= maxMembers;
+
+            return !submittedToInstitution && !isComplete;
+          }).toList();
+
+          if (docs.isEmpty) {
+            return const Center(
+              child: Text(
+                'No available team posts for this hackathon.',
+                style: TextStyle(fontSize: 16),
               ),
-              child: const Row(
-                children: [
-                  Icon(Icons.info_outline, color: Color(0xFFE67E22)),
-                  SizedBox(width: 8),
-                  Expanded(
-                    child: Text(
-                      "Registration is closed. You can still view teams, but you cannot join now.",
-                      style: TextStyle(
-                        fontSize: 13,
-                        color: Color(0xFF8A5A00),
-                        fontWeight: FontWeight.w500,
-                      ),
-                    ),
+            );
+          }
+
+          return ListView.separated(
+            padding: const EdgeInsets.all(16),
+            itemCount: docs.length,
+            separatorBuilder: (_, __) => const SizedBox(height: 12),
+            itemBuilder: (context, index) {
+              final doc = docs[index];
+              final data = doc.data();
+
+              final String teamPostId = doc.id;
+              final String teamName =
+                  (data['teamName'] ?? 'Unnamed Team').toString();
+              final String leaderName =
+                  (data['leaderName'] ?? 'Unknown Leader').toString();
+              final String leaderId = (data['leaderId'] ?? '').toString();
+              final String description =
+                  (data['description'] ?? 'No description provided.')
+                      .toString();
+
+              final List<String> neededRoles =
+                  _parseStringList(data['neededRoles']);
+
+              final int currentMembers = _parseInt(data['currentMembers']);
+              final int storedMaxMembers = _parseInt(data['maxMembers']);
+              final int maxMembers =
+                  storedMaxMembers > 0 ? storedMaxMembers : hackathonTeamSize;
+
+              return Container(
+                padding: const EdgeInsets.all(16),
+                decoration: BoxDecoration(
+                  color: _lightPurple,
+                  borderRadius: BorderRadius.circular(16),
+                  border: Border.all(
+                    color: _purple.withValues(alpha: 0.15),
                   ),
-                ],
-              ),
-            ),
-          Expanded(
-            child: StreamBuilder<List<TeamModel>>(
-              stream: teamService.getTeamsByHackathon(hackathon.id ?? ''),
-              builder: (context, snapshot) {
-                if (snapshot.hasError) {
-                  return const Center(
-                    child: Text(
-                      "Something went wrong",
-                      style: TextStyle(fontSize: 16),
-                    ),
-                  );
-                }
-
-                if (snapshot.connectionState == ConnectionState.waiting) {
-                  return const Center(child: CircularProgressIndicator());
-                }
-
-                final teams = snapshot.data ?? [];
-
-                if (teams.isEmpty) {
-                  return const Center(
-                    child: Text(
-                      "No teams yet",
-                      style: TextStyle(
-                        fontSize: 16,
-                        color: Colors.black54,
-                      ),
-                    ),
-                  );
-                }
-
-                return ListView.builder(
-                  padding: const EdgeInsets.all(16),
-                  itemCount: teams.length,
-                  itemBuilder: (context, index) {
-                    final team = teams[index];
-                    final bool isFull =
-                        team.membersCount >= hackathon.teamSize;
-                    final int availableSlots =
-                    (hackathon.teamSize - team.membersCount)
-                        .clamp(0, hackathon.teamSize);
-
-                    return Padding(
-                      padding: const EdgeInsets.only(bottom: 14),
-                      child: _buildTeamCard(
-                        context,
-                        team,
-                        isFull,
-                        availableSlots,
-                        registrationOpen,
-                      ),
-                    );
-                  },
-                );
-              },
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildTeamCard(
-      BuildContext context,
-      TeamModel team,
-      bool isFull,
-      int availableSlots,
-      bool registrationOpen,
-      ) {
-    const Color purple = Color(0xFF7A62B3);
-    const Color lightPurple = Color(0xFFF1ECFB);
-    const Color orange = Color(0xFFFFB22C);
-
-    final String genderText =
-    (team.genderPreference?.isNotEmpty == true)
-        ? team.genderPreference!
-        : "Any";
-
-    String joinButtonText = "Join";
-    Color joinButtonColor = orange;
-
-    if (!registrationOpen) {
-      joinButtonText = "Closed";
-      joinButtonColor = Colors.grey;
-    } else if (isFull) {
-      joinButtonText = "Full";
-      joinButtonColor = Colors.grey;
-    }
-
-    return Container(
-      decoration: BoxDecoration(
-        color: lightPurple,
-        borderRadius: BorderRadius.circular(24),
-      ),
-      padding: const EdgeInsets.all(18),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            children: [
-              _buildIconBox(),
-              const SizedBox(width: 14),
-              Expanded(
+                ),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                      team.teamName,
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
+                      teamName,
                       style: const TextStyle(
-                        color: purple,
-                        fontSize: 21,
+                        fontSize: 18,
                         fontWeight: FontWeight.bold,
+                        color: _purple,
                       ),
                     ),
-                    const SizedBox(height: 6),
+                    const SizedBox(height: 8),
+                    _infoRow(Icons.person_outline, 'Leader', leaderName),
+                    _infoRow(
+                      Icons.groups_outlined,
+                      'Members',
+                      '$currentMembers / $maxMembers',
+                    ),
+                    const SizedBox(height: 10),
                     Text(
-                      isFull
-                          ? "This team is full"
-                          : "$availableSlots slot${availableSlots == 1 ? '' : 's'} available",
+                      description,
                       style: TextStyle(
-                        color: isFull ? Colors.red.shade400 : Colors.black54,
-                        fontSize: 14,
-                        fontWeight: FontWeight.w500,
+                        color: Colors.grey.shade700,
+                        height: 1.5,
+                      ),
+                    ),
+                    const SizedBox(height: 12),
+                    const Text(
+                      'Needed Roles',
+                      style: TextStyle(
+                        fontWeight: FontWeight.w700,
+                        fontSize: 13,
+                        color: Colors.black87,
+                      ),
+                    ),
+                    const SizedBox(height: 8),
+                    neededRoles.isEmpty
+                        ? Text(
+                            'No specific roles listed.',
+                            style: TextStyle(
+                              color: Colors.grey.shade600,
+                            ),
+                          )
+                        : Wrap(
+                            spacing: 8,
+                            runSpacing: 8,
+                            children: neededRoles.map((role) {
+                              return Container(
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 12,
+                                  vertical: 6,
+                                ),
+                                decoration: BoxDecoration(
+                                  color: Colors.white,
+                                  borderRadius: BorderRadius.circular(20),
+                                  border: Border.all(
+                                    color: _purple.withValues(alpha: 0.25),
+                                  ),
+                                ),
+                                child: Text(
+                                  role,
+                                  style: const TextStyle(
+                                    color: _purple,
+                                    fontSize: 12,
+                                    fontWeight: FontWeight.w500,
+                                  ),
+                                ),
+                              );
+                            }).toList(),
+                          ),
+                    const SizedBox(height: 14),
+                    SizedBox(
+                      width: double.infinity,
+                      child: ElevatedButton(
+                        onPressed: leaderId.isEmpty
+                            ? null
+                            : () {
+                                Navigator.push(
+                                  context,
+                                  MaterialPageRoute(
+                                    builder: (context) => JoinTeamRequestView(
+                                      hackathonId: hackathonId,
+                                      teamPostId: teamPostId,
+                                      leaderId: leaderId,
+                                      teamName: teamName,
+                                    ),
+                                  ),
+                                );
+                              },
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: _purple,
+                          foregroundColor: Colors.white,
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                        ),
+                        child: const Text('Request to Join'),
                       ),
                     ),
                   ],
                 ),
-              ),
-            ],
+              );
+            },
+          );
+        },
+      ),
+    );
+  }
+
+  static int _parseInt(dynamic value) {
+    if (value is int) return value;
+    return int.tryParse(value?.toString() ?? '') ?? 0;
+  }
+
+  static List<String> _parseStringList(dynamic value) {
+    if (value is List) {
+      return value.map((e) => e.toString()).toList();
+    }
+    return [];
+  }
+
+  Widget _infoRow(IconData icon, String label, String value) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 6),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Icon(icon, size: 18, color: _purple),
+          const SizedBox(width: 8),
+          Text(
+            '$label: ',
+            style: const TextStyle(
+              fontWeight: FontWeight.w600,
+              color: Colors.black87,
+            ),
           ),
-          const SizedBox(height: 16),
-          Divider(color: Colors.grey.shade300, thickness: 1),
-          const SizedBox(height: 12),
-
-          Row(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Expanded(
-                child: _buildInfoColumn(
-                  icon: Icons.people_alt_outlined,
-                  text: "Members: ${team.membersCount} / ${hackathon.teamSize}",
-                ),
+          Expanded(
+            child: Text(
+              value,
+              style: TextStyle(
+                color: Colors.grey.shade700,
               ),
-              Expanded(
-                child: _buildInfoColumn(
-                  icon: Icons.wc_outlined,
-                  text: "Gender: $genderText",
-                ),
-              ),
-            ],
-          ),
-
-          const SizedBox(height: 10),
-
-          _buildInfoColumn(
-            icon: Icons.badge_outlined,
-            text: team.rolesNeeded.isNotEmpty
-                ? "Roles: ${team.rolesNeeded.join(', ')}"
-                : "Roles: Not specified",
-          ),
-
-          const SizedBox(height: 14),
-
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              if (team.memberIds.isNotEmpty)
-                OutlinedButton.icon(
-                  onPressed: () {
-                    Navigator.push(
-                      context,
-                      MaterialPageRoute(
-                        builder: (_) => TeamMembersView(
-                          memberIds: team.memberIds,
-                        ),
-                      ),
-                    );
-                  },
-                  icon: const Icon(Icons.people_outline_rounded, size: 18),
-                  label: const Text(
-                    "View Members",
-                    style: TextStyle(fontWeight: FontWeight.w600),
-                  ),
-                  style: OutlinedButton.styleFrom(
-                    foregroundColor: purple,
-                    side: const BorderSide(color: purple),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 14,
-                      vertical: 12,
-                    ),
-                  ),
-                )
-              else
-                const SizedBox(),
-
-              SizedBox(
-                width: 120,
-                height: 44,
-                child: ElevatedButton.icon(
-                  onPressed: () {
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      SnackBar(
-                        content: Text(
-                          !registrationOpen
-                              ? "Registration is currently closed"
-                              : isFull
-                              ? "This team is full"
-                              : "Join request flow will be handled later",
-                        ),
-                      ),
-                    );
-                  },
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: joinButtonColor,
-                    foregroundColor: Colors.white,
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(14),
-                    ),
-                    elevation: 0,
-                  ),
-                  icon: const Icon(Icons.login_rounded, size: 18),
-                  label: Text(
-                    joinButtonText,
-                    style: const TextStyle(fontWeight: FontWeight.bold),
-                  ),
-                ),
-              ),
-            ],
+            ),
           ),
         ],
       ),
-    );
-  }
-
-  Widget _buildIconBox() {
-    return Container(
-      width: 76,
-      height: 76,
-      decoration: BoxDecoration(
-        color: const Color(0xFFE8E0F8),
-        borderRadius: BorderRadius.circular(18),
-      ),
-      child: const Icon(
-        Icons.groups_rounded,
-        color: Color(0xFF7A62B3),
-        size: 36,
-      ),
-    );
-  }
-
-  Widget _buildInfoColumn({
-    required IconData icon,
-    required String text,
-  }) {
-    return Row(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Icon(
-          icon,
-          size: 19,
-          color: const Color(0xFF7A62B3),
-        ),
-        const SizedBox(width: 8),
-        Expanded(
-          child: Text(
-            text,
-            style: const TextStyle(
-              fontSize: 15,
-              color: Colors.black87,
-              height: 1.3,
-            ),
-          ),
-        ),
-      ],
     );
   }
 }

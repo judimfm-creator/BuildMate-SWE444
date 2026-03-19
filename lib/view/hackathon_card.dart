@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
-import '../../model/hackathon.dart';
-import '../view/hackathon_details_view.dart';
+import '../model/hackathon.dart';
+import 'hackathon_details_view.dart';
 
 class HackathonCard extends StatelessWidget {
   final Hackathon hackathon;
@@ -29,7 +29,9 @@ class HackathonCard extends StatelessWidget {
       onTap: () => Navigator.push(
         context,
         MaterialPageRoute(
-          builder: (_) => HackathonDetailsView(hackathon: hackathon),
+          builder: (_) => HackathonDetailsView(
+            hackathon: hackathon,
+          ),
         ),
       ),
       child: Container(
@@ -39,7 +41,7 @@ class HackathonCard extends StatelessWidget {
           borderRadius: BorderRadius.circular(16),
           boxShadow: [
             BoxShadow(
-              color: Colors.black.withOpacity(0.06),
+              color: Colors.black.withValues(alpha: 0.06),
               blurRadius: 8,
               offset: const Offset(0, 3),
             ),
@@ -48,7 +50,6 @@ class HackathonCard extends StatelessWidget {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // ── Top: icon + name + description ──
             Padding(
               padding: const EdgeInsets.fromLTRB(14, 14, 14, 10),
               child: Row(
@@ -58,7 +59,7 @@ class HackathonCard extends StatelessWidget {
                     width: 64,
                     height: 64,
                     decoration: BoxDecoration(
-                      color: _purple.withOpacity(0.12),
+                      color: _purple.withValues(alpha: 0.12),
                       borderRadius: BorderRadius.circular(12),
                     ),
                     child: const Icon(
@@ -100,16 +101,14 @@ class HackathonCard extends StatelessWidget {
               ),
             ),
 
-            // ── Divider ──
             Divider(
-              color: _purple.withOpacity(0.15),
+              color: _purple.withValues(alpha: 0.15),
               thickness: 1,
               indent: 14,
               endIndent: 14,
               height: 1,
             ),
 
-            // ── Info grid ──
             Padding(
               padding: const EdgeInsets.fromLTRB(14, 10, 14, 10),
               child: Row(
@@ -119,8 +118,10 @@ class HackathonCard extends StatelessWidget {
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        _infoChip(Icons.location_on_outlined,
-                            "${hackathon.city}, ${hackathon.location}"),
+                        _infoChip(
+                          Icons.location_on_outlined,
+                          "${hackathon.city}, ${hackathon.location}",
+                        ),
                         const SizedBox(height: 5),
                         _infoChip(
                           Icons.calendar_today_outlined,
@@ -137,7 +138,9 @@ class HackathonCard extends StatelessWidget {
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         _infoChip(
-                            Icons.groups_outlined, "Team: ${hackathon.teamSize}"),
+                          Icons.groups_outlined,
+                          "Team: ${hackathon.teamSize}",
+                        ),
                         const SizedBox(height: 5),
                         _infoChip(
                           Icons.work_outline,
@@ -147,7 +150,9 @@ class HackathonCard extends StatelessWidget {
                         ),
                         const SizedBox(height: 5),
                         _infoChip(
-                            Icons.school_outlined, hackathon.educationCriteria),
+                          Icons.school_outlined,
+                          hackathon.educationCriteria,
+                        ),
                       ],
                     ),
                   ),
@@ -155,48 +160,53 @@ class HackathonCard extends StatelessWidget {
               ),
             ),
 
-            // ── Action button ──
             Padding(
               padding: const EdgeInsets.fromLTRB(14, 0, 14, 14),
               child: Align(
                 alignment: Alignment.centerRight,
                 child: isPast
                     ? SizedBox(
-                  height: 36,
-                  child: ElevatedButton.icon(
-                    onPressed: onDelete,
-                    icon: const Icon(Icons.delete_outline, size: 16),
-                    label: const Text("Delete"),
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: Colors.red.shade400,
-                      foregroundColor: Colors.white,
-                      elevation: 0,
-                      shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(10)),
-                      padding: const EdgeInsets.symmetric(horizontal: 14),
-                      textStyle: const TextStyle(
-                          fontSize: 13, fontWeight: FontWeight.w600),
-                    ),
-                  ),
-                )
+                        height: 36,
+                        child: ElevatedButton.icon(
+                          onPressed: onDelete,
+                          icon: const Icon(Icons.delete_outline, size: 16),
+                          label: const Text("Delete"),
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: Colors.red.shade400,
+                            foregroundColor: Colors.white,
+                            elevation: 0,
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(10),
+                            ),
+                            padding: const EdgeInsets.symmetric(horizontal: 14),
+                            textStyle: const TextStyle(
+                              fontSize: 13,
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
+                        ),
+                      )
                     : SizedBox(
-                  height: 36,
-                  child: ElevatedButton.icon(
-                    onPressed: onEdit,
-                    icon: const Icon(Icons.edit_outlined, size: 16),
-                    label: const Text("Edit"),
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: _orange,
-                      foregroundColor: Colors.white,
-                      elevation: 0,
-                      shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(10)),
-                      padding: const EdgeInsets.symmetric(horizontal: 16),
-                      textStyle: const TextStyle(
-                          fontSize: 13, fontWeight: FontWeight.w600),
-                    ),
-                  ),
-                ),
+                        height: 36,
+                        child: ElevatedButton.icon(
+                          onPressed: onEdit,
+                          icon: const Icon(Icons.edit_outlined, size: 16),
+                          label: const Text("Edit"),
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: _orange,
+                            foregroundColor: Colors.white,
+                            elevation: 0,
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(10),
+                            ),
+                            padding: const EdgeInsets.symmetric(horizontal: 16),
+                            textStyle: const TextStyle(
+                              fontSize: 13,
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
+                        ),
+                      ),
               ),
             ),
           ],
