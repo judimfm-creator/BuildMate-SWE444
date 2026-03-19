@@ -5,8 +5,13 @@ import '../view/hackathon_details_view.dart';
 /// كارد صغير يُستخدم في الهوم بيج (horizontal scroll)
 class HackathonMiniCard extends StatelessWidget {
   final Hackathon hackathon;
+  final bool showOrgName; // ✅ أضفنا تعريف المتغير هنا
 
-  const HackathonMiniCard({super.key, required this.hackathon});
+  const HackathonMiniCard({
+    super.key, 
+    required this.hackathon, 
+    this.showOrgName = false, // ✅ أضفناه هنا في الكونستركتور
+  });
 
   static const Color _purple = Color(0xFF6D56B3);
   static const Color _lightPurple = Color(0xFFF0EEFF);
@@ -64,15 +69,32 @@ class HackathonMiniCard extends StatelessWidget {
                       fontWeight: FontWeight.bold,
                       color: _purple,
                     ),
-                    maxLines: 2,
+                    maxLines: 1, // قللت الأسطر هنا عشان نترك مساحة لاسم المنظمة
                     overflow: TextOverflow.ellipsis,
                   ),
+                  
+                  // ✅ عرض اسم المنظمة إذا كان showOrgName = true
+                  if (showOrgName)
+                    Padding(
+                      padding: const EdgeInsets.only(bottom: 4),
+                      child: Text(
+                        hackathon.organizationName ?? "Organization",
+                        style: TextStyle(
+                          fontSize: 10,
+                          fontWeight: FontWeight.w500,
+                          color: Colors.grey.shade600,
+                        ),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ),
+
                   const SizedBox(height: 5),
                   _miniRow(Icons.calendar_today_outlined,
                       _formatDate(hackathon.startDate)),
                   const SizedBox(height: 3),
                   _miniRow(Icons.location_on_outlined,
-                      "${hackathon.city}, ${hackathon.location}"),
+                      "${hackathon.city}"), // اختصرتها للمدينة بس عشان المساحة
                   const SizedBox(height: 3),
                   _miniRow(Icons.groups_outlined,
                       "Team: ${hackathon.teamSize}"),

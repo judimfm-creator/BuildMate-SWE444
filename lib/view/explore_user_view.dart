@@ -5,7 +5,9 @@ import '../model/hackathon.dart';
 import '../widgets/user_hackathon_card.dart';
 
 class ExploreUserView extends StatefulWidget {
-  const ExploreUserView({super.key});
+  // أضفنا هذا السطر لاستقبال رقم التبويب
+  final int initialTabIndex; 
+  const ExploreUserView({super.key, this.initialTabIndex = 0});
 
   @override
   State<ExploreUserView> createState() => _ExploreUserViewState();
@@ -17,7 +19,12 @@ class _ExploreUserViewState extends State<ExploreUserView> with SingleTickerProv
   @override
   void initState() {
     super.initState();
-    _tabController = TabController(length: 2, vsync: this);
+    // جعل التبويب يبدأ من الرقم الممرر (0 للهكاثونات، 1 للفرق)
+    _tabController = TabController(
+      length: 2, 
+      vsync: this, 
+      initialIndex: widget.initialTabIndex, // الربط هنا
+    );
   }
 
   @override
@@ -28,49 +35,42 @@ class _ExploreUserViewState extends State<ExploreUserView> with SingleTickerProv
 
   @override
   Widget build(BuildContext context) {
-    return SafeArea(
-      child: Column(
+    return Scaffold(
+      backgroundColor: Colors.white,
+      appBar: AppBar(
+        title: const Text("Explore", style: TextStyle(color: Color(0xFF7A62B3), fontWeight: FontWeight.bold)),
+        backgroundColor: Colors.white,
+        elevation: 0,
+        iconTheme: const IconThemeData(color: Color(0xFF7A62B3)),
+        bottom: TabBar(
+          controller: _tabController,
+          labelColor: const Color(0xFF7A62B3),
+          unselectedLabelColor: Colors.grey,
+          indicatorColor: const Color(0xFF7A62B3),
+          indicatorSize: TabBarIndicatorSize.label, 
+          tabs: const [
+            Tab(text: "Hackathons"),
+            Tab(text: "Teams"),
+          ],
+        ),
+      ),
+      body: TabBarView(
+        controller: _tabController,
         children: [
-          const SizedBox(height: 15), 
-          
-          Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 10),
-            child: TabBar(
-              controller: _tabController,
-              labelColor: const Color(0xFF7A62B3),
-              unselectedLabelColor: Colors.grey,
-              indicatorColor: const Color(0xFF7A62B3),
-              indicatorSize: TabBarIndicatorSize.label, 
-              tabs: const [
-                Tab(text: "Hackathons"),
-                Tab(text: "Teams"),
-              ],
-            ),
-          ),
-          
-          Expanded(
-            child: TabBarView(
-              controller: _tabController,
-              children: [
-                // 1. جهة الهكاثونات (شغالة 100%)
-                _buildHackathonsSection(),
-                
-                // 2. جهة الفرق (فارغة مؤقتاً لصديقتك)
-                _buildEmptyTeamsSection(),
-              ],
-            ),
-          ),
+          _buildHackathonsSection(),
+          _buildEmptyTeamsSection(),
         ],
       ),
     );
   }
 
   Widget _buildHackathonsSection() {
+    final vm = context.watch<OrgHackathonsViewModel>();
     return StreamBuilder<List<Hackathon>>(
-      stream: context.read<OrgHackathonsViewModel>().exploreHackathonsStream,
+      stream: vm.exploreHackathonsStream,
       builder: (context, snapshot) {
         if (snapshot.connectionState == ConnectionState.waiting) {
-          return const Center(child: CircularProgressIndicator());
+          return const Center(child: CircularProgressIndicator(color: Color(0xFF7A62B3)));
         }
         final list = snapshot.data ?? [];
         if (list.isEmpty) {
@@ -85,7 +85,6 @@ class _ExploreUserViewState extends State<ExploreUserView> with SingleTickerProv
     );
   }
 
-  // ميثود بسيطة عشان الصفحة ما تكون "إيرور" وتنتظر شغل صديقتك
   Widget _buildEmptyTeamsSection() {
     return Center(
       child: Column(
