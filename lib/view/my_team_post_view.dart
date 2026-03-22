@@ -17,14 +17,11 @@ class MyTeamPostView extends StatelessWidget {
   static const Color purple = Color(0xFF6D56B3);
   static const Color lightPurple = Color(0xFFF0EEFF);
 
-  // Updated: Fetches the Leader's specific role title
   Future<List<Map<String, String>>> _getMemberDetails(
       List<dynamic> memberIds, String leaderId, String leaderRole, Map<String, dynamic> memberRoles) async {
     List<Map<String, String>> members = [];
     for (var id in memberIds) {
       var doc = await FirebaseFirestore.instance.collection('users').doc(id).get();
-      
-      // logic: If leader, use the leaderRole from post data. If member, use the memberRoles map.
       String displayRole = (id == leaderId) ? leaderRole : (memberRoles[id] ?? "Member");
 
       members.add({
@@ -108,6 +105,7 @@ class MyTeamPostView extends StatelessWidget {
                   },
                 ),
                 const SizedBox(height: 32),
+                
                 if (isLeader) ...[
                   _actionButton(
                     label: 'View Join Requests',
@@ -122,6 +120,28 @@ class MyTeamPostView extends StatelessWidget {
                     color: isSubmitted ? Colors.grey : (currentMembers >= 2 ? Colors.green : Colors.grey.shade400),
                     onPressed: (!isSubmitted && currentMembers >= 2) ? () => _handleRegistration(context, currentMembers) : null,
                   ),
+
+                  // الـ Note التي طلبتيها تحت الزر مباشرة
+                  if (!isSubmitted && currentMembers < 2)
+                    Padding(
+                      padding: const EdgeInsets.only(top: 8.0),
+                      child: Row(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          Icon(Icons.info_outline, size: 14, color: Colors.orange.shade700),
+                          const SizedBox(width: 5),
+                          const Text(
+                            "Registration opens when you have at least 2 members.",
+                            style: TextStyle(
+                              color: Color(0xFFD35400),
+                              fontSize: 11,
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  
                 ] else ...[
                   _buildMemberNotice(isSubmitted, currentMembers),
                 ],
@@ -133,8 +153,6 @@ class MyTeamPostView extends StatelessWidget {
       ),
     );
   }
-
-  // --- UI COMPONENTS WITH OVERFLOW FIX ---
 
   Widget _memberTile(String name, bool isLeader, String role) {
     return Container(
@@ -189,7 +207,7 @@ class MyTeamPostView extends StatelessWidget {
     Color color = purple;
 
     if (isSubmitted) {
-      noticeText = "Success! Your team is registered and locked.";
+      noticeText = "Success! Your team is registered.";
       color = Colors.green;
       icon = Icons.verified;
     } else if (currentMembers >= hackathonTeamSize) {

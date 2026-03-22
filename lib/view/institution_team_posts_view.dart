@@ -104,10 +104,7 @@ class InstitutionTeamPostsView extends StatelessWidget {
 
                           _infoRow(Icons.groups_outlined, "Team Size", "$currentMembers / $maxMembers Members"),
                           const SizedBox(height: 8),
-                          _infoRow(Icons.lightbulb_outline, "Project Idea", data['projectIdea'] ?? "No description provided."),
-
-                          const SizedBox(height: 20),
-
+                         
                           SizedBox(
                             width: double.infinity,
                             height: 48,
