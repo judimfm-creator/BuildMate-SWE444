@@ -1,8 +1,6 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
-import 'leader_join_requests_view.dart';
-import 'team_registration_form_view.dart';
 
 class MyTeamPostView extends StatelessWidget {
   final String teamPostId;
@@ -16,237 +14,118 @@ class MyTeamPostView extends StatelessWidget {
     required this.hackathonTeamSize,
   });
 
-  static const Color _purple = Color(0xFF6D56B3);
-  static const Color _lightPurple = Color(0xFFF0EEFF);
+  static const Color purple = Color(0xFF6D56B3);
+  static const Color lightPurple = Color(0xFFF0EEFF);
+
+  // Updated: Fetches the Leader's specific role title
+  Future<List<Map<String, String>>> _getMemberDetails(
+      List<dynamic> memberIds, String leaderId, String leaderRole, Map<String, dynamic> memberRoles) async {
+    List<Map<String, String>> members = [];
+    for (var id in memberIds) {
+      var doc = await FirebaseFirestore.instance.collection('users').doc(id).get();
+      
+      // logic: If leader, use the leaderRole from post data. If member, use the memberRoles map.
+      String displayRole = (id == leaderId) ? leaderRole : (memberRoles[id] ?? "Member");
+
+      members.add({
+        'name': doc.data()?['fullName'] ?? 'Unknown Member',
+        'isLeader': (id == leaderId).toString(),
+        'role': displayRole,
+      });
+    }
+    return members;
+  }
 
   @override
   Widget build(BuildContext context) {
     final String? currentUserId = FirebaseAuth.instance.currentUser?.uid;
 
-    if (currentUserId == null) {
-      return const Scaffold(
-        body: Center(
-          child: Text('No user is currently signed in.'),
-        ),
-      );
-    }
-
     return Scaffold(
+      backgroundColor: const Color(0xFFF8F9FD),
       appBar: AppBar(
-        title: const Text('My Team Post'),
+        title: const Text('Team Details', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 18)),
         centerTitle: true,
-        backgroundColor: _purple,
-        foregroundColor: Colors.white,
+        backgroundColor: Colors.white,
+        foregroundColor: purple,
+        elevation: 0,
       ),
-      backgroundColor: Colors.white,
-      body: FutureBuilder<DocumentSnapshot<Map<String, dynamic>>>(
-        future: FirebaseFirestore.instance
-            .collection('team_posts')
-            .doc(teamPostId)
-            .get(),
-        builder: (context, snapshot) {
-          if (snapshot.connectionState == ConnectionState.waiting) {
-            return const Center(child: CircularProgressIndicator());
+      body: StreamBuilder<DocumentSnapshot<Map<String, dynamic>>>(
+        stream: FirebaseFirestore.instance.collection('team_posts').doc(teamPostId).snapshots(),
+        builder: (context, streamSnapshot) {
+          if (streamSnapshot.connectionState == ConnectionState.waiting) {
+            return const Center(child: CircularProgressIndicator(color: purple));
+          }
+          if (!streamSnapshot.hasData || !streamSnapshot.data!.exists) {
+            return const Center(child: Text('Team post not found.'));
           }
 
-          if (snapshot.hasError) {
-            return const Center(
-              child: Text('Something went wrong while loading your team post.'),
-            );
-          }
-
-          if (!snapshot.hasData || !snapshot.data!.exists) {
-            return const Center(
-              child: Text('Team post not found.'),
-            );
-          }
-
-          final data = snapshot.data!.data() ?? {};
-
-          final String teamName =
-              (data['teamName'] ?? 'Unnamed Team').toString();
-          final String genderPreference =
-              (data['genderPreference'] ?? 'Not specified').toString();
-          final String myRole = (data['myRole'] ?? '').toString();
-          final String description =
-              (data['description'] ?? 'No description added.').toString();
-          final String leaderName =
-              (data['leaderName'] ?? 'Unknown Leader').toString();
-          final String leaderId = (data['leaderId'] ?? '').toString();
-          final String status = (data['status'] ?? 'open').toString();
-
-          final List<String> members = _parseStringList(data['members']);
-          final List<String> neededRoles = _parseStringList(data['neededRoles']);
-
-          final int currentMembers = _parseInt(data['currentMembers']);
-          final int storedMaxMembers = _parseInt(data['maxMembers']);
-          final int maxMembers =
-              storedMaxMembers > 0 ? storedMaxMembers : hackathonTeamSize;
-
+          final data = streamSnapshot.data!.data() ?? {};
+          final List<dynamic> memberIds = data['members'] ?? [];
+          final int currentMembers = memberIds.length;
+          final String leaderId = data['createdBy'] ?? '';
           final bool isLeader = currentUserId == leaderId;
-          final bool isComplete = currentMembers >= maxMembers;
-          final bool submittedToInstitution =
-              data['submittedToInstitution'] == true;
+          final bool isSubmitted = data['submittedToInstitution'] == true;
+          final Map<String, dynamic> memberRoles = data['memberRoles'] ?? {};
+          final String leaderRole = data['myRole'] ?? 'Leader';
 
           return SingleChildScrollView(
-            padding: const EdgeInsets.all(16),
+            padding: const EdgeInsets.all(20),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                _sectionTitle(
-                  'Team Information',
-                  'This is your current team for this hackathon.',
-                ),
-                const SizedBox(height: 10),
-                _infoCard([
-                  _row('Team Name', teamName),
-                  _row('Leader', leaderName),
-                  _row(
-                    'My Role',
-                    myRole.isEmpty ? 'Not specified' : myRole,
-                  ),
-                  _row('Gender Preference', genderPreference),
-                  _row('Members', '$currentMembers / $maxMembers'),
-                  _row('Status', status),
+                _buildStatusHeader(isSubmitted, currentMembers),
+                const SizedBox(height: 24),
+                _sectionTitle("Team Overview"),
+                _infoBox([
+                  _dataRow("Team Name", data['teamName'] ?? 'Unnamed'),
+                  _dataRow("Team Capacity", "$currentMembers / $hackathonTeamSize members"),
+                  const Divider(height: 20),
+                  _genderPreferenceRow(data['genderPreference'] ?? 'Any'),
                 ]),
-                const SizedBox(height: 20),
-                _sectionTitle(
-                  'Team Description',
-                  'This text is visible to users who want to join your team.',
-                ),
-                const SizedBox(height: 10),
-                _textCard(description),
-                const SizedBox(height: 20),
-                _sectionTitle(
-                  'Needed Roles',
-                  'These are the roles your team is currently looking for.',
-                ),
-                const SizedBox(height: 10),
-                _rolesCard(neededRoles),
-                const SizedBox(height: 20),
-                _sectionTitle(
-                  'Team Progress',
-                  'Your team is complete only when it reaches the required hackathon team size.',
-                ),
-                const SizedBox(height: 10),
-                _infoCard([
-                  _row('Current Members', currentMembers.toString()),
-                  _row('Required Team Size', maxMembers.toString()),
-                  _row('Is Team Complete', isComplete ? 'Yes' : 'No'),
-                  _row(
-                    'Submitted to Institution',
-                    submittedToInstitution ? 'Yes' : 'No',
+                const SizedBox(height: 24),
+                _sectionTitle("Project Idea"),
+                _infoBox([
+                  Text(
+                    data['projectIdea'] != null && data['projectIdea'].toString().isNotEmpty
+                        ? data['projectIdea']
+                        : "No project idea added yet.",
+                    style: TextStyle(color: Colors.grey.shade700, fontSize: 14, height: 1.5),
                   ),
                 ]),
                 const SizedBox(height: 24),
-
+                _sectionTitle("Current Members & Roles"),
+                FutureBuilder<List<Map<String, String>>>(
+                  future: _getMemberDetails(memberIds, leaderId, leaderRole, memberRoles),
+                  builder: (context, nameSnapshot) {
+                    if (!nameSnapshot.hasData) return const Center(child: LinearProgressIndicator(color: purple));
+                    return Column(
+                      children: nameSnapshot.data!.map((member) => _memberTile(
+                        member['name']!, 
+                        member['isLeader'] == 'true',
+                        member['role']!
+                      )).toList(),
+                    );
+                  },
+                ),
+                const SizedBox(height: 32),
                 if (isLeader) ...[
-                  SizedBox(
-                    width: double.infinity,
-                    height: 50,
-                    child: ElevatedButton(
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor:
-                            submittedToInstitution ? Colors.grey : _purple,
-                        foregroundColor: Colors.white,
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(12),
-                        ),
-                      ),
-                      onPressed: submittedToInstitution
-                          ? null
-                          : () {
-                              Navigator.push(
-                                context,
-                                MaterialPageRoute(
-                                  builder: (context) => LeaderJoinRequestsView(
-                                    teamPostId: teamPostId,
-                                    hackathonTeamSize: maxMembers,
-                                  ),
-                                ),
-                              );
-                            },
-                      child: Text(
-                        submittedToInstitution
-                            ? 'Join Requests Closed'
-                            : 'View Join Requests',
-                      ),
-                    ),
+                  _actionButton(
+                    label: 'View Join Requests',
+                    icon: Icons.group_add_outlined,
+                    color: Colors.grey.shade300,
+                    onPressed: null, 
                   ),
                   const SizedBox(height: 12),
-                  SizedBox(
-                    width: double.infinity,
-                    height: 50,
-                    child: ElevatedButton(
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: submittedToInstitution
-                            ? Colors.black54
-                            : isComplete
-                                ? Colors.green
-                                : Colors.grey,
-                        foregroundColor: Colors.white,
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(12),
-                        ),
-                      ),
-                      onPressed: (!submittedToInstitution && isComplete)
-                          ? () {
-                              Navigator.push(
-                                context,
-                                MaterialPageRoute(
-                                  builder: (context) => TeamRegistrationFormView(
-                                    hackathonId: hackathonId,
-                                    teamPostId: teamPostId,
-                                    teamName: teamName,
-                                    members: members,
-                                  ),
-                                ),
-                              );
-                            }
-                          : null,
-                      child: Text(
-                        submittedToInstitution
-                            ? 'Already Registered for Hackathon'
-                            : 'Register Team for Hackathon',
-                      ),
-                    ),
+                  _actionButton(
+                    label: isSubmitted ? 'Registration Submitted' : 'Finalize & Register Team',
+                    icon: isSubmitted ? Icons.verified_user : Icons.rocket_launch,
+                    color: isSubmitted ? Colors.grey : (currentMembers >= 2 ? Colors.green : Colors.grey.shade400),
+                    onPressed: (!isSubmitted && currentMembers >= 2) ? () => _handleRegistration(context, currentMembers) : null,
                   ),
-                  const SizedBox(height: 8),
-                  if (!isComplete && !submittedToInstitution)
-                    Text(
-                      'The team leader can register the team only after the team becomes complete.',
-                      style: TextStyle(
-                        fontSize: 12,
-                        color: Colors.red.shade600,
-                      ),
-                    ),
                 ] else ...[
-                  Container(
-                    width: double.infinity,
-                    padding: const EdgeInsets.all(12),
-                    decoration: BoxDecoration(
-                      color: Colors.grey.shade100,
-                      borderRadius: BorderRadius.circular(12),
-                      border: Border.all(color: Colors.grey.shade300),
-                    ),
-                    child: Text(
-                      'You are a team member. Only the team leader can manage requests and register the team.',
-                      style: TextStyle(
-                        fontSize: 12,
-                        color: Colors.grey.shade700,
-                      ),
-                    ),
-                  ),
+                  _buildMemberNotice(isSubmitted, currentMembers),
                 ],
-
-                const SizedBox(height: 20),
-                _sectionTitle(
-                  'Current Members',
-                  'These are the members currently in your team.',
-                ),
-                const SizedBox(height: 10),
-                _membersCard(members),
-                const SizedBox(height: 30),
+                const SizedBox(height: 40),
               ],
             ),
           );
@@ -255,183 +134,118 @@ class MyTeamPostView extends StatelessWidget {
     );
   }
 
-  static int _parseInt(dynamic value) {
-    if (value is int) return value;
-    return int.tryParse(value?.toString() ?? '') ?? 0;
-  }
+  // --- UI COMPONENTS WITH OVERFLOW FIX ---
 
-  static List<String> _parseStringList(dynamic value) {
-    if (value is List) {
-      return value.map((e) => e.toString()).toList();
-    }
-    return [];
-  }
-
-  Widget _sectionTitle(String title, String subtitle) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text(
-          title,
-          style: const TextStyle(
-            fontSize: 16,
-            fontWeight: FontWeight.bold,
-            color: Colors.black87,
-          ),
-        ),
-        const SizedBox(height: 4),
-        Text(
-          subtitle,
-          style: TextStyle(
-            fontSize: 12,
-            color: Colors.grey.shade600,
-          ),
-        ),
-      ],
-    );
-  }
-
-  Widget _row(String label, String value) {
-    return Row(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text(
-          '$label: ',
-          style: const TextStyle(
-            fontWeight: FontWeight.w600,
-            fontSize: 13,
-            color: Colors.black87,
-          ),
-        ),
-        Expanded(
-          child: Text(
-            value,
-            style: TextStyle(
-              fontSize: 13,
-              color: Colors.grey.shade700,
-              height: 1.4,
+  Widget _memberTile(String name, bool isLeader, String role) {
+    return Container(
+      margin: const EdgeInsets.only(bottom: 10),
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(12), border: Border.all(color: Colors.grey.shade200)),
+      child: Row(
+        children: [
+          CircleAvatar(backgroundColor: lightPurple, radius: 18, child: Text(name[0], style: const TextStyle(color: purple, fontWeight: FontWeight.bold))),
+          const SizedBox(width: 12),
+          Expanded( 
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Row(
+                  children: [
+                    Flexible(
+                      child: Text(
+                        name, 
+                        style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14),
+                        overflow: TextOverflow.ellipsis,
+                        maxLines: 1,
+                      ),
+                    ),
+                    if (isLeader)
+                      Container(
+                        margin: const EdgeInsets.only(left: 8),
+                        padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                        decoration: BoxDecoration(color: purple, borderRadius: BorderRadius.circular(6)),
+                        child: const Text("Leader", style: TextStyle(color: Colors.white, fontSize: 10, fontWeight: FontWeight.bold)),
+                      ),
+                  ],
+                ),
+                Text(
+                  role, 
+                  style: TextStyle(fontSize: 12, color: purple.withOpacity(0.7), fontWeight: FontWeight.w500),
+                  overflow: TextOverflow.ellipsis,
+                  maxLines: 1,
+                ),
+              ],
             ),
           ),
-        ),
-      ],
+        ],
+      ),
     );
   }
 
-  Widget _infoCard(List<Widget> rows) {
-    final children = <Widget>[];
-    for (int i = 0; i < rows.length; i++) {
-      children.add(rows[i]);
-      if (i != rows.length - 1) {
-        children.add(
-          Divider(
-            color: _purple.withValues(alpha: 0.1),
-            height: 16,
-          ),
-        );
-      }
+  Widget _buildMemberNotice(bool isSubmitted, int currentMembers) {
+    String noticeText;
+    IconData icon = Icons.info_outline;
+    Color color = purple;
+
+    if (isSubmitted) {
+      noticeText = "Success! Your team is registered and locked.";
+      color = Colors.green;
+      icon = Icons.verified;
+    } else if (currentMembers >= hackathonTeamSize) {
+      noticeText = "Team is full! We're just waiting for the leader to finalize registration.";
+      color = Colors.orange.shade800;
+      icon = Icons.pending_actions;
+    } else {
+      noticeText = "Welcome to the team! We are currently looking for more teammates to join the fun.";
+      icon = Icons.celebration_outlined;
+      color = purple;
     }
 
     return Container(
-      width: double.infinity,
-      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
-      decoration: BoxDecoration(
-        color: _lightPurple,
-        borderRadius: BorderRadius.circular(14),
-      ),
-      child: Column(children: children),
+      width: double.infinity, padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(color: color.withOpacity(0.05), borderRadius: BorderRadius.circular(12), border: Border.all(color: color.withOpacity(0.2))),
+      child: Row(children: [
+        Icon(icon, color: color, size: 24),
+        const SizedBox(width: 12),
+        Expanded(child: Text(noticeText, style: TextStyle(fontSize: 13, color: Colors.grey.shade800, fontWeight: FontWeight.w600))),
+      ]),
     );
   }
 
-  Widget _textCard(String text) {
+  Widget _buildStatusHeader(bool isSubmitted, int currentMembers) {
+    String statusText = isSubmitted ? "Status: Registered & Locked" : (currentMembers >= hackathonTeamSize ? "Status: Team is Full" : "Status: Building Team");
+    Color statusColor = isSubmitted ? Colors.green : (currentMembers >= hackathonTeamSize ? Colors.orange.shade800 : purple);
+    IconData icon = isSubmitted ? Icons.lock_outline : (currentMembers >= hackathonTeamSize ? Icons.stars_outlined : Icons.groups_outlined);
+
     return Container(
-      width: double.infinity,
-      padding: const EdgeInsets.all(14),
-      decoration: BoxDecoration(
-        color: _lightPurple,
-        borderRadius: BorderRadius.circular(14),
-      ),
-      child: Text(
-        text,
-        style: TextStyle(
-          fontSize: 13,
-          color: Colors.grey.shade700,
-          height: 1.5,
-        ),
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+      decoration: BoxDecoration(color: statusColor.withOpacity(0.1), borderRadius: BorderRadius.circular(12), border: Border.all(color: statusColor.withOpacity(0.3))),
+      child: Row(
+        children: [
+          Icon(icon, size: 20, color: statusColor),
+          const SizedBox(width: 12),
+          Expanded(child: Text(statusText, style: TextStyle(fontWeight: FontWeight.bold, color: statusColor, fontSize: 13))),
+        ],
       ),
     );
   }
 
-  Widget _rolesCard(List<String> roles) {
-    return Container(
-      width: double.infinity,
-      padding: const EdgeInsets.all(14),
-      decoration: BoxDecoration(
-        color: _lightPurple,
-        borderRadius: BorderRadius.circular(14),
-      ),
-      child: roles.isEmpty
-          ? Text(
-              'No specific roles listed.',
-              style: TextStyle(
-                fontSize: 13,
-                color: Colors.grey.shade700,
-              ),
-            )
-          : Wrap(
-              spacing: 8,
-              runSpacing: 8,
-              children: roles.map((role) {
-                return Container(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 12,
-                    vertical: 6,
-                  ),
-                  decoration: BoxDecoration(
-                    color: Colors.white,
-                    borderRadius: BorderRadius.circular(20),
-                    border: Border.all(
-                      color: _purple.withValues(alpha: 0.25),
-                    ),
-                  ),
-                  child: Text(
-                    role,
-                    style: const TextStyle(
-                      fontSize: 12,
-                      color: _purple,
-                      fontWeight: FontWeight.w500,
-                    ),
-                  ),
-                );
-              }).toList(),
-            ),
-    );
+  Widget _infoBox(List<Widget> children) => Container(width: double.infinity, padding: const EdgeInsets.all(16), decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(16), border: Border.all(color: Colors.grey.shade200)), child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: children));
+  Widget _sectionTitle(String title) => Padding(padding: const EdgeInsets.only(bottom: 10, left: 4), child: Text(title, style: const TextStyle(fontSize: 15, fontWeight: FontWeight.bold, color: Colors.black87)));
+  Widget _dataRow(String label, String value) => Padding(padding: const EdgeInsets.symmetric(vertical: 4), child: Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [Text(label, style: const TextStyle(fontWeight: FontWeight.w600, color: Colors.black54, fontSize: 13)), Text(value, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13, color: purple))]));
+  Widget _genderPreferenceRow(String pref) => Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [const Text("Teammate Gender", style: TextStyle(fontWeight: FontWeight.w600, color: Colors.black54, fontSize: 13)), Container(padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4), decoration: BoxDecoration(color: purple.withOpacity(0.1), borderRadius: BorderRadius.circular(20)), child: Text(pref, style: const TextStyle(color: purple, fontWeight: FontWeight.bold, fontSize: 12)))]);
+  Widget _actionButton({required String label, required IconData icon, VoidCallback? onPressed, Color? color}) => SizedBox(width: double.infinity, height: 54, child: ElevatedButton.icon(onPressed: onPressed, icon: Icon(icon, size: 20), label: Text(label, style: const TextStyle(fontWeight: FontWeight.bold)), style: ElevatedButton.styleFrom(backgroundColor: color ?? purple, foregroundColor: Colors.white, disabledBackgroundColor: Colors.grey.shade300, shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(15)), elevation: 0)));
+
+  Future<void> _handleRegistration(BuildContext context, int currentMembers) async {
+    bool? confirm = await _showConfirmDialog(context, currentMembers);
+    if (confirm == true) {
+      await FirebaseFirestore.instance.collection('team_posts').doc(teamPostId).update({'submittedToInstitution': true, 'status': 'pending_approval'});
+      if (context.mounted) ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text("Team successfully registered!")));
+    }
   }
 
-  Widget _membersCard(List<String> members) {
-    return Container(
-      width: double.infinity,
-      padding: const EdgeInsets.all(14),
-      decoration: BoxDecoration(
-        color: _lightPurple,
-        borderRadius: BorderRadius.circular(14),
-      ),
-      child: members.isEmpty
-          ? Text(
-              'No members yet.',
-              style: TextStyle(
-                fontSize: 13,
-                color: Colors.grey.shade700,
-              ),
-            )
-          : Column(
-              children: members.map((memberId) {
-                return ListTile(
-                  contentPadding: EdgeInsets.zero,
-                  leading: const Icon(Icons.person_outline, color: _purple),
-                  title: Text(memberId),
-                );
-              }).toList(),
-            ),
-    );
+  Future<bool?> _showConfirmDialog(BuildContext context, int count) {
+    return showDialog<bool>(context: context, builder: (ctx) => AlertDialog(shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)), title: const Text("Confirm Registration"), content: Text("You have $count members. Once finalized, your team will be sent for review. Continue?"), actions: [TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text("Cancel")), ElevatedButton(style: ElevatedButton.styleFrom(backgroundColor: purple), onPressed: () => Navigator.pop(ctx, true), child: const Text("Finalize"))]));
   }
 }

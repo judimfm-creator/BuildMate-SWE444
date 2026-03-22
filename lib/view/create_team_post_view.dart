@@ -17,189 +17,75 @@ class CreateTeamPostScreen extends StatefulWidget {
 }
 
 class _CreateTeamPostScreenState extends State<CreateTeamPostScreen> {
-  final GlobalKey<FormState> _formKey = GlobalKey<FormState>();
+  final _formKey = GlobalKey<FormState>();
+  final _teamNameController = TextEditingController();
+  final _customRoleController = TextEditingController();
+  final _ideaController = TextEditingController();
 
-  final TextEditingController _teamNameController = TextEditingController();
-  final TextEditingController _roleController = TextEditingController();
-
-  static const Color _purple = Color(0xFF6D56B3);
-  static const Color _lightBackground = Color(0xFFF8F7FB);
-  static const Color _borderColor = Color(0xFFE6E1F3);
-
+  String? _selectedRole;
   String? _selectedGender;
   bool _isLoading = false;
+  bool _isFetchingRoles = true;
+  List<String> _availableRoles = [];
+  bool _allowCustomRole = false;
 
-  final RegExp _lettersOnlyRegex = RegExp(r'^[A-Za-z ]+$');
+  static const Color purple = Color(0xFF6D56B3);
+
+  @override
+  void initState() {
+    super.initState();
+    _loadOrganizerData();
+  }
+
+  Future<void> _loadOrganizerData() async {
+    try {
+      final doc = await FirebaseFirestore.instance
+          .collection('hackathons')
+          .doc(widget.hackathonId)
+          .get();
+
+      if (doc.exists) {
+        final List<dynamic>? roles = doc.data()?['rolesNeeded'];
+        if (roles != null) {
+          setState(() {
+            _availableRoles = roles.map((e) => e.toString()).toList();
+            _allowCustomRole = _availableRoles.any((r) => r.toLowerCase() == 'any');
+          });
+        }
+      }
+    } finally {
+      setState(() => _isFetchingRoles = false);
+    }
+  }
 
   @override
   void dispose() {
     _teamNameController.dispose();
-    _roleController.dispose();
+    _customRoleController.dispose();
+    _ideaController.dispose();
     super.dispose();
   }
 
-  bool _containsOnlyLetters(String value) {
-    return _lettersOnlyRegex.hasMatch(value.trim());
-  }
-
-  Future<void> _submit() async {
-    if (_isLoading) return;
-
-    final isValid = _formKey.currentState?.validate() ?? false;
-    if (!isValid) return;
-
-    final user = FirebaseAuth.instance.currentUser;
-
-    if (user == null) {
-      if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('User is not logged in.'),
-        ),
-      );
-      return;
-    }
-
-    try {
-      setState(() {
-        _isLoading = true;
-      });
-
-      final firestore = FirebaseFirestore.instance;
-
-      final existingTeam = await firestore
-          .collection('team_posts')
-          .where('hackathonId', isEqualTo: widget.hackathonId)
-          .where('createdBy', isEqualTo: user.uid)
-          .get();
-
-      if (existingTeam.docs.isNotEmpty) {
-        if (!mounted) return;
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text(
-              'You have already created a team post for this hackathon.',
-            ),
-          ),
-        );
-        return;
-      }
-
-      final userDoc = await firestore.collection('users').doc(user.uid).get();
-      final userData = userDoc.data() ?? {};
-
-      final String leaderName =
-          (userData['fullName'] ?? user.displayName ?? 'Unknown Leader')
-              .toString();
-
-      final String teamName = _teamNameController.text.trim();
-      final String myRole = _roleController.text.trim();
-
-      await firestore.collection('team_posts').add({
-        'hackathonId': widget.hackathonId,
-        'createdBy': user.uid,
-        'leaderId': user.uid,
-        'leaderName': leaderName,
-        'teamName': teamName,
-        'genderPreference': _selectedGender,
-        'myRole': myRole,
-        'neededRoles': [myRole],
-        'description': 'Team is looking for members to join.',
-        'members': [user.uid],
-        'currentMembers': 1,
-        'maxMembers': widget.hackathonTeamSize,
-        'isTeamComplete': widget.hackathonTeamSize == 1,
-        'submittedToInstitution': false,
-        'status': 'open',
-        'createdAt': FieldValue.serverTimestamp(),
-      });
-
-      if (!mounted) return;
-
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Team post created successfully.'),
-        ),
-      );
-
-      Navigator.pop(context);
-    } catch (e) {
-      if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('Failed to create team post: $e'),
-        ),
-      );
-    } finally {
-      if (mounted) {
-        setState(() {
-          _isLoading = false;
-        });
-      }
-    }
-  }
-
-  Widget _sectionTitle(String title, String subtitle) {
-    return Padding(
-      padding: const EdgeInsets.only(bottom: 10),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(
-            title,
-            style: const TextStyle(
-              fontSize: 16,
-              fontWeight: FontWeight.bold,
-              color: Colors.black87,
-            ),
-          ),
-          const SizedBox(height: 4),
-          Text(
-            subtitle,
-            style: TextStyle(
-              fontSize: 12,
-              color: Colors.grey.shade600,
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  InputDecoration _inputDecoration(String label, String helperText) {
+  InputDecoration _fieldDecoration({
+    required String label, 
+    required IconData icon, 
+    required String helper,
+  }) {
     return InputDecoration(
       labelText: label,
-      helperText: helperText,
-      helperMaxLines: 2,
+      helperText: helper, 
+      helperStyle: const TextStyle(color: Colors.grey, fontSize: 12),
       errorMaxLines: 2,
-      filled: true,
-      fillColor: Colors.white,
-      border: OutlineInputBorder(
-        borderRadius: BorderRadius.circular(12),
-      ),
+      prefixIcon: Icon(icon, color: purple),
+      contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 14),
+      border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
       enabledBorder: OutlineInputBorder(
         borderRadius: BorderRadius.circular(12),
-        borderSide: const BorderSide(color: _borderColor),
+        borderSide: BorderSide(color: Colors.grey.shade400, width: 1),
       ),
       focusedBorder: OutlineInputBorder(
         borderRadius: BorderRadius.circular(12),
-        borderSide: const BorderSide(color: _purple, width: 1.4),
-      ),
-    );
-  }
-
-  Widget _buildSectionCard(List<Widget> children) {
-    return Container(
-      width: double.infinity,
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: _lightBackground,
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: _borderColor),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: children,
+        borderSide: const BorderSide(color: purple, width: 1.6),
       ),
     );
   }
@@ -207,137 +93,182 @@ class _CreateTeamPostScreenState extends State<CreateTeamPostScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('Create Team Post'),
-        centerTitle: true,
-        backgroundColor: _purple,
-        foregroundColor: Colors.white,
-      ),
       backgroundColor: Colors.white,
-      body: SingleChildScrollView(
-        padding: const EdgeInsets.all(16),
-        child: Form(
-          key: _formKey,
-          autovalidateMode: AutovalidateMode.onUserInteraction,
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              _sectionTitle(
-                'Team Post Information',
-                'Create a team post for this hackathon so other users can join your team.',
-              ),
-              _buildSectionCard([
-                TextFormField(
-                  controller: _teamNameController,
-                  textInputAction: TextInputAction.next,
-                  decoration: _inputDecoration(
-                    'Team Name',
-                    'Letters only, at least one word.',
-                  ),
-                  validator: (value) {
-                    final text = value?.trim() ?? '';
-
-                    if (text.isEmpty) {
-                      return 'Team name is required';
-                    }
-                    if (!_containsOnlyLetters(text)) {
-                      return 'Team name must contain letters only';
-                    }
-                    if (text.length < 2) {
-                      return 'Team name is too short';
-                    }
-                    return null;
-                  },
-                ),
-                const SizedBox(height: 16),
-                DropdownButtonFormField<String>(
-                  value: _selectedGender,
-                  decoration: _inputDecoration(
-                    'Gender Preference',
-                    'Select either Male or Female.',
-                  ),
-                  items: const [
-                    DropdownMenuItem(
-                      value: 'Male',
-                      child: Text('Male'),
-                    ),
-                    DropdownMenuItem(
-                      value: 'Female',
-                      child: Text('Female'),
-                    ),
-                  ],
-                  onChanged: _isLoading
-                      ? null
-                      : (value) {
-                          setState(() {
-                            _selectedGender = value;
-                          });
-                        },
-                  validator: (value) {
-                    if (value == null || value.isEmpty) {
-                      return 'Please select gender';
-                    }
-                    return null;
-                  },
-                ),
-                const SizedBox(height: 16),
-                TextFormField(
-                  controller: _roleController,
-                  textInputAction: TextInputAction.done,
-                  decoration: _inputDecoration(
-                    'My Role',
-                    'Letters only.',
-                  ),
-                  validator: (value) {
-                    final text = value?.trim() ?? '';
-
-                    if (text.isEmpty) {
-                      return 'Role is required';
-                    }
-                    if (!_containsOnlyLetters(text)) {
-                      return 'Role must contain letters only';
-                    }
-                    if (text.length < 2) {
-                      return 'Role is too short';
-                    }
-                    return null;
-                  },
-                  onFieldSubmitted: (_) {
-                    _submit();
-                  },
-                ),
-              ]),
-              const SizedBox(height: 24),
-              SizedBox(
-                width: double.infinity,
-                height: 50,
-                child: ElevatedButton(
-                  onPressed: _isLoading ? null : _submit,
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: _purple,
-                    foregroundColor: Colors.white,
-                    disabledBackgroundColor: _purple.withValues(alpha: 0.5),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-                  ),
-                  child: _isLoading
-                      ? const SizedBox(
-                          height: 22,
-                          width: 22,
-                          child: CircularProgressIndicator(
-                            strokeWidth: 2.2,
-                            valueColor:
-                                AlwaysStoppedAnimation<Color>(Colors.white),
-                          ),
-                        )
-                      : const Text('Create Team Post'),
-                ),
-              ),
-            ],
-          ),
-        ),
+      appBar: AppBar(
+        title: const Text('Create Team Post', style: TextStyle(fontWeight: FontWeight.w600)),
+        centerTitle: true,
+        backgroundColor: purple,
+        foregroundColor: Colors.white,
+        elevation: 0,
       ),
+      body: _isFetchingRoles 
+          ? const Center(child: CircularProgressIndicator(color: purple))
+          : SafeArea(
+              child: SingleChildScrollView(
+                padding: const EdgeInsets.all(16),
+                child: Form(
+                  key: _formKey,
+                  child: Column(
+                    children: [
+                      const SizedBox(height: 8),
+                      
+                      // 1. TEAM NAME
+                      Padding(
+                        padding: const EdgeInsets.only(bottom: 12),
+                        child: TextFormField(
+                          controller: _teamNameController,
+                          maxLength: 25,
+                          decoration: _fieldDecoration(
+                            label: 'Team Name', 
+                            icon: Icons.groups_rounded, 
+                            helper: 'Letters & numbers only',
+                          ),
+                          validator: (v) {
+                            if (v == null || v.isEmpty) return 'Letters & numbers only';
+                            if (!RegExp(r'^[a-zA-Z0-9 ]+$').hasMatch(v)) return 'Letters & numbers only';
+                            return null;
+                          },
+                        ),
+                      ),
+
+                      // 2. GENDER PREFERENCE
+                      Padding(
+                        padding: const EdgeInsets.only(bottom: 12),
+                        child: DropdownButtonFormField<String>(
+                          value: _selectedGender,
+                          decoration: _fieldDecoration(
+                            label: 'Gender Preference', 
+                            icon: Icons.wc_rounded,
+                            helper: 'Select Preference',
+                          ),
+                          items: ['Male', 'Female', 'Any'].map((s) => DropdownMenuItem(value: s, child: Text(s))).toList(),
+                          onChanged: (v) => setState(() => _selectedGender = v),
+                          validator: (v) => v == null ? 'Select Preference' : null,
+                        ),
+                      ),
+
+                      // 3. ROLE DROPDOWN
+                      Padding(
+                        padding: const EdgeInsets.only(bottom: 12),
+                        child: DropdownButtonFormField<String>(
+                          value: _selectedRole,
+                          isExpanded: true,
+                          decoration: _fieldDecoration(
+                            label: 'My role in the team', 
+                            icon: Icons.person_search_rounded,
+                            helper: 'Specify Your Role',
+                          ),
+                          items: _availableRoles.map((r) => DropdownMenuItem(value: r, child: Text(r))).toList(),
+                          onChanged: (v) => setState(() => _selectedRole = v),
+                          validator: (v) => v == null ? 'Specify Your Role' : null,
+                        ),
+                      ),
+
+                      // 4. DYNAMIC TEXT FIELD (Only for "Any")
+                      if (_allowCustomRole && _selectedRole == 'Any') ...[
+                        Padding(
+                          padding: const EdgeInsets.only(bottom: 12),
+                          child: TextFormField(
+                            controller: _customRoleController,
+                            decoration: _fieldDecoration(
+                              label: 'Specify Your Role', 
+                              icon: Icons.edit_note_rounded,
+                              helper: 'Specify Your Role',
+                            ),
+                            validator: (v) => (v == null || v.isEmpty) ? 'Specify Your Role' : null,
+                          ),
+                        ),
+                      ],
+
+                      // 5. PROJECT IDEA (LAST FIELD - OPTIONAL)
+                      Padding(
+                        padding: const EdgeInsets.only(bottom: 12),
+                        child: TextFormField(
+                          controller: _ideaController,
+                          maxLength: 100,
+                          maxLines: 3,
+                          decoration: _fieldDecoration(
+                            label: 'Project Idea (Optional)', 
+                            icon: Icons.lightbulb_outline, 
+                            helper: 'Briefly describe your idea',
+                          ),
+                        ),
+                      ),
+
+                      const SizedBox(height: 24),
+
+                      // SUBMIT BUTTON
+                      SizedBox(
+                        width: double.infinity,
+                        height: 48,
+                        child: ElevatedButton.icon(
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: purple,
+                            foregroundColor: Colors.white,
+                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                            elevation: 0,
+                          ),
+                          onPressed: _isLoading ? null : _submit,
+                          icon: _isLoading 
+                            ? const SizedBox(width: 18, height: 18, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
+                            : const Icon(Icons.check_circle_outline),
+                          label: Text(_isLoading ? 'Saving...' : 'Create Team Post', 
+                            style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ),
     );
   }
+
+ Future<void> _submit() async {
+  if (!_formKey.currentState!.validate()) return;
+  setState(() => _isLoading = true);
+
+  try {
+    final user = FirebaseAuth.instance.currentUser;
+    if (user == null) return;
+
+    // We fetch the leader's name to show it in the list later
+    final userDoc = await FirebaseFirestore.instance.collection('students').doc(user.uid).get();
+    final leaderName = userDoc.data()?['fullName'] ?? 'Unknown Leader';
+
+    final finalRole = (_allowCustomRole && _selectedRole == 'Any') 
+        ? _customRoleController.text.trim() 
+        : _selectedRole;
+
+    // --- LOGIC FIX: CALCULATE NEEDED ROLES ---
+    // We take the hackathon roles and remove the one the leader took
+    List<String> needed = List<String>.from(_availableRoles);
+    needed.remove(finalRole);
+
+    await FirebaseFirestore.instance.collection('team_posts').add({
+      'hackathonId': widget.hackathonId,
+      'createdBy': user.uid,
+      'leaderId': user.uid, // Important for filtering
+      'leaderName': leaderName, // Save name so we don't have to fetch it every time
+      'teamName': _teamNameController.text.trim(),
+      'myRole': finalRole,
+      'neededRoles': needed, // THIS WAS MISSING!
+      'genderPreference': _selectedGender,
+      'projectIdea': _ideaController.text.trim(), // We use this key
+      'currentMembers': 1,
+      'maxMembers': widget.hackathonTeamSize,
+      'createdAt': FieldValue.serverTimestamp(),
+      'status': 'open',
+      'members': [user.uid],
+      'submittedToInstitution': false,
+    });
+
+    if (!mounted) return;
+    Navigator.pop(context);
+  } catch (e) {
+    ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Error: $e')));
+  } finally {
+    if (mounted) setState(() => _isLoading = false);
+  }
+}
 }

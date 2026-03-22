@@ -1,12 +1,13 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
-import 'join_team_request_view.dart';
+import 'my_team_post_view.dart';
 
-class HackathonTeamsView extends StatelessWidget {
+class ExploreTeamsView extends StatelessWidget {
   final String hackathonId;
   final int hackathonTeamSize;
 
-  const HackathonTeamsView({
+  const ExploreTeamsView({
     super.key,
     required this.hackathonId,
     required this.hackathonTeamSize,
@@ -15,196 +16,158 @@ class HackathonTeamsView extends StatelessWidget {
   static const Color _purple = Color(0xFF6D56B3);
   static const Color _lightPurple = Color(0xFFF0EEFF);
 
+  // Helper to fetch names and roles without causing overflow
+  Future<List<Map<String, dynamic>>> _getMemberData(List<dynamic> ids, String leaderId, String leaderRole, Map<String, dynamic> memberRolesMap) async {
+    List<Map<String, dynamic>> members = [];
+    for (var id in ids) {
+      var doc = await FirebaseFirestore.instance.collection('users').doc(id).get();
+      String name = doc.data()?['fullName'] ?? 'User';
+      String role = (id == leaderId) ? leaderRole : (memberRolesMap[id] ?? 'Member');
+      members.add({'name': name, 'isLeader': id == leaderId, 'role': role});
+    }
+    return members;
+  }
+
   @override
   Widget build(BuildContext context) {
+    final String currentUserId = FirebaseAuth.instance.currentUser?.uid ?? '';
+
     return Scaffold(
+      backgroundColor: const Color(0xFFF8F9FD),
       appBar: AppBar(
-        title: const Text('Hackathon Teams'),
+        title: const Text('Explore Teams', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 18)),
         centerTitle: true,
-        backgroundColor: _purple,
-        foregroundColor: Colors.white,
+        backgroundColor: Colors.white,
+        foregroundColor: _purple,
+        elevation: 0,
       ),
-      backgroundColor: Colors.white,
       body: StreamBuilder<QuerySnapshot<Map<String, dynamic>>>(
         stream: FirebaseFirestore.instance
             .collection('team_posts')
             .where('hackathonId', isEqualTo: hackathonId)
             .snapshots(),
         builder: (context, snapshot) {
-          if (snapshot.connectionState == ConnectionState.waiting) {
-            return const Center(
-              child: CircularProgressIndicator(),
-            );
-          }
-
-          if (snapshot.hasError) {
-            return const Center(
-              child: Text('Something went wrong while loading teams.'),
-            );
-          }
-
-          final allDocs = snapshot.data?.docs ?? [];
-
-          final docs = allDocs.where((doc) {
+          if (snapshot.connectionState == ConnectionState.waiting) return const Center(child: CircularProgressIndicator(color: _purple));
+          
+          final docs = (snapshot.data?.docs ?? []).where((doc) {
             final data = doc.data();
-
-            final int currentMembers = _parseInt(data['currentMembers']);
-            final int storedMaxMembers = _parseInt(data['maxMembers']);
-            final int maxMembers =
-                storedMaxMembers > 0 ? storedMaxMembers : hackathonTeamSize;
-
-            final bool submittedToInstitution =
-                data['submittedToInstitution'] == true;
-
-            final bool isComplete = currentMembers >= maxMembers;
-
-            return !submittedToInstitution && !isComplete;
+            final List members = data['members'] ?? [];
+            return data['createdBy'] != currentUserId && !members.contains(currentUserId);
           }).toList();
 
-          if (docs.isEmpty) {
-            return const Center(
-              child: Text(
-                'No available team posts for this hackathon.',
-                style: TextStyle(fontSize: 16),
-              ),
-            );
-          }
+          if (docs.isEmpty) return const Center(child: Text("No open teams available."));
 
-          return ListView.separated(
+          return ListView.builder(
             padding: const EdgeInsets.all(16),
             itemCount: docs.length,
-            separatorBuilder: (_, __) => const SizedBox(height: 12),
             itemBuilder: (context, index) {
-              final doc = docs[index];
-              final data = doc.data();
+              final data = docs[index].data();
+              final String teamId = docs[index].id;
+              final List memberIds = data['members'] ?? [];
+              final Map<String, dynamic> memberRolesMap = data['memberRoles'] ?? {};
+              final List<String> roles = _parseStringList(data['neededRoles']);
+              
+              final bool isFull = memberIds.length >= hackathonTeamSize;
+              final bool isRegistered = data['submittedToInstitution'] == true;
 
-              final String teamPostId = doc.id;
-              final String teamName =
-                  (data['teamName'] ?? 'Unnamed Team').toString();
-              final String leaderName =
-                  (data['leaderName'] ?? 'Unknown Leader').toString();
-              final String leaderId = (data['leaderId'] ?? '').toString();
-              final String description =
-                  (data['description'] ?? 'No description provided.')
-                      .toString();
-
-              final List<String> neededRoles =
-                  _parseStringList(data['neededRoles']);
-
-              final int currentMembers = _parseInt(data['currentMembers']);
-              final int storedMaxMembers = _parseInt(data['maxMembers']);
-              final int maxMembers =
-                  storedMaxMembers > 0 ? storedMaxMembers : hackathonTeamSize;
-
-              return Container(
-                padding: const EdgeInsets.all(16),
-                decoration: BoxDecoration(
-                  color: _lightPurple,
-                  borderRadius: BorderRadius.circular(16),
-                  border: Border.all(
-                    color: _purple.withValues(alpha: 0.15),
-                  ),
-                ),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      teamName,
-                      style: const TextStyle(
-                        fontSize: 18,
-                        fontWeight: FontWeight.bold,
-                        color: _purple,
-                      ),
-                    ),
-                    const SizedBox(height: 8),
-                    _infoRow(Icons.person_outline, 'Leader', leaderName),
-                    _infoRow(
-                      Icons.groups_outlined,
-                      'Members',
-                      '$currentMembers / $maxMembers',
-                    ),
-                    const SizedBox(height: 10),
-                    Text(
-                      description,
-                      style: TextStyle(
-                        color: Colors.grey.shade700,
-                        height: 1.5,
-                      ),
-                    ),
-                    const SizedBox(height: 12),
-                    const Text(
-                      'Needed Roles',
-                      style: TextStyle(
-                        fontWeight: FontWeight.w700,
-                        fontSize: 13,
-                        color: Colors.black87,
-                      ),
-                    ),
-                    const SizedBox(height: 8),
-                    neededRoles.isEmpty
-                        ? Text(
-                            'No specific roles listed.',
-                            style: TextStyle(
-                              color: Colors.grey.shade600,
+              return Card(
+                elevation: 2,
+                margin: const EdgeInsets.only(bottom: 20),
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
+                child: Padding(
+                  padding: const EdgeInsets.all(20),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      // --- Header: Name & Clear Capacity ---
+                      Row(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Expanded(
+                            child: Text(
+                              data['teamName'] ?? 'Team', 
+                              style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                              maxLines: 1, overflow: TextOverflow.ellipsis,
                             ),
-                          )
-                        : Wrap(
-                            spacing: 8,
-                            runSpacing: 8,
-                            children: neededRoles.map((role) {
-                              return Container(
-                                padding: const EdgeInsets.symmetric(
-                                  horizontal: 12,
-                                  vertical: 6,
-                                ),
-                                decoration: BoxDecoration(
-                                  color: Colors.white,
-                                  borderRadius: BorderRadius.circular(20),
-                                  border: Border.all(
-                                    color: _purple.withValues(alpha: 0.25),
-                                  ),
-                                ),
-                                child: Text(
-                                  role,
-                                  style: const TextStyle(
-                                    color: _purple,
-                                    fontSize: 12,
-                                    fontWeight: FontWeight.w500,
-                                  ),
-                                ),
-                              );
-                            }).toList(),
                           ),
-                    const SizedBox(height: 14),
-                    SizedBox(
-                      width: double.infinity,
-                      child: ElevatedButton(
-                        onPressed: leaderId.isEmpty
-                            ? null
-                            : () {
-                                Navigator.push(
-                                  context,
-                                  MaterialPageRoute(
-                                    builder: (context) => JoinTeamRequestView(
-                                      hackathonId: hackathonId,
-                                      teamPostId: teamPostId,
-                                      leaderId: leaderId,
-                                      teamName: teamName,
+                          _badge("${memberIds.length} / $hackathonTeamSize Members Joined", isFull ? Colors.red : _purple),
+                        ],
+                      ),
+                      const SizedBox(height: 16),
+
+                      // --- Members & Roles (Overflow Fixed) ---
+                      const Text("Team Members", style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13, color: Colors.grey)),
+                      const SizedBox(height: 8),
+                      FutureBuilder<List<Map<String, dynamic>>>(
+                        future: _getMemberData(memberIds, data['createdBy'], data['myRole'] ?? 'Leader', memberRolesMap),
+                        builder: (context, snap) {
+                          if (!snap.hasData) return const SizedBox(height: 20);
+                          return Column(
+                            children: snap.data!.map((m) => Padding(
+                              padding: const EdgeInsets.only(bottom: 4),
+                              child: Row(
+                                children: [
+                                  const Icon(Icons.circle, size: 6, color: _purple),
+                                  const SizedBox(width: 8),
+                                  Expanded(
+                                    child: Text(
+                                      "${m['name']} (${m['role']})", 
+                                      style: const TextStyle(fontSize: 13),
+                                      overflow: TextOverflow.ellipsis, maxLines: 1,
                                     ),
                                   ),
-                                );
-                              },
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: _purple,
-                          foregroundColor: Colors.white,
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(12),
+                                  if (m['isLeader']) _miniBadge("Leader"),
+                                ],
+                              ),
+                            )).toList(),
+                          );
+                        },
+                      ),
+                      
+                      const Divider(height: 32),
+
+                      // --- Project Idea (Null/Empty Check) ---
+                      const Text("Project Idea", style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14)),
+                      const SizedBox(height: 4),
+                      Text(
+                        (data['projectIdea'] == null || data['projectIdea'].toString().isEmpty) 
+                            ? "No project idea added yet." 
+                            : data['projectIdea'],
+                        style: TextStyle(
+                          color: (data['projectIdea'] == null || data['projectIdea'].toString().isEmpty) ? Colors.grey : Colors.black87,
+                          fontSize: 13, height: 1.4,
+                          fontStyle: (data['projectIdea'] == null || data['projectIdea'].toString().isEmpty) ? FontStyle.italic : FontStyle.normal,
+                        ),
+                        maxLines: 2, overflow: TextOverflow.ellipsis,
+                      ),
+                      
+                      const SizedBox(height: 12),
+
+                      // --- Looking For Roles ---
+                      const Text("Looking For", style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14, color: _purple)),
+                      const SizedBox(height: 8),
+                      _buildRolesList(roles),
+
+                      const SizedBox(height: 24),
+
+                      // --- Action Button ---
+                      SizedBox(
+                        width: double.infinity, height: 50,
+                        child: ElevatedButton(
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: (isFull || isRegistered) ? Colors.grey.shade300 : _purple,
+                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(15)),
+                            elevation: 0,
+                          ),
+                          onPressed: (isFull || isRegistered) ? null : () => _showJoinDialog(context, teamId, data['teamName'], roles),
+                          child: Text(
+                            isRegistered ? "Registration Submitted" : (isFull ? "TEAM FULL" : "JOIN TEAM"), 
+                            style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold)
                           ),
                         ),
-                        child: const Text('Request to Join'),
                       ),
-                    ),
-                  ],
+                    ],
+                  ),
                 ),
               );
             },
@@ -214,43 +177,77 @@ class HackathonTeamsView extends StatelessWidget {
     );
   }
 
-  static int _parseInt(dynamic value) {
-    if (value is int) return value;
-    return int.tryParse(value?.toString() ?? '') ?? 0;
+  // --- UI Helpers ---
+  Widget _badge(String txt, Color c) => Container(padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6), decoration: BoxDecoration(color: c.withOpacity(0.1), borderRadius: BorderRadius.circular(8)), child: Text(txt, style: TextStyle(color: c, fontWeight: FontWeight.bold, fontSize: 10)));
+  Widget _miniBadge(String txt) => Container(margin: const EdgeInsets.only(left: 6), padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2), decoration: BoxDecoration(color: Colors.orange.shade100, borderRadius: BorderRadius.circular(4)), child: Text(txt, style: TextStyle(fontSize: 9, color: Colors.orange.shade900, fontWeight: FontWeight.bold)));
+  
+  Widget _buildRolesList(List<String> roles) {
+    if (roles.isEmpty) return const Text("No specific roles needed", style: TextStyle(color: Colors.grey, fontSize: 12, fontStyle: FontStyle.italic));
+    return Wrap(spacing: 8, runSpacing: 8, children: roles.map((role) => Container(padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4), decoration: BoxDecoration(color: _lightPurple, borderRadius: BorderRadius.circular(8), border: Border.all(color: _purple.withOpacity(0.2))), child: Text(role, style: const TextStyle(fontSize: 11, color: _purple, fontWeight: FontWeight.bold)))).toList());
   }
 
-  static List<String> _parseStringList(dynamic value) {
-    if (value is List) {
-      return value.map((e) => e.toString()).toList();
-    }
-    return [];
-  }
+  void _showJoinDialog(BuildContext context, String teamId, String? name, List<String> roles) {
+    String? selected;
+    // Capture the current context's navigator to use after async calls
+    final navigator = Navigator.of(context);
 
-  Widget _infoRow(IconData icon, String label, String value) {
-    return Padding(
-      padding: const EdgeInsets.only(bottom: 6),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Icon(icon, size: 18, color: _purple),
-          const SizedBox(width: 8),
-          Text(
-            '$label: ',
-            style: const TextStyle(
-              fontWeight: FontWeight.w600,
-              color: Colors.black87,
-            ),
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        title: Text("Join $name"),
+        content: DropdownButtonFormField<String>(
+          decoration: const InputDecoration(labelText: "Pick your role"),
+          items: roles.map((r) => DropdownMenuItem(value: r, child: Text(r))).toList(),
+          onChanged: (v) => selected = v,
+        ),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(ctx), child: const Text("Cancel")),
+          ElevatedButton(
+            style: ElevatedButton.styleFrom(backgroundColor: _purple),
+            onPressed: () async {
+  if (selected != null) {
+    // 1. CAPTURE the navigator and scaffoldMessenger IMMEDIATELY
+    // Do this before any 'await' happens
+    final navigator = Navigator.of(context);
+    final messenger = ScaffoldMessenger.of(context);
+    final String uid = FirebaseAuth.instance.currentUser!.uid;
+
+    try {
+      // 2. Perform the update
+      await FirebaseFirestore.instance.collection('team_posts').doc(teamId).update({
+        'members': FieldValue.arrayUnion([uid]),
+        'memberRoles.$uid': selected,
+        'neededRoles': FieldValue.arrayRemove([selected]),
+      });
+
+      // 3. Close the Join Dialog using the dialog's own context (ctx)
+      if (ctx.mounted) {
+        Navigator.pop(ctx);
+      }
+
+      // 4. Use the PRE-CAPTURED navigator to change pages
+      // This is the "magic" that ensures you actually move to the next screen
+      navigator.pushReplacement(
+        MaterialPageRoute(
+          builder: (c) => MyTeamPostView(
+            teamPostId: teamId,
+            hackathonId: hackathonId,
+            hackathonTeamSize: hackathonTeamSize,
           ),
-          Expanded(
-            child: Text(
-              value,
-              style: TextStyle(
-                color: Colors.grey.shade700,
-              ),
-            ),
+        ),
+      );
+    } catch (e) {
+      messenger.showSnackBar(SnackBar(content: Text("Error joining: $e")));
+    }
+  }
+},
+            child: const Text("Confirm Join", style: TextStyle(color: Colors.white)),
           ),
         ],
       ),
     );
   }
+
+  List<String> _parseStringList(dynamic value) => value is List ? value.map((e) => e.toString()).toList() : [];
 }

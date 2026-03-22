@@ -20,6 +20,7 @@ class Hackathon {
   
   // ✅ الحقل اللي بنخزن فيه اسم المنشأة للعرض
   String? organizationName;
+  String? organizationPhotoUrl;
 
   Hackathon({
     this.id,
@@ -38,6 +39,7 @@ class Hackathon {
     required this.startDate,
     required this.endDate,
     this.organizationName,
+    this.organizationPhotoUrl,
   });
 
   // ميثود مساعدة لتحويل التاريخ بأمان من أي نوع (String أو Timestamp)

@@ -16,13 +16,14 @@ class InstitutionTeamPostsView extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      backgroundColor: const Color(0xFFF8F9FD),
       appBar: AppBar(
-        title: const Text('Submitted Team Posts'),
+        title: const Text('Submitted Teams', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 18)),
         centerTitle: true,
-        backgroundColor: _purple,
-        foregroundColor: Colors.white,
+        backgroundColor: Colors.white,
+        foregroundColor: _purple,
+        elevation: 0,
       ),
-      backgroundColor: Colors.white,
       body: StreamBuilder<QuerySnapshot<Map<String, dynamic>>>(
         stream: FirebaseFirestore.instance
             .collection('team_posts')
@@ -31,189 +32,106 @@ class InstitutionTeamPostsView extends StatelessWidget {
             .snapshots(),
         builder: (context, snapshot) {
           if (snapshot.connectionState == ConnectionState.waiting) {
-            return const Center(
-              child: CircularProgressIndicator(),
-            );
-          }
-
-          if (snapshot.hasError) {
-            return const Center(
-              child: Text(
-                'Something went wrong while loading submitted teams.',
-              ),
-            );
+            return const Center(child: CircularProgressIndicator(color: _purple));
           }
 
           final docs = snapshot.data?.docs ?? [];
 
           if (docs.isEmpty) {
             return const Center(
-              child: Text(
-                'No submitted teams yet.',
-                style: TextStyle(fontSize: 16),
-              ),
+              child: Text('No teams have submitted yet.', style: TextStyle(color: Colors.grey)),
             );
           }
 
           return ListView.separated(
             padding: const EdgeInsets.all(16),
             itemCount: docs.length,
-            separatorBuilder: (_, __) => const SizedBox(height: 12),
+            separatorBuilder: (_, __) => const SizedBox(height: 16),
             itemBuilder: (context, index) {
               final doc = docs[index];
               final data = doc.data();
 
-              final String teamName =
-                  (data['teamName'] ?? 'Unnamed Team').toString();
-              final String leaderName =
-                  (data['leaderName'] ?? 'Unknown Leader').toString();
-              final String status = (data['status'] ?? 'submitted').toString();
-              final int currentMembers = _parseInt(data['currentMembers']);
-              final int maxMembers = _parseInt(data['maxMembers']);
+              final String teamName = data['teamName'] ?? 'Unnamed Team';
+              final List members = data['members'] ?? [];
+              final int currentMembers = members.length; 
+              final int maxMembers = data['maxMembers'] ?? 0;
+              
+              // التعديل هنا: نأخذ الحالة ونخلي أول حرف كبير فقط (بدل الكابيتال الكامل)
+              String status = data['status'] ?? 'pending_approval';
+              status = status.replaceAll('_', ' '); // استبدال الـ underscore بمسافة
 
-              return InkWell(
-                borderRadius: BorderRadius.circular(16),
-                onTap: () {
-                  Navigator.push(
-                    context,
-                    MaterialPageRoute(
-                      builder: (_) => InstitutionTeamPostDetailsView(
-                        teamPostId: doc.id,
+              return Container(
+                decoration: BoxDecoration(
+                  color: Colors.white,
+                  borderRadius: BorderRadius.circular(24),
+                  boxShadow: [
+                    BoxShadow(
+                      color: _purple.withOpacity(0.08),
+                      blurRadius: 15,
+                      offset: const Offset(0, 8),
+                    )
+                  ],
+                ),
+                child: ClipRRect(
+                  borderRadius: BorderRadius.circular(24),
+                  child: InkWell(
+                    onTap: () => Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (_) => InstitutionTeamPostDetailsView(teamPostId: doc.id),
                       ),
                     ),
-                  );
-                },
-                child: Container(
-                  padding: const EdgeInsets.all(16),
-                  decoration: BoxDecoration(
-                    color: _lightPurple,
-                    borderRadius: BorderRadius.circular(16),
-                    border: Border.all(
-                      color: _purple.withValues(alpha: 0.15),
-                    ),
-                  ),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        teamName,
-                        style: const TextStyle(
-                          fontSize: 18,
-                          fontWeight: FontWeight.bold,
-                          color: _purple,
-                        ),
-                      ),
-                      const SizedBox(height: 10),
-                      _infoRow(
-                        icon: Icons.person_outline,
-                        label: 'Leader',
-                        value: leaderName,
-                      ),
-                      _infoRow(
-                        icon: Icons.groups_outlined,
-                        label: 'Members',
-                        value: '$currentMembers / $maxMembers',
-                      ),
-                      _infoRow(
-                        icon: Icons.info_outline,
-                        label: 'Status',
-                        value: status,
-                      ),
-                      const SizedBox(height: 10),
-
-                      FutureBuilder<QuerySnapshot<Map<String, dynamic>>>(
-                        future: FirebaseFirestore.instance
-                            .collection('registrations')
-                            .where('teamPostId', isEqualTo: doc.id)
-                            .limit(1)
-                            .get(),
-                        builder: (context, regSnapshot) {
-                          if (regSnapshot.connectionState ==
-                              ConnectionState.waiting) {
-                            return const Padding(
-                              padding: EdgeInsets.only(top: 4),
-                              child: SizedBox(
-                                height: 18,
-                                width: 18,
-                                child: CircularProgressIndicator(strokeWidth: 2),
-                              ),
-                            );
-                          }
-
-                          if (regSnapshot.hasError) {
-                            return Text(
-                              'Failed to load registration form.',
-                              style: TextStyle(
-                                fontSize: 12,
-                                color: Colors.red.shade600,
-                              ),
-                            );
-                          }
-
-                          final regDocs = regSnapshot.data?.docs ?? [];
-
-                          if (regDocs.isEmpty) {
-                            return Text(
-                              'No registration form found.',
-                              style: TextStyle(
-                                fontSize: 12,
-                                color: Colors.grey.shade700,
-                              ),
-                            );
-                          }
-
-                          final regData = regDocs.first.data();
-                          final String ideaName =
-                              (regData['ideaName'] ?? '-').toString();
-                          final String briefDescription =
-                              (regData['briefDescription'] ?? '-').toString();
-
-                          return Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
+                    child: Padding(
+                      padding: const EdgeInsets.all(20),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Row(
+                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
                             children: [
-                              _infoRow(
-                                icon: Icons.lightbulb_outline,
-                                label: 'Idea Name',
-                                value: ideaName,
-                              ),
-                              _infoRow(
-                                icon: Icons.description_outlined,
-                                label: 'Brief Description',
-                                value: briefDescription,
-                              ),
-                            ],
-                          );
-                        },
-                      ),
-
-                      const SizedBox(height: 12),
-                      Align(
-                        alignment: Alignment.centerRight,
-                        child: TextButton.icon(
-                          onPressed: () {
-                            Navigator.push(
-                              context,
-                              MaterialPageRoute(
-                                builder: (_) => InstitutionTeamPostDetailsView(
-                                  teamPostId: doc.id,
+                              Expanded(
+                                child: Text(
+                                  teamName,
+                                  style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                                  overflow: TextOverflow.ellipsis,
                                 ),
                               ),
-                            );
-                          },
-                          icon: const Icon(
-                            Icons.visibility_outlined,
-                            color: _purple,
+                              // استدعاء الـ Badge المعدل
+                              _statusBadge(status),
+                            ],
                           ),
-                          label: const Text(
-                            'View Team',
-                            style: TextStyle(
-                              color: _purple,
-                              fontWeight: FontWeight.w600,
+                          const Divider(height: 30),
+
+                          _infoRow(Icons.groups_outlined, "Team Size", "$currentMembers / $maxMembers Members"),
+                          const SizedBox(height: 8),
+                          _infoRow(Icons.lightbulb_outline, "Project Idea", data['projectIdea'] ?? "No description provided."),
+
+                          const SizedBox(height: 20),
+
+                          SizedBox(
+                            width: double.infinity,
+                            height: 48,
+                            child: ElevatedButton(
+                              style: ElevatedButton.styleFrom(
+                                backgroundColor: _purple,
+                                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                                elevation: 0,
+                              ),
+                              onPressed: () => Navigator.push(
+                                context,
+                                MaterialPageRoute(
+                                  builder: (_) => InstitutionTeamPostDetailsView(teamPostId: doc.id),
+                                ),
+                              ),
+                              child: const Text(
+                                "Review Team Details",
+                                style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
+                              ),
                             ),
                           ),
-                        ),
+                        ],
                       ),
-                    ],
+                    ),
                   ),
                 ),
               );
@@ -224,41 +142,57 @@ class InstitutionTeamPostsView extends StatelessWidget {
     );
   }
 
-  static int _parseInt(dynamic value) {
-    if (value is int) return value;
-    return int.tryParse(value?.toString() ?? '') ?? 0;
+  // --- UI Helpers ---
+
+  Widget _statusBadge(String status) {
+    Color color = _purple;
+    String displayStatus = status;
+
+    // تغيير الألوان بناءً على الكلمات
+    if (status.toLowerCase().contains('approve')) {
+      color = Colors.green;
+      displayStatus = "Approved";
+    } else if (status.toLowerCase().contains('reject')) {
+      color = Colors.red;
+      displayStatus = "Rejected";
+    } else if (status.toLowerCase().contains('pending')) {
+      color = Colors.orange;
+      displayStatus = "Pending Approval";
+    }
+
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+      decoration: BoxDecoration(
+        color: color.withOpacity(0.1),
+        borderRadius: BorderRadius.circular(8),
+      ),
+      child: Text(
+        displayStatus, // تظهر الحين بشكل طبيعي (Approved, Pending Approval)
+        style: TextStyle(
+          color: color, 
+          fontSize: 11, // كبرنا الخط شوي عشان يوضح
+          fontWeight: FontWeight.w600 // خليناه أنحف شوي من الـ Bold الكامل
+        ),
+      ),
+    );
   }
 
-  Widget _infoRow({
-    required IconData icon,
-    required String label,
-    required String value,
-  }) {
-    return Padding(
-      padding: const EdgeInsets.only(bottom: 6),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Icon(icon, size: 18, color: _purple),
-          const SizedBox(width: 8),
-          Text(
-            '$label: ',
-            style: const TextStyle(
-              fontWeight: FontWeight.w600,
-              color: Colors.black87,
-            ),
+  Widget _infoRow(IconData icon, String label, String value) {
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Icon(icon, size: 16, color: _purple),
+        const SizedBox(width: 10),
+        Text("$label: ", style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13)),
+        Expanded(
+          child: Text(
+            value,
+            style: const TextStyle(fontSize: 13, color: Colors.black87),
+            maxLines: 2,
+            overflow: TextOverflow.ellipsis,
           ),
-          Expanded(
-            child: Text(
-              value,
-              style: TextStyle(
-                color: Colors.grey.shade700,
-                height: 1.4,
-              ),
-            ),
-          ),
-        ],
-      ),
+        ),
+      ],
     );
   }
 }

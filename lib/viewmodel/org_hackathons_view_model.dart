@@ -61,40 +61,37 @@ class OrgHackathonsViewModel extends ChangeNotifier {
     await _firestore.collection('hackathons').doc(id).delete();
   }
 Stream<List<Hackathon>> get exploreHackathonsStream {
-    return _firestore.collection('hackathons').snapshots().asyncMap((snap) async {
-      final now = DateTime.now();
-      List<Hackathon> list = [];
+  return _firestore.collection('hackathons').snapshots().asyncMap((snap) async {
+    final now = DateTime.now();
+    List<Hackathon> list = [];
 
-      for (var doc in snap.docs) {
-        final hack = Hackathon.fromFirestore(doc);
-        
-        // 1. شرط اختفاء الهكاثون (لو انتهى وقت التسجيل)
-        if (hack.applicationDeadline.isAfter(now)) {
-          
-          String orgNameFromDB = "Loading..."; // نص مؤقت فقط أثناء الجلب
-          try {
-            // 2. الجلب من كولكشن organizations
-            final orgDoc = await _firestore
-                .collection('organizations')
-                .doc(hack.organizationId)
-                .get();
-            
-            if (orgDoc.exists) {
-              // ✅ التعديل المهم: استخدام 'orgName' كما في الصورة
-              orgNameFromDB = orgDoc.data()?['orgName'] ?? 'Unknown Organization';
-            } else {
-              orgNameFromDB = "Organization Not Found";
-            }
-          } catch (e) {
-            orgNameFromDB = "Error fetching name";
-          }
+    for (var doc in snap.docs) {
+      final hack = Hackathon.fromFirestore(doc);
 
-          hack.organizationName = orgNameFromDB; 
-          list.add(hack);
+      // Change: Hackathon stays until the END DATE passes
+      if (!hack.endDate.isBefore(now)) {
+        try {
+          final orgDoc = await _firestore
+              .collection('organizations')
+              .doc(hack.organizationId)
+              .get();
+
+         // Inside your ViewModel loop:
+if (orgDoc.exists) {
+  final data = orgDoc.data();
+  hack.organizationName = data?['orgName'] ?? 'Unknown Organization';
+  
+  // MATCH THE SCREENSHOT: 'profilePhoto'
+  hack.organizationPhotoUrl = data?['profilePhoto'] ?? '';
+}
+        } catch (e) {
+          hack.organizationName = "Error fetching info";
         }
+        list.add(hack);
       }
-      return list;
-    });
-  }
+    }
+    return list;
+  });
+}
 
 }
