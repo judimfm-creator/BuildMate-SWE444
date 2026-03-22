@@ -17,11 +17,12 @@ class InstitutionTeamPostDetailsView extends StatelessWidget {
     return Scaffold(
       backgroundColor: const Color(0xFFF8F9FD),
       appBar: AppBar(
-        title: const Text('Review Team', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 18)),
+        title: const Text('Review Team Members', 
+          style: TextStyle(fontWeight: FontWeight.bold, fontSize: 18)),
         centerTitle: true,
         backgroundColor: Colors.white,
         foregroundColor: _purple,
-        elevation: 0,
+        elevation: 0.5,
       ),
       body: StreamBuilder<DocumentSnapshot<Map<String, dynamic>>>(
         stream: FirebaseFirestore.instance.collection('team_posts').doc(teamPostId).snapshots(),
@@ -30,71 +31,81 @@ class InstitutionTeamPostDetailsView extends StatelessWidget {
             return const Center(child: CircularProgressIndicator(color: _purple));
           }
           if (!snapshot.hasData || !snapshot.data!.exists) {
-            return const Center(child: Text('Team not found.'));
+            return const Center(child: Text('Data not found.'));
           }
 
           final data = snapshot.data!.data() ?? {};
           final List<dynamic> memberIds = data['members'] ?? [];
-          final String leaderId = data['createdBy'] ?? '';
-          final String leaderRole = data['myRole'] ?? 'Leader';
-          final Map<String, dynamic> memberRoles = data['memberRoles'] ?? {};
-          final String status = data['status'] ?? 'pending_approval';
+          final String status = data['status'] ?? 'pending';
+          final String hackathonId = data['hackathonId'] ?? '';
 
-          return SingleChildScrollView(
-            padding: const EdgeInsets.all(20),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                _buildStatusBanner(status),
-                const SizedBox(height: 24),
+          return FutureBuilder<DocumentSnapshot>(
+            future: FirebaseFirestore.instance.collection('hackathons').doc(hackathonId).get(),
+            builder: (context, hackSnap) {
+              bool isDeadlinePassed = false;
+              
+              if (hackSnap.hasData && hackSnap.data!.exists) {
+                final hackData = hackSnap.data!.data() as Map<String, dynamic>?;
+                if (hackData != null && hackData['applicationDeadline'] != null) {
+                  final dynamic deadlineRaw = hackData['applicationDeadline'];
+                  
+                  DateTime? deadlineDate;
+                  if (deadlineRaw is Timestamp) {
+                    deadlineDate = deadlineRaw.toDate();
+                  } else if (deadlineRaw is String) {
+                    deadlineDate = DateTime.tryParse(deadlineRaw);
+                  }
 
-                _sectionTitle("Team Overview"),
-                _infoBox([
-                  _dataRow("Team Name", data['teamName'] ?? 'Unnamed'),
-                  _dataRow("Team Size", "${memberIds.length} Members"),
-                  _dataRow("Gender Preference", data['genderPreference'] ?? 'Any'),
-                ]),
+                  if (deadlineDate != null) {
+                    isDeadlinePassed = DateTime.now().isAfter(deadlineDate);
+                  }
+                }
+              }
 
-                const SizedBox(height: 24),
+              return SingleChildScrollView(
+                padding: const EdgeInsets.all(20),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const Text("Team Members Details", 
+                      style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+                    const SizedBox(height: 20),
+                    
+                    ...memberIds.map((id) => _buildMemberCard(id.toString())),
 
-                _sectionTitle("Project Idea"),
-                _infoBox([
-                  Text(
-                    data['projectIdea'] ?? "No description provided.",
-                    style: TextStyle(color: Colors.grey.shade700, fontSize: 14, height: 1.5),
-                  ),
-                ]),
+                    const SizedBox(height: 32),
 
-                const SizedBox(height: 24),
+                    // الأزرار أولاً
+                    _buildDecisionButtons(context, status, isDeadlinePassed),
 
-                // قسم الأعضاء - الآن يحتوي على "كل شيء"
-                _sectionTitle("Detailed Member Profiles"),
-                ...memberIds.map((id) => _buildFullMemberProfile(id, id == leaderId, memberRoles, leaderRole)),
+                    // الملاحظة تحت الأزرار مباشرة
+                    if (!isDeadlinePassed && (status == 'pending' || status == 'pending_approval'))
+                      _buildClearDeadlineNote(),
 
-                const SizedBox(height: 32),
-
-                _buildActionButtons(context, status),
-                const SizedBox(height: 40),
-              ],
-            ),
+                    const SizedBox(height: 40),
+                  ],
+                ),
+              );
+            },
           );
         },
       ),
     );
   }
 
-  // --- كارت البروفايل الكامل (كل التفاصيل) ---
-  Widget _buildFullMemberProfile(String uid, bool isLeader, Map<String, dynamic> roles, String lRole) {
+  Widget _buildMemberCard(String uid) {
     return FutureBuilder<DocumentSnapshot<Map<String, dynamic>>>(
       future: FirebaseFirestore.instance.collection('users').doc(uid).get(),
       builder: (context, userSnap) {
-        if (!userSnap.hasData) return const Padding(padding: EdgeInsets.all(20), child: LinearProgressIndicator());
-        
+        if (!userSnap.hasData) return const Padding(padding: EdgeInsets.symmetric(vertical: 10), child: LinearProgressIndicator());
+        if (!userSnap.data!.exists) return const SizedBox.shrink();
+
         final u = userSnap.data!.data() ?? {};
-        String displayRole = isLeader ? lRole : (roles[uid] ?? "Member");
+        final skills = u['skills'] is List ? (u['skills'] as List).join(", ") : (u['skills']?.toString() ?? "N/A");
 
         return Container(
-          margin: const EdgeInsets.only(bottom: 20),
+          margin: const EdgeInsets.only(bottom: 24),
+          padding: const EdgeInsets.all(20),
           decoration: BoxDecoration(
             color: Colors.white,
             borderRadius: BorderRadius.circular(24),
@@ -104,53 +115,37 @@ class InstitutionTeamPostDetailsView extends StatelessWidget {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              // الهيدر: الاسم والدور
-              Padding(
-                padding: const EdgeInsets.all(20),
-                child: Row(
-                  children: [
-                    CircleAvatar(
-                      radius: 25,
-                      backgroundColor: _lightPurple,
-                      child: Text(u['fullName']?[0] ?? '?', style: const TextStyle(color: _purple, fontSize: 20, fontWeight: FontWeight.bold)),
+              Row(
+                children: [
+                  CircleAvatar(
+                    radius: 28,
+                    backgroundColor: _lightPurple,
+                    child: Text(u['fullName'] != null ? u['fullName'][0] : '?', 
+                      style: const TextStyle(color: _purple, fontSize: 22, fontWeight: FontWeight.bold)),
+                  ),
+                  const SizedBox(width: 15),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(u['fullName'] ?? 'fullName', style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 17)),
+                        Text("@${u['username'] ?? 'username'}", style: TextStyle(color: _purple.withOpacity(0.8), fontSize: 13, fontWeight: FontWeight.w600)),
+                      ],
                     ),
-                    const SizedBox(width: 12),
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(u['fullName'] ?? 'Unknown User', style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
-                          Text(displayRole, style: TextStyle(color: _purple.withOpacity(0.7), fontSize: 13, fontWeight: FontWeight.w500)),
-                        ],
-                      ),
-                    ),
-                    if (isLeader) _badge("Leader", Colors.orange),
-                  ],
-                ),
+                  ),
+                ],
               ),
-              const Divider(height: 1),
-
-              // التفاصيل الشخصية
-              _profileSectionTitle("Contact & Identity"),
-              _detailRow(Icons.email_outlined, "Email", u['email']),
-              _detailRow(Icons.phone_outlined, "Phone", u['phoneNumber']),
-              _detailRow(Icons.location_city_outlined, "City", u['city']),
-              _detailRow(Icons.wc_outlined, "Gender", u['gender']),
-
-              // التعليم والخبرة
-              _profileSectionTitle("Education & Expertise"),
-              _detailRow(Icons.school_outlined, "Major", u['major']),
-              _detailRow(Icons.workspace_premium_outlined, "Education Level", u['educationLevel']),
-              _detailRow(Icons.psychology_outlined, "Skills", (u['skills'] as List?)?.join(", ")),
-
-              // السيرة الذاتية والروابط
-              _profileSectionTitle("Portfolio & Links"),
-              _detailRow(Icons.description_outlined, "Bio", u['bio']),
-              _detailRow(Icons.link_outlined, "GitHub", u['github']),
-              _detailRow(Icons.link_outlined, "LinkedIn", u['linkedin']),
-              _detailRow(Icons.language_outlined, "Portfolio", u['portfolio']),
-
-              const SizedBox(height: 20),
+              const Divider(height: 30),
+              _dataLine(Icons.email_outlined, "Email", u['email']),
+              _dataLine(Icons.phone_outlined, "Phone", u['phoneNumber']),
+              _dataLine(Icons.location_city_outlined, "City", u['city']),
+              _dataLine(Icons.wc_outlined, "Gender", u['gender']),
+              _dataLine(Icons.psychology_outlined, "Skills", skills),
+              
+              // الروابط مع خط أزرق تحتها
+              const SizedBox(height: 10),
+              _underlineLink(Icons.link, "LinkedIn", u['linkedin']),
+              _underlineLink(Icons.code, "GitHub", u['github']),
             ],
           ),
         );
@@ -158,62 +153,102 @@ class InstitutionTeamPostDetailsView extends StatelessWidget {
     );
   }
 
-  // --- مساعدات التصميم ---
-
-  Widget _profileSectionTitle(String title) {
+  Widget _dataLine(IconData icon, String label, dynamic value) {
     return Padding(
-      padding: const EdgeInsets.fromLTRB(20, 16, 20, 8),
-      child: Text(title, style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: _purple.withOpacity(0.6), letterSpacing: 1)),
-    );
-  }
-
-  Widget _detailRow(IconData icon, String label, dynamic value) {
-    final String text = (value == null || value.toString().isEmpty) ? "Not provided" : value.toString();
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 4),
+      padding: const EdgeInsets.symmetric(vertical: 4),
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Icon(icon, size: 16, color: Colors.grey.shade400),
           const SizedBox(width: 10),
-          Text("$label: ", style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 13, color: Colors.black54)),
-          Expanded(child: Text(text, style: const TextStyle(fontSize: 13, color: Colors.black87))),
+          Text("$label: ", style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 12, color: Colors.black54)),
+          Expanded(child: Text(value?.toString() ?? "N/A", style: const TextStyle(fontSize: 12, color: Colors.black87))),
         ],
       ),
     );
   }
 
-  // (بقية الـ Helpers اللي تحبينها: StatusBanner, Buttons, etc.)
-  Widget _buildStatusBanner(String status) {
-    Color color = status.contains('approve') ? Colors.green : (status.contains('reject') ? Colors.red : Colors.orange);
-    String label = status.replaceAll('_', ' ').toUpperCase();
-    return Container(
-      width: double.infinity,
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(color: color.withOpacity(0.1), borderRadius: BorderRadius.circular(12), border: Border.all(color: color.withOpacity(0.2))),
-      child: Row(children: [Icon(Icons.info_outline, color: color), const SizedBox(width: 12), Text(label, style: TextStyle(fontWeight: FontWeight.bold, color: color))]),
+  Widget _underlineLink(IconData icon, String label, dynamic value) {
+    if (value == null || value.toString().isEmpty) return const SizedBox.shrink();
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 4),
+      child: Row(
+        children: [
+          Icon(icon, size: 16, color: Colors.blue.shade400),
+          const SizedBox(width: 10),
+          Text("$label: ", style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 12, color: Colors.black54)),
+          Expanded(
+            child: Text(
+              value.toString(),
+              style: const TextStyle(
+                fontSize: 12, 
+                color: Colors.blue, 
+                decoration: TextDecoration.underline, // الخط تحت الرابط
+              ),
+              overflow: TextOverflow.ellipsis,
+            ),
+          ),
+        ],
+      ),
     );
   }
 
-  Widget _buildActionButtons(BuildContext context, String status) {
-    if (status != 'pending_approval') return const SizedBox();
+  Widget _buildDecisionButtons(BuildContext context, String status, bool isDeadlinePassed) {
+    if (status == 'accepted' || status == 'rejected') {
+      Color c = status == 'accepted' ? Colors.green : Colors.red;
+      return Container(
+        width: double.infinity, padding: const EdgeInsets.all(16),
+        decoration: BoxDecoration(color: c.withOpacity(0.1), borderRadius: BorderRadius.circular(12)),
+        child: Text("APPLICATION ${status.toUpperCase()}", textAlign: TextAlign.center, style: TextStyle(fontWeight: FontWeight.bold, color: c)),
+      );
+    }
     return Row(
       children: [
-        Expanded(child: _btn("Approve Team", Colors.green, () => _updateStatus(context, 'approved'))),
+        Expanded(child: _actionBtn("Accept Team", Colors.green, isDeadlinePassed ? () => _updateStatus(context, 'accepted') : null)),
         const SizedBox(width: 12),
-        Expanded(child: _btn("Reject Team", Colors.redAccent, () => _updateStatus(context, 'rejected'))),
+        Expanded(child: _actionBtn("Reject Team", Colors.redAccent, isDeadlinePassed ? () => _updateStatus(context, 'rejected') : null)),
       ],
     );
   }
 
   Future<void> _updateStatus(BuildContext context, String newStatus) async {
     await FirebaseFirestore.instance.collection('team_posts').doc(teamPostId).update({'status': newStatus});
-    if (context.mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text("Team $newStatus successfully")));
+    if (context.mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text("Team status updated: $newStatus")));
   }
 
-  Widget _btn(String l, Color c, VoidCallback a) => ElevatedButton(style: ElevatedButton.styleFrom(backgroundColor: c, foregroundColor: Colors.white, shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)), elevation: 0, padding: const EdgeInsets.symmetric(vertical: 14)), onPressed: a, child: Text(l, style: const TextStyle(fontWeight: FontWeight.bold)));
-  Widget _infoBox(List<Widget> children) => Container(width: double.infinity, padding: const EdgeInsets.all(16), decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(16), border: Border.all(color: Colors.grey.shade200)), child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: children));
-  Widget _sectionTitle(String title) => Padding(padding: const EdgeInsets.only(bottom: 10, left: 4), child: Text(title, style: const TextStyle(fontSize: 15, fontWeight: FontWeight.bold, color: Colors.black87)));
-  Widget _dataRow(String label, String value) => Padding(padding: const EdgeInsets.symmetric(vertical: 4), child: Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [Text(label, style: const TextStyle(fontWeight: FontWeight.w600, color: Colors.black54, fontSize: 13)), Text(value, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13, color: _purple))]));
-  Widget _badge(String t, Color c) => Container(padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2), decoration: BoxDecoration(color: c.withOpacity(0.1), borderRadius: BorderRadius.circular(6)), child: Text(t, style: TextStyle(color: c, fontSize: 10, fontWeight: FontWeight.bold)));
+  Widget _actionBtn(String l, Color c, VoidCallback? a) => ElevatedButton(
+    style: ElevatedButton.styleFrom(
+      backgroundColor: c, 
+      disabledBackgroundColor: Colors.grey.shade300, 
+      foregroundColor: Colors.white, 
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)), 
+      elevation: 0, 
+      padding: const EdgeInsets.symmetric(vertical: 16)
+    ),
+    onPressed: a, child: Text(l, style: const TextStyle(fontWeight: FontWeight.bold)));
+
+  // الملاحظة بشكل أوضح وتحت الأزرار
+  Widget _buildClearDeadlineNote() => Padding(
+    padding: const EdgeInsets.only(top: 16.0),
+    child: Container(
+      padding: const EdgeInsets.all(14),
+      decoration: BoxDecoration(
+        color: Colors.orange.withOpacity(0.1), 
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: Colors.orange.withOpacity(0.3))
+      ),
+      child: Row(
+        children: [
+          const Icon(Icons.info_outline, color: Colors.orange, size: 20),
+          const SizedBox(width: 12),
+          const Expanded(
+            child: Text(
+              "Buttons are Available after registration deadline", 
+              style: TextStyle(fontSize: 12, color: Colors.orange, fontWeight: FontWeight.w600, height: 1.4),
+            ),
+          ),
+        ],
+      ),
+    ),
+  );
 }
