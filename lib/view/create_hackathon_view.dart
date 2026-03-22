@@ -161,12 +161,14 @@ class _CreateHackathonViewState extends State<CreateHackathonView> {
       applicationOpenDateError = null;
 
       if (applicationDeadline != null &&
-          applicationDeadline!.isBefore(picked)) {
+          !applicationDeadline!.isAfter(picked)) {
         applicationDeadline = null;
       }
 
-      if (startDate != null && startDate!.isBefore(picked)) {
-        startDate = null;
+      if (startDate != null && applicationDeadline != null) {
+        if (!startDate!.isAfter(applicationDeadline!)) {
+          startDate = null;
+        }
       }
 
       if (endDate != null && startDate == null) {
@@ -182,7 +184,9 @@ class _CreateHackathonViewState extends State<CreateHackathonView> {
   Future<void> _pickApplicationDeadline() async {
     final now = DateTime.now();
     final today = DateTime(now.year, now.month, now.day);
-    final base = applicationOpenDate ?? today;
+    final base = applicationOpenDate != null
+        ? applicationOpenDate!.add(const Duration(days: 1))
+        : today;
 
     final picked = await showDatePicker(
       context: context,
@@ -197,7 +201,7 @@ class _CreateHackathonViewState extends State<CreateHackathonView> {
       applicationDeadline = picked;
       applicationDeadlineError = null;
 
-      if (startDate != null && startDate!.isBefore(picked)) {
+      if (startDate != null && !startDate!.isAfter(picked)) {
         startDate = null;
       }
 
@@ -213,7 +217,9 @@ class _CreateHackathonViewState extends State<CreateHackathonView> {
   Future<void> _pickStartDate() async {
     final now = DateTime.now();
     final today = DateTime(now.year, now.month, now.day);
-    final base = applicationDeadline ?? today;
+    final base = applicationDeadline != null
+        ? applicationDeadline!.add(const Duration(days: 1))
+        : today;
 
     final picked = await showDatePicker(
       context: context,
@@ -237,7 +243,9 @@ class _CreateHackathonViewState extends State<CreateHackathonView> {
 
   Future<void> _pickEndDate() async {
     final now = DateTime.now();
-    final base = startDate ?? now;
+    final base = startDate != null
+        ? startDate!.add(const Duration(days: 1))
+        : now;
 
     final picked = await showDatePicker(
       context: context,
@@ -274,16 +282,17 @@ class _CreateHackathonViewState extends State<CreateHackathonView> {
       return;
     }
 
-    if (applicationDeadline!.isBefore(applicationOpenDate!)) {
+    if (!applicationDeadline!.isAfter(applicationOpenDate!)) {
       setState(() {
-        applicationDeadlineError = "Must be after registration opens";
+        applicationDeadlineError =
+        "Close date must be at least one day after open date";
       });
       return;
     }
 
-    if (startDate!.isBefore(applicationDeadline!)) {
+    if (!endDate!.isAfter(startDate!)) {
       setState(() {
-        startDateError = "Must be on or after registration deadline";
+        endDateError = "End date must be at least one day after start date";
       });
       return;
     }
@@ -393,7 +402,6 @@ class _CreateHackathonViewState extends State<CreateHackathonView> {
 
   @override
   Widget build(BuildContext context) {
-    
     return Scaffold(
       backgroundColor: Colors.white,
       appBar: BuildMateAppBar(
@@ -540,7 +548,8 @@ class _CreateHackathonViewState extends State<CreateHackathonView> {
                                     title: Text("Select Roles (max $maxRoles)"),
                                     content: SingleChildScrollView(
                                       child: Column(
-                                        children: availableRoles.map((role) {
+                                        children:
+                                        availableRoles.map((role) {
                                           final isSelected =
                                           tempSelected.contains(role);
                                           final isDisabled = !isSelected &&
@@ -566,8 +575,8 @@ class _CreateHackathonViewState extends State<CreateHackathonView> {
                                                     tempSelected.add(role);
                                                   }
                                                 } else {
-                                                  tempSelected.remove(
-                                                      role);
+                                                  tempSelected
+                                                      .remove(role);
                                                 }
                                               });
                                             },
@@ -578,7 +587,8 @@ class _CreateHackathonViewState extends State<CreateHackathonView> {
                                     actions: [
                                       if (tempSelected.length >= maxRoles)
                                         Padding(
-                                          padding: const EdgeInsets.symmetric(
+                                          padding:
+                                          const EdgeInsets.symmetric(
                                             horizontal: 16,
                                             vertical: 4,
                                           ),
@@ -640,12 +650,14 @@ class _CreateHackathonViewState extends State<CreateHackathonView> {
                         Padding(
                           padding: const EdgeInsets.only(top: 8),
                           child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
+                            crossAxisAlignment:
+                            CrossAxisAlignment.start,
                             children: [
                               ...List.generate(
                                 otherRoleControllers.length,
                                     (index) => Padding(
-                                  padding: const EdgeInsets.only(bottom: 8),
+                                  padding:
+                                  const EdgeInsets.only(bottom: 8),
                                   child: Row(
                                     children: [
                                       Expanded(
@@ -852,7 +864,9 @@ class _CreateHackathonViewState extends State<CreateHackathonView> {
         onChanged: onChanged,
         validator: validator ??
                 (value) =>
-            (value == null || value.trim().isEmpty) ? "Required" : null,
+            (value == null || value.trim().isEmpty)
+                ? "Required"
+                : null,
         decoration: _fieldDecoration(label: label, icon: icon, hint: hint),
       ),
     );

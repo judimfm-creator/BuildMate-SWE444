@@ -19,11 +19,25 @@ class OtherUserProfilePage extends StatefulWidget {
   State<OtherUserProfilePage> createState() => _OtherUserProfilePageState();
 }
 
-class _OtherUserProfilePageState extends State<OtherUserProfilePage> {
+class _OtherUserProfilePageState extends State<OtherUserProfilePage>
+    with SingleTickerProviderStateMixin {
+  late TabController _tabController;
   final UserService _userService = UserService();
 
   final Color primaryPurple = const Color(0xFF7A62B3);
   final Color lightPurpleBG = const Color(0xFFF5F3FF);
+
+  @override
+  void initState() {
+    super.initState();
+    _tabController = TabController(length: 2, vsync: this);
+  }
+
+  @override
+  void dispose() {
+    _tabController.dispose();
+    super.dispose();
+  }
 
   Future<void> _launchURL(String? urlString) async {
     if (urlString == null || urlString.trim().isEmpty) return;
@@ -34,7 +48,7 @@ class _OtherUserProfilePageState extends State<OtherUserProfilePage> {
     }
 
     final Uri url = Uri.parse(cleanUrl);
-    await launchUrl(url, mode: LaunchMode.inAppWebView);
+    await launchUrl(url, mode: LaunchMode.inAppBrowserView);
   }
 
   @override
@@ -42,7 +56,7 @@ class _OtherUserProfilePageState extends State<OtherUserProfilePage> {
     return Scaffold(
       backgroundColor: Colors.white,
       appBar: BuildMateAppBar(
-        titleText: "Profile",
+        titleText: '',
         showBack: true,
         onBack: () => Navigator.pop(context),
       ),
@@ -56,104 +70,88 @@ class _OtherUserProfilePageState extends State<OtherUserProfilePage> {
           final user = snapshot.data;
 
           if (user == null) {
-            return const Center(
-              child: Text("User profile not found"),
-            );
+            return const Center(child: Text("User profile not found"));
           }
 
-          return SingleChildScrollView(
-            padding: const EdgeInsets.all(16),
-            child: Column(
-              children: [
-                const SizedBox(height: 10),
-                _buildProfileHeader(user),
-                const SizedBox(height: 24),
-
-                _buildInfoCard(
-                  title: "Basic Information",
-                  children: [
-                    _infoRow("Full Name", user.fullName),
-                    _divider(),
-                    _infoRow("Username", "@${user.username}"),
-                    _divider(),
-                    _infoRow("Email", user.email),
-                    _divider(),
-                    _infoRow("Phone Number", user.phoneNumber),
-                    _divider(),
-                    _infoRow("City", user.city ?? 'N/A'),
-                    _divider(),
-                    _infoRow("Gender", user.gender ?? 'N/A'),
-                  ],
-                ),
-
-                const SizedBox(height: 18),
-
-                _buildInfoCard(
-                  title: "Biography",
-                  children: [
-                    Text(
-                      (user.bio != null && user.bio!.trim().isNotEmpty)
-                          ? user.bio!
-                          : 'No biography added',
+          return CustomScrollView(
+            slivers: [
+              SliverAppBar(
+                pinned: false,
+                floating: false,
+                backgroundColor: primaryPurple.withOpacity(0.05),
+                surfaceTintColor: primaryPurple.withOpacity(0.05),
+                elevation: 0,
+                toolbarHeight: 38,
+                expandedHeight: 38,
+                automaticallyImplyLeading: false,
+                primary: false,
+                flexibleSpace: FlexibleSpaceBar(
+                  centerTitle: true,
+                  titlePadding: EdgeInsets.zero,
+                  title: Container(
+                    alignment: Alignment.center,
+                    child: Text(
+                      user.fullName,
                       style: TextStyle(
-                        fontSize: 14,
-                        color: Colors.grey.shade700,
-                        height: 1.5,
+                        color: primaryPurple,
+                        fontWeight: FontWeight.w800,
+                        fontSize: 16,
+                        letterSpacing: 0.5,
                       ),
                     ),
-                  ],
+                  ),
                 ),
+              ),
 
-                const SizedBox(height: 18),
-
-                _buildInfoCard(
-                  title: "Skills",
+              SliverToBoxAdapter(
+                child: Column(
                   children: [
-                    _buildSkillsChips(user.skills),
-                  ],
-                ),
+                    const SizedBox(height: 20),
+                    _buildProfileHeader(user),
+                    const SizedBox(height: 35),
 
-                const SizedBox(height: 18),
-
-                _buildInfoCard(
-                  title: "Portfolio Links",
-                  children: [
                     Row(
                       mainAxisAlignment: MainAxisAlignment.center,
                       children: [
-                        if (user.linkedin != null && user.linkedin!.isNotEmpty)
-                          IconButton(
-                            icon: const Icon(
-                              FontAwesomeIcons.linkedin,
-                              color: Color(0xFF7A62B3),
-                            ),
-                            onPressed: () => _launchURL(user.linkedin),
+                        Icon(Icons.bolt, color: primaryPurple, size: 24),
+                        const SizedBox(width: 8),
+                        const Text(
+                          "Skills",
+                          style: TextStyle(
+                            fontSize: 18,
+                            fontWeight: FontWeight.bold,
+                            color: Colors.black,
                           ),
-                        if (user.github != null && user.github!.isNotEmpty)
-                          IconButton(
-                            icon: const Icon(
-                              FontAwesomeIcons.github,
-                              color: Color(0xFF7A62B3),
-                            ),
-                            onPressed: () => _launchURL(user.github),
-                          ),
+                        ),
                       ],
                     ),
-                    if ((user.linkedin == null || user.linkedin!.isEmpty) &&
-                        (user.github == null || user.github!.isEmpty))
-                      Text(
-                        "No portfolio links added",
-                        style: TextStyle(
-                          fontSize: 14,
-                          color: Colors.grey.shade500,
-                        ),
-                      ),
+                    const SizedBox(height: 15),
+                    _buildSkillsChips(user.skills),
+                    const SizedBox(height: 35),
+                    _buildTabBarSection(),
                   ],
                 ),
+              ),
 
-                const SizedBox(height: 24),
-              ],
-            ),
+              SliverToBoxAdapter(
+                child: SizedBox(
+                  height: 500,
+                  child: TabBarView(
+                    controller: _tabController,
+                    children: [
+                      _buildEmptyPlaceholder(
+                        "No ongoing hackathons",
+                        Icons.rocket_launch_outlined,
+                      ),
+                      _buildEmptyPlaceholder(
+                        "No previous projects",
+                        Icons.history,
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ],
           );
         },
       ),
@@ -193,76 +191,42 @@ class _OtherUserProfilePageState extends State<OtherUserProfilePage> {
             color: primaryPurple,
           ),
         ),
-      ],
-    );
-  }
-
-  Widget _buildInfoCard({
-    required String title,
-    required List<Widget> children,
-  }) {
-    return Container(
-      width: double.infinity,
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: lightPurpleBG,
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: primaryPurple.withOpacity(0.15)),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(
-            title,
-            style: TextStyle(
-              fontSize: 16,
-              fontWeight: FontWeight.bold,
-              color: primaryPurple,
+        if (user.bio != null && user.bio!.isNotEmpty)
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 40, vertical: 8),
+            child: Text(
+              user.bio!,
+              textAlign: TextAlign.center,
+              style: TextStyle(
+                fontSize: 13,
+                color: Colors.grey.shade700,
+                height: 1.4,
+              ),
             ),
           ),
-          const SizedBox(height: 14),
-          ...children,
-        ],
-      ),
-    );
-  }
-
-  Widget _infoRow(String label, String value) {
-    return Row(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        SizedBox(
-          width: 105,
-          child: Text(
-            "$label:",
-            style: const TextStyle(
-              fontWeight: FontWeight.w600,
-              fontSize: 13,
-              color: Colors.black87,
-            ),
-          ),
-        ),
-        Expanded(
-          child: Text(
-            value,
-            style: TextStyle(
-              fontSize: 13,
-              color: Colors.grey.shade700,
-              height: 1.4,
-            ),
-          ),
+        const SizedBox(height: 10),
+        Row(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            if (user.linkedin != null && user.linkedin!.isNotEmpty)
+              IconButton(
+                icon: const Icon(
+                  FontAwesomeIcons.linkedin,
+                  color: Color(0xFF7A62B3),
+                ),
+                onPressed: () => _launchURL(user.linkedin),
+              ),
+            if (user.github != null && user.github!.isNotEmpty)
+              IconButton(
+                icon: const Icon(
+                  FontAwesomeIcons.github,
+                  color: Color(0xFF7A62B3),
+                ),
+                onPressed: () => _launchURL(user.github),
+              ),
+          ],
         ),
       ],
-    );
-  }
-
-  Widget _divider() {
-    return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 12),
-      child: Divider(
-        height: 1,
-        color: primaryPurple.withOpacity(0.12),
-      ),
     );
   }
 
@@ -271,48 +235,77 @@ class _OtherUserProfilePageState extends State<OtherUserProfilePage> {
 
     if (skillsData is List) {
       skills = skillsData.map((e) => e.toString()).toList();
-    } else if (skillsData is String && skillsData.trim().isNotEmpty) {
+    } else if (skillsData is String && skillsData.isNotEmpty) {
       skills = skillsData.split(',').map((s) => s.trim()).toList();
     }
 
-    if (skills.isEmpty) {
-      return Text(
-        "No skills added",
-        style: TextStyle(
-          fontSize: 14,
-          color: Colors.grey.shade500,
-        ),
-      );
-    }
+    if (skills.isEmpty) return const SizedBox();
 
-    return Wrap(
-      spacing: 10,
-      runSpacing: 10,
-      children: skills
-          .map(
-            (skill) => Container(
-              padding: const EdgeInsets.symmetric(
-                horizontal: 18,
-                vertical: 10,
-              ),
-              decoration: BoxDecoration(
-                color: primaryPurple.withOpacity(0.1),
-                borderRadius: BorderRadius.circular(20),
-                border: Border.all(
-                  color: primaryPurple.withOpacity(0.4),
-                ),
-              ),
-              child: Text(
-                skill,
-                style: TextStyle(
-                  color: primaryPurple,
-                  fontSize: 13,
-                  fontWeight: FontWeight.bold,
-                ),
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 25),
+      child: Wrap(
+        alignment: WrapAlignment.center,
+        spacing: 10,
+        runSpacing: 10,
+        children: skills
+            .map(
+              (skill) => Container(
+            padding: const EdgeInsets.symmetric(
+              horizontal: 18,
+              vertical: 10,
+            ),
+            decoration: BoxDecoration(
+              color: primaryPurple.withOpacity(0.1),
+              borderRadius: BorderRadius.circular(20),
+              border: Border.all(
+                color: primaryPurple.withOpacity(0.4),
               ),
             ),
-          )
-          .toList(),
+            child: Text(
+              skill,
+              style: TextStyle(
+                color: primaryPurple,
+                fontSize: 13,
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+          ),
+        )
+            .toList(),
+      ),
+    );
+  }
+
+  Widget _buildTabBarSection() {
+    return TabBar(
+      controller: _tabController,
+      indicatorColor: primaryPurple,
+      labelColor: primaryPurple,
+      unselectedLabelColor: Colors.grey,
+      indicatorWeight: 3,
+      tabs: const [
+        Tab(text: "Ongoing"),
+        Tab(text: "Previous"),
+      ],
+    );
+  }
+
+  Widget _buildEmptyPlaceholder(String text, IconData icon) {
+    return Center(
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Icon(icon, size: 40, color: Colors.grey.shade300),
+          const SizedBox(height: 10),
+          Text(
+            text,
+            style: TextStyle(
+              color: Colors.grey.shade400,
+              fontSize: 14,
+            ),
+          ),
+        ],
+      ),
     );
   }
 }

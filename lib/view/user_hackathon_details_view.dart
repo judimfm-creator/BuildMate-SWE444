@@ -11,392 +11,253 @@ class UserHackathonDetailsView extends StatelessWidget {
   });
 
   static const Color purple = Color(0xFF6D56B3);
-  static const Color lightPurple = Color(0xFFF8F5FF);
-  static const Color borderPurple = Color(0xFFE8DFF8);
-  static const Color green = Color(0xFF7CB342);
-  static const Color lightGreen = Color(0xFFEAF7DF);
-  static const Color orange = Color(0xFFF39C12);
-  static const Color lightOrange = Color(0xFFFFF3E0);
-  static const Color blue = Color(0xFF1E88E5);
-  static const Color lightBlue = Color(0xFFEAF4FF);
-  static const Color grey = Color(0xFF757575);
-  static const Color lightGrey = Color(0xFFF3F3F3);
+  static const Color lightPurple = Color(0xFFF0EEFF);
 
-  String _formatDate(DateTime date) {
-    return "${date.day.toString().padLeft(2, '0')}/"
-        "${date.month.toString().padLeft(2, '0')}/"
-        "${date.year}";
-  }
-
-  Map<String, dynamic> _getHackathonStatus() {
-    final now = DateTime.now();
-    final today = DateTime(now.year, now.month, now.day);
-
-    final registrationOpen = DateTime(
-      hackathon.applicationOpenDate.year,
-      hackathon.applicationOpenDate.month,
-      hackathon.applicationOpenDate.day,
-    );
-
-    final registrationDeadline = DateTime(
-      hackathon.applicationDeadline.year,
-      hackathon.applicationDeadline.month,
-      hackathon.applicationDeadline.day,
-    );
-
-    final start = DateTime(
-      hackathon.startDate.year,
-      hackathon.startDate.month,
-      hackathon.startDate.day,
-    );
-
-    final end = DateTime(
-      hackathon.endDate.year,
-      hackathon.endDate.month,
-      hackathon.endDate.day,
-    );
-
-    if (today.isBefore(registrationOpen)) {
-      return {
-        'label': 'Upcoming Registration',
-        'color': orange,
-        'bgColor': lightOrange,
-      };
-    }
-
-    if ((today.isAtSameMomentAs(registrationOpen) ||
-        today.isAfter(registrationOpen)) &&
-        (today.isAtSameMomentAs(registrationDeadline) ||
-            today.isBefore(registrationDeadline))) {
-      return {
-        'label': 'Registration Open',
-        'color': blue,
-        'bgColor': lightBlue,
-      };
-    }
-
-    if ((today.isAtSameMomentAs(start) || today.isAfter(start)) &&
-        (today.isAtSameMomentAs(end) || today.isBefore(end))) {
-      return {
-        'label': 'Ongoing',
-        'color': green,
-        'bgColor': lightGreen,
-      };
-    }
-
-    if (today.isAfter(end)) {
-      return {
-        'label': 'Completed',
-        'color': grey,
-        'bgColor': lightGrey,
-      };
-    }
-
-    return {
-      'label': 'Upcoming',
-      'color': orange,
-      'bgColor': lightOrange,
-    };
+  String _formatDate(DateTime d) {
+    return "${d.day.toString().padLeft(2, '0')}/"
+        "${d.month.toString().padLeft(2, '0')}/"
+        "${d.year}";
   }
 
   @override
   Widget build(BuildContext context) {
-    final status = _getHackathonStatus();
+    final DateTime now = DateTime.now();
+    final bool regNotStarted = now.isBefore(hackathon.applicationOpenDate);
+    final bool regClosed = now.isAfter(hackathon.applicationDeadline);
 
     return Scaffold(
       backgroundColor: Colors.white,
       appBar: BuildMateAppBar(
-        titleText: hackathon.name,
+        titleText: "Hackathon Details",
         showBack: true,
         onBack: () => Navigator.pop(context),
       ),
       body: SingleChildScrollView(
-        padding: const EdgeInsets.fromLTRB(16, 12, 16, 24),
+        padding: const EdgeInsets.all(16),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            _buildTopBanner(status),
-            const SizedBox(height: 18),
-            _buildTitleBlock(),
+            _buildSimpleStatusBadge(regNotStarted, regClosed),
+            const SizedBox(height: 12),
+
+            Text(
+              "By ${hackathon.organizationName ?? 'Organizer'}",
+              style: TextStyle(
+                fontWeight: FontWeight.bold,
+                color: purple.withOpacity(0.7),
+                fontSize: 13,
+              ),
+            ),
+            const SizedBox(height: 4),
+
+            Text(
+              hackathon.name,
+              style: const TextStyle(
+                fontSize: 24,
+                fontWeight: FontWeight.bold,
+                color: Colors.black,
+              ),
+            ),
+
+            const SizedBox(height: 16),
+
+            _sectionTitle("Description"),
+            Text(
+              hackathon.description,
+              style: TextStyle(
+                fontSize: 14,
+                color: Colors.grey.shade700,
+                height: 1.6,
+              ),
+            ),
+
             const SizedBox(height: 22),
 
             _sectionTitle("Event Details"),
-            _softCard(
-              child: Column(
-                children: [
-                  _infoRow(Icons.category_outlined, "Domain", hackathon.domain),
-                  _divider(),
-                  _infoRow(Icons.public_outlined, "Mode", hackathon.mode),
-                  _divider(),
-                  _infoRow(
-                    Icons.groups_2_outlined,
-                    "Team Size",
-                    "${hackathon.teamSize} members",
-                  ),
-                  _divider(),
-                  _infoRow(
-                    Icons.school_outlined,
-                    "Education",
-                    hackathon.educationCriteria,
-                  ),
-                ],
+            _infoCard([
+              _row(Icons.category_outlined, "Domain", hackathon.domain),
+              _row(Icons.public_outlined, "Mode", hackathon.mode),
+              _row(Icons.location_city_outlined, "City", hackathon.city),
+              _row(Icons.place_outlined, "Location", hackathon.location),
+              _row(
+                Icons.groups_outlined,
+                "Team Size",
+                hackathon.teamSize > 2
+                    ? "2 - ${hackathon.teamSize} members"
+                    : "2 members",
               ),
-            ),
-
-            const SizedBox(height: 18),
-
-            _sectionTitle("Location"),
-            _softCard(
-              child: Column(
-                children: [
-                  _infoRow(Icons.location_city_outlined, "City", hackathon.city),
-                  _divider(),
-                  _infoRow(Icons.place_outlined, "Location", hackathon.location),
-                ],
+              _row(
+                Icons.school_outlined,
+                "Education",
+                hackathon.educationCriteria,
               ),
-            ),
+            ]),
 
-            const SizedBox(height: 18),
+            const SizedBox(height: 16),
 
-            _sectionTitle("Team Registration"),
-            _softCard(
-              child: Column(
-                children: [
-                  _infoRow(
-                    Icons.how_to_reg_outlined,
-                    "Registration Opens",
-                    _formatDate(hackathon.applicationOpenDate),
-                  ),
-                  _divider(),
-                  _infoRow(
-                    Icons.event_busy_outlined,
-                    "Registration Deadline",
-                    _formatDate(hackathon.applicationDeadline),
-                  ),
-                ],
+            _sectionTitle("Important Dates"),
+            _infoCard([
+              _row(
+                Icons.calendar_month_outlined,
+                "Registration Starts",
+                _formatDate(hackathon.applicationOpenDate),
               ),
-            ),
-
-            const SizedBox(height: 18),
-
-            _sectionTitle("Hackathon Dates"),
-            _softCard(
-              child: Column(
-                children: [
-                  _infoRow(
-                    Icons.event_outlined,
-                    "Start Date",
-                    _formatDate(hackathon.startDate),
-                  ),
-                  _divider(),
-                  _infoRow(
-                    Icons.event_available_outlined,
-                    "End Date",
-                    _formatDate(hackathon.endDate),
-                  ),
-                ],
+              _row(
+                Icons.timer_outlined,
+                "Registration Deadline",
+                _formatDate(hackathon.applicationDeadline),
               ),
-            ),
-
-            const SizedBox(height: 18),
-
-            _sectionTitle("Roles Needed"),
-            hackathon.rolesNeeded.isEmpty
-                ? const Text(
-              "No roles specified",
-              style: TextStyle(
-                fontSize: 14,
-                color: Colors.black54,
+              _row(
+                Icons.event_outlined,
+                "Start Date",
+                _formatDate(hackathon.startDate),
               ),
-            )
-                : Wrap(
-              spacing: 10,
-              runSpacing: 10,
-              children: hackathon.rolesNeeded.map((role) {
-                return Container(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 14,
-                    vertical: 8,
-                  ),
-                  decoration: BoxDecoration(
-                    color: const Color(0xFFEDE7F8),
-                    borderRadius: BorderRadius.circular(20),
-                    border: Border.all(
-                      color: purple.withOpacity(0.18),
-                    ),
-                  ),
-                  child: Text(
-                    role,
-                    style: const TextStyle(
-                      color: Color(0xFF5F4AA2),
-                      fontSize: 13,
-                      fontWeight: FontWeight.w500,
-                    ),
-                  ),
-                );
-              }).toList(),
-            ),
+              _row(
+                Icons.event_available_outlined,
+                "End Date",
+                _formatDate(hackathon.endDate),
+              ),
+            ]),
+
+            const SizedBox(height: 16),
+
+            if (hackathon.rolesNeeded.isNotEmpty) ...[
+              _sectionTitle("Roles Needed"),
+              _buildRolesSection(),
+            ],
+
+            const SizedBox(height: 40),
           ],
         ),
       ),
     );
   }
 
-  Widget _buildTopBanner(Map<String, dynamic> status) {
+  Widget _buildSimpleStatusBadge(bool regNotStarted, bool regClosed) {
+    String label = "Registration Open";
+    Color color = Colors.green;
+
+    if (regNotStarted) {
+      label = "Upcoming";
+      color = Colors.orange;
+    } else if (regClosed) {
+      label = "Registration Closed";
+      color = Colors.red;
+    }
+
+    return Row(
+      children: [
+        Icon(
+          regClosed ? Icons.lock_outline : Icons.check_circle_outline,
+          color: color,
+          size: 16,
+        ),
+        const SizedBox(width: 6),
+        Text(
+          label,
+          style: TextStyle(
+            color: color,
+            fontWeight: FontWeight.bold,
+            fontSize: 13,
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _infoCard(List<Widget> rows) {
     return Container(
       width: double.infinity,
-      height: 150,
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
         color: lightPurple,
-        borderRadius: BorderRadius.circular(18),
-      ),
-      child: Stack(
-        children: [
-          const Align(
-            alignment: Alignment.center,
-            child: Icon(
-              Icons.emoji_events_outlined,
-              color: purple,
-              size: 54,
-            ),
-          ),
-          Align(
-            alignment: Alignment.topRight,
-            child: Container(
-              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
-              decoration: BoxDecoration(
-                color: status['bgColor'],
-                borderRadius: BorderRadius.circular(20),
-                border: Border.all(
-                  color: (status['color'] as Color).withOpacity(0.35),
-                ),
-              ),
-              child: Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  CircleAvatar(
-                    radius: 4,
-                    backgroundColor: status['color'],
-                  ),
-                  const SizedBox(width: 6),
-                  Text(
-                    status['label'],
-                    style: TextStyle(
-                      color: status['color'],
-                      fontSize: 12,
-                      fontWeight: FontWeight.w600,
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildTitleBlock() {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text(
-          hackathon.name,
-          style: const TextStyle(
-            fontSize: 18,
-            fontWeight: FontWeight.w700,
-            color: Color(0xFF4F3B8F),
-          ),
-        ),
-        const SizedBox(height: 6),
-        Text(
-          hackathon.description,
-          style: TextStyle(
-            fontSize: 14,
-            color: Colors.grey.shade700,
-            height: 1.45,
-          ),
-        ),
-      ],
-    );
-  }
-
-  Widget _sectionTitle(String text) {
-    return Padding(
-      padding: const EdgeInsets.only(bottom: 8),
-      child: Text(
-        text,
-        style: const TextStyle(
-          fontSize: 17,
-          fontWeight: FontWeight.w700,
-          color: Colors.black87,
-        ),
-      ),
-    );
-  }
-
-  Widget _softCard({required Widget child}) {
-    return Container(
-      width: double.infinity,
-      padding: const EdgeInsets.all(14),
-      decoration: BoxDecoration(
-        color: lightPurple,
         borderRadius: BorderRadius.circular(14),
-        border: Border.all(color: borderPurple),
       ),
-      child: child,
+      child: Column(
+        children: rows
+            .expand(
+              (w) => [
+            w,
+            if (w != rows.last)
+              Divider(
+                color: purple.withOpacity(0.1),
+                height: 16,
+              ),
+          ],
+        )
+            .toList(),
+      ),
     );
   }
 
-  Widget _divider() {
-    return const Padding(
-      padding: EdgeInsets.symmetric(vertical: 8),
-      child: Divider(
-        height: 1,
-        thickness: 1,
-        color: borderPurple,
-      ),
-    );
-  }
-
-  Widget _infoRow(IconData icon, String label, String value) {
+  Widget _row(IconData icon, String label, String value) {
     return Row(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Icon(
-          icon,
-          size: 17,
-          color: purple,
+        Icon(icon, size: 18, color: purple),
+        const SizedBox(width: 12),
+        Text(
+          "$label: ",
+          style: const TextStyle(
+            fontWeight: FontWeight.bold,
+            fontSize: 13,
+          ),
         ),
-        const SizedBox(width: 10),
         Expanded(
-          child: RichText(
-            text: TextSpan(
-              style: const TextStyle(
-                fontSize: 14,
-                color: Colors.black87,
-                height: 1.4,
-              ),
-              children: [
-                TextSpan(
-                  text: "$label: ",
-                  style: const TextStyle(
-                    fontWeight: FontWeight.w600,
-                  ),
-                ),
-                TextSpan(
-                  text: value.isEmpty ? "-" : value,
-                  style: TextStyle(
-                    color: Colors.grey.shade800,
-                    fontWeight: FontWeight.w400,
-                  ),
-                ),
-              ],
+          child: Text(
+            value,
+            style: TextStyle(
+              fontSize: 13,
+              color: Colors.grey.shade700,
             ),
           ),
         ),
       ],
+    );
+  }
+
+  Widget _sectionTitle(String title) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 8, top: 12),
+      child: Text(
+        title,
+        style: const TextStyle(
+          fontSize: 16,
+          fontWeight: FontWeight.bold,
+        ),
+      ),
+    );
+  }
+
+  Widget _buildRolesSection() {
+    return Wrap(
+      spacing: 8,
+      runSpacing: 8,
+      children: hackathon.rolesNeeded
+          .map(
+            (role) => Container(
+          padding: const EdgeInsets.symmetric(
+            horizontal: 12,
+            vertical: 6,
+          ),
+          decoration: BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.circular(20),
+            border: Border.all(
+              color: purple.withOpacity(0.3),
+            ),
+          ),
+          child: Text(
+            role,
+            style: const TextStyle(
+              fontSize: 12,
+              color: purple,
+              fontWeight: FontWeight.w500,
+            ),
+          ),
+        ),
+      )
+          .toList(),
     );
   }
 }

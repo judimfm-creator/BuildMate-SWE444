@@ -1,19 +1,18 @@
 import 'dart:io';
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 import 'package:font_awesome_flutter/font_awesome_flutter.dart';
 import 'package:url_launcher/url_launcher.dart';
-import 'package:firebase_auth/firebase_auth.dart';
+
+import 'package:provider/provider.dart';
+import 'package:buildmate/viewmodel/register_view_model.dart';
 
 import 'package:buildmate/viewmodel/profile_view_model.dart';
 import 'package:buildmate/model/user_model.dart';
-import 'package:buildmate/model/team_model.dart';
 import 'package:buildmate/model/hackathon.dart';
 import 'package:buildmate/view/profile_management_page.dart';
 import 'package:buildmate/widgets/buildmate_app_bar.dart';
-
-import '../services/team_service.dart';
-import '../services/hackathon_service.dart';
-import '../widgets/user_hackathon_card.dart';
+import 'package:buildmate/widgets/user_hackathon_card.dart';
 
 class ProfilePage extends StatefulWidget {
   const ProfilePage({super.key});
@@ -26,8 +25,6 @@ class _ProfilePageState extends State<ProfilePage>
     with SingleTickerProviderStateMixin {
   late TabController _tabController;
   final ProfileViewModel _viewModel = ProfileViewModel();
-  final TeamService _teamService = TeamService();
-  final HackathonService _hackathonService = HackathonService();
 
   final Color primaryPurple = const Color(0xFF7A62B3);
   final Color lightPurpleBG = const Color(0xFFF5F3FF);
@@ -51,17 +48,60 @@ class _ProfilePageState extends State<ProfilePage>
     String cleanUrl = urlString.trim();
     if (!cleanUrl.startsWith('http')) cleanUrl = 'https://$cleanUrl';
     final Uri url = Uri.parse(cleanUrl);
-    await launchUrl(url, mode: LaunchMode.inAppWebView);
+    await launchUrl(url, mode: LaunchMode.inAppBrowserView);
+  }
+
+  Future<List<Map<String, dynamic>>> _getUserHackathons(String userId) async {
+    final teamPostsSnapshot = await FirebaseFirestore.instance
+        .collection('team_posts')
+        .where('members', arrayContains: userId)
+        .get();
+
+    List<Map<String, dynamic>> result = [];
+
+    for (var doc in teamPostsSnapshot.docs) {
+      final data = doc.data();
+
+      final String hackathonId = (data['hackathonId'] ?? '').toString();
+      final List members = data['members'] ?? [];
+      final String status = (data['status'] ?? 'pending_approval').toString();
+
+      if (hackathonId.isEmpty) continue;
+
+      final hackathonDoc = await FirebaseFirestore.instance
+          .collection('hackathons')
+          .doc(hackathonId)
+          .get();
+
+      if (hackathonDoc.exists) {
+        final hackathon = Hackathon.fromFirestore(hackathonDoc);
+
+        result.add({
+          'hackathon': hackathon,
+          'membersCount': members.length,
+          'status': status,
+        });
+      }
+    }
+
+    return result;
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: Colors.white,
-      appBar: const BuildMateAppBar(
-        titleText: '',
+
+
+      appBar: BuildMateAppBar(
+        titleText: null,
         showBack: false,
+        onLogout: () async => await Provider.of<RegisterViewModel>(
+          context,
+          listen: false,
+        ).logout(context),
       ),
+
       body: StreamBuilder<UserModel?>(
         stream: _viewModel.userDataStream,
         builder: (context, snapshot) {
@@ -75,20 +115,16 @@ class _ProfilePageState extends State<ProfilePage>
           }
 
           return CustomScrollView(
-            // لضمان عدم وجود مسافات تلقائية في الأعلى
             slivers: [
-              // 1. البار الثابت (الاسم) ملاصق للـ AppBar العلوي
               SliverAppBar(
                 pinned: false,
                 floating: false,
                 backgroundColor: primaryPurple.withOpacity(0.05),
                 surfaceTintColor: primaryPurple.withOpacity(0.05),
                 elevation: 0,
-                // تقليل الارتفاع ليصبح شريطاً نحيفاً وملاصقاً
                 toolbarHeight: 38,
                 expandedHeight: 38,
                 automaticallyImplyLeading: false,
-                // إزالة أي مسافات إضافية
                 primary: false,
                 flexibleSpace: FlexibleSpaceBar(
                   centerTitle: true,
@@ -108,19 +144,15 @@ class _ProfilePageState extends State<ProfilePage>
                 ),
               ),
 
-              // 2. محتوى الصفحة
               SliverToBoxAdapter(
                 child: Column(
                   children: [
-                    // تم تقليل المسافة هنا لتبدأ الصورة مباشرة تحت الاسم الثابت بشكل أنيق
                     const SizedBox(height: 20),
-
                     _buildProfileHeader(user),
                     const SizedBox(height: 25),
                     _buildManageButton(),
                     const SizedBox(height: 40),
 
-                    // عنوان المهارات
                     Row(
                       mainAxisAlignment: MainAxisAlignment.center,
                       children: [
@@ -139,6 +171,7 @@ class _ProfilePageState extends State<ProfilePage>
                     const SizedBox(height: 15),
                     _buildSkillsChips(user.skills),
                     const SizedBox(height: 35),
+
                     _buildTabBarSection(),
                   ],
                 ),
@@ -146,13 +179,12 @@ class _ProfilePageState extends State<ProfilePage>
 
               SliverToBoxAdapter(
                 child: SizedBox(
-                  // نعطي ارتفاعاً كافياً للتابات لكي تظهر كاملة
-                  height: 500, // يمكنكِ تعديل هذا الرقم حسب طول المحتوى المتوقع
+                  height: 520,
                   child: TabBarView(
                     controller: _tabController,
                     children: [
-                      _buildOngoingHackathonsTab(),
-                      _buildEmptyPlaceholder("No previous projects", Icons.history),
+                      _buildOngoingHackathonsTab(user.uid),
+                      _buildPreviousHackathonsTab(user.uid),
                     ],
                   ),
                 ),
@@ -164,8 +196,11 @@ class _ProfilePageState extends State<ProfilePage>
     );
   }
 
+
+
   Widget _buildProfileHeader(UserModel user) {
     ImageProvider? profileImage;
+
     if (user.profilePhotoPath != null && user.profilePhotoPath!.isNotEmpty) {
       if (user.profilePhotoPath!.startsWith('http')) {
         profileImage = NetworkImage(user.profilePhotoPath!);
@@ -219,13 +254,7 @@ class _ProfilePageState extends State<ProfilePage>
                   FontAwesomeIcons.linkedin,
                   color: Color(0xFF7A62B3),
                 ),
-                onPressed: () async {
-                  final Uri uri = Uri.parse(user.linkedin!);
-                  await launchUrl(
-                    uri,
-                    mode: LaunchMode.inAppBrowserView,
-                  );
-                },
+                onPressed: () => _launchURL(user.linkedin),
               ),
             if (user.github != null && user.github!.isNotEmpty)
               IconButton(
@@ -233,13 +262,7 @@ class _ProfilePageState extends State<ProfilePage>
                   FontAwesomeIcons.github,
                   color: Color(0xFF7A62B3),
                 ),
-                onPressed: () async {
-                  final Uri uri = Uri.parse(user.github!);
-                  await launchUrl(
-                    uri,
-                    mode: LaunchMode.inAppBrowserView,
-                  );
-                },
+                onPressed: () => _launchURL(user.github),
               ),
           ],
         ),
@@ -257,7 +280,7 @@ class _ProfilePageState extends State<ProfilePage>
           onPressed: () => Navigator.push(
             context,
             MaterialPageRoute(
-              builder: (context) => const ProfileManagementPage(),
+              builder: (_) => const ProfileManagementPage(),
             ),
           ),
           style: ElevatedButton.styleFrom(
@@ -297,9 +320,8 @@ class _ProfilePageState extends State<ProfilePage>
         alignment: WrapAlignment.center,
         spacing: 10,
         runSpacing: 10,
-        children: skills
-            .map(
-              (skill) => Container(
+        children: skills.map((skill) {
+          return Container(
             padding: const EdgeInsets.symmetric(
               horizontal: 18,
               vertical: 10,
@@ -319,9 +341,8 @@ class _ProfilePageState extends State<ProfilePage>
                 fontWeight: FontWeight.bold,
               ),
             ),
-          ),
-        )
-            .toList(),
+          );
+        }).toList(),
       ),
     );
   }
@@ -340,91 +361,41 @@ class _ProfilePageState extends State<ProfilePage>
     );
   }
 
-  Widget _buildOngoingHackathonsTab() {
-    final currentUser = FirebaseAuth.instance.currentUser;
-
-    if (currentUser == null) {
-      return _buildEmptyPlaceholder(
-        "No ongoing hackathons",
-        Icons.rocket_launch_outlined,
-      );
-    }
-
-    return StreamBuilder<List<TeamModel>>(
-      stream: _teamService.getTeamsByMember(currentUser.uid),
+  Widget _buildOngoingHackathonsTab(String userId) {
+    return FutureBuilder<List<Map<String, dynamic>>>(
+      future: _getUserHackathons(userId),
       builder: (context, snapshot) {
-        if (snapshot.connectionState == ConnectionState.waiting) {
+        if (!snapshot.hasData) {
           return const Center(child: CircularProgressIndicator());
         }
 
-        if (snapshot.hasError) {
-          return const Center(
-            child: Text(
-              "Something went wrong",
-              style: TextStyle(fontSize: 14),
-            ),
-          );
+        final now = DateTime.now();
+        final data = snapshot.data!;
+
+        final ongoing = data.where((item) {
+          final h = item['hackathon'] as Hackathon;
+          final status = (item['status'] ?? 'pending_approval').toString();
+
+          final started = !h.startDate.isAfter(now);
+          final notEnded = !h.endDate.isBefore(now);
+
+          return started && notEnded && status == 'approved';
+        }).toList();
+
+        if (ongoing.isEmpty) {
+          return _empty("No ongoing hackathons");
         }
 
-        final teams = snapshot.data ?? [];
-        final hackathonIds = teams
-            .map((team) => team.hackathonId)
-            .where((id) => id.isNotEmpty)
-            .toSet()
-            .toList();
-
-        if (hackathonIds.isEmpty) {
-          return _buildEmptyPlaceholder(
-            "No ongoing hackathons",
-            Icons.rocket_launch_outlined,
-          );
-        }
-
-        return FutureBuilder<List<Hackathon>>(
-          future: _hackathonService.getHackathonsByIds(hackathonIds),
-          builder: (context, hackathonSnapshot) {
-            if (hackathonSnapshot.connectionState == ConnectionState.waiting) {
-              return const Center(child: CircularProgressIndicator());
-            }
-
-            if (hackathonSnapshot.hasError) {
-              return const Center(
-                child: Text(
-                  "Failed to load hackathons",
-                  style: TextStyle(fontSize: 14),
-                ),
-              );
-            }
-
-            final hackathons = hackathonSnapshot.data ?? [];
-            final now = DateTime.now();
-
-            final ongoingHackathons = hackathons.where((hackathon) {
-              final startsBeforeOrNow =
-                  hackathon.startDate.isBefore(now) ||
-                      hackathon.startDate.isAtSameMomentAs(now);
-
-              final endsAfterOrNow =
-                  hackathon.endDate.isAfter(now) ||
-                      hackathon.endDate.isAtSameMomentAs(now);
-
-              return startsBeforeOrNow && endsAfterOrNow;
-            }).toList();
-
-            if (ongoingHackathons.isEmpty) {
-              return _buildEmptyPlaceholder(
-                "No ongoing hackathons",
-                Icons.rocket_launch_outlined,
-              );
-            }
-
-            return ListView.builder(
-              padding: const EdgeInsets.only(top: 12, bottom: 24),
-              itemCount: ongoingHackathons.length,
-              itemBuilder: (context, index) {
-                final hackathon = ongoingHackathons[index];
-                return UserHackathonCard(hackathon: hackathon);
-              },
+        return ListView.builder(
+          shrinkWrap: true,
+          physics: const NeverScrollableScrollPhysics(),
+          itemCount: ongoing.length,
+          itemBuilder: (_, i) {
+            final item = ongoing[i];
+            return UserHackathonCard(
+              hackathon: item['hackathon'] as Hackathon,
+              currentMembers: item['membersCount'] as int,
+              isPrevious: false,
             );
           },
         );
@@ -432,21 +403,50 @@ class _ProfilePageState extends State<ProfilePage>
     );
   }
 
-  Widget _buildEmptyPlaceholder(String text, IconData icon) {
+  Widget _buildPreviousHackathonsTab(String userId) {
+    return FutureBuilder<List<Map<String, dynamic>>>(
+      future: _getUserHackathons(userId),
+      builder: (context, snapshot) {
+        if (!snapshot.hasData) {
+          return const Center(child: CircularProgressIndicator());
+        }
+
+        final now = DateTime.now();
+        final data = snapshot.data!;
+
+        final previous = data.where((item) {
+          final h = item['hackathon'] as Hackathon;
+          final status = (item['status'] ?? 'pending_approval').toString();
+
+          return h.endDate.isBefore(now) && status == 'approved';
+        }).toList();
+
+        if (previous.isEmpty) {
+          return _empty("No previous projects");
+        }
+
+        return ListView.builder(
+          shrinkWrap: true,
+          physics: const NeverScrollableScrollPhysics(),
+          itemCount: previous.length,
+          itemBuilder: (_, i) {
+            final item = previous[i];
+            return UserHackathonCard(
+              hackathon: item['hackathon'] as Hackathon,
+              currentMembers: item['membersCount'] as int,
+              isPrevious: true,
+            );
+          },
+        );
+      },
+    );
+  }
+
+  Widget _empty(String text) {
     return Center(
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          Icon(icon, size: 40, color: Colors.grey.shade300),
-          const SizedBox(height: 10),
-          Text(
-            text,
-            style: TextStyle(
-              color: Colors.grey.shade400,
-              fontSize: 14,
-            ),
-          ),
-        ],
+      child: Text(
+        text,
+        style: TextStyle(color: Colors.grey.shade400),
       ),
     );
   }
