@@ -1,9 +1,14 @@
+import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:intl/intl.dart';
 import '../viewmodel/org_hackathons_view_model.dart';
 import '../model/hackathon.dart';
 import 'hackathon_details_view.dart';
+import 'create_team_post_view.dart'; 
+import 'hackathon_teams_view.dart' as teams_view;
+import 'my_team_post_view.dart';
 
 class ExploreUserView extends StatefulWidget {
   final int initialTabIndex;
@@ -35,11 +40,6 @@ class _ExploreUserViewState extends State<ExploreUserView> with SingleTickerProv
       appBar: AppBar(
         backgroundColor: Colors.white,
         elevation: 0,
-      actions: [
-          IconButton(onPressed: () {}, icon: const Icon(Icons.search, color: _purple)),
-          IconButton(onPressed: () {}, icon: const Icon(Icons.tune_rounded, color: _purple)),
-          const SizedBox(width: 8),
-        ],
         bottom: TabBar(
           controller: _tabController,
           indicatorColor: _purple,
@@ -58,45 +58,79 @@ class _ExploreUserViewState extends State<ExploreUserView> with SingleTickerProv
       ),
     );
   }
+  
+Widget _buildHackathonList() {
+  final vm = context.watch<OrgHackathonsViewModel>();
 
-  Widget _buildHackathonList() {
-    final vm = context.watch<OrgHackathonsViewModel>();
+  return Column(
+    children: [
+      // 1. هنا مربع البحث في أعلى الصفحة يكلم الـ ViewModel
+      _buildSearchBar(vm), 
 
-    return StreamBuilder<List<Hackathon>>(
-      stream: vm.exploreHackathonsStream,
-      builder: (context, snapshot) {
-        if (snapshot.connectionState == ConnectionState.waiting) {
-          return const Center(child: CircularProgressIndicator(color: _purple));
-        }
+      // 2. القائمة تأخذ بقية المساحة
+      Expanded(
+        child: StreamBuilder<List<Hackathon>>(
+          // ✅ نستخدم filteredHackathonsStream لكي يعمل البحث
+          stream: vm.filteredHackathonsStream, 
+          builder: (context, snapshot) {
+            if (snapshot.connectionState == ConnectionState.waiting) {
+              return const Center(child: CircularProgressIndicator(color: _purple));
+            }
 
-        final now = DateTime.now();
-        var list = (snapshot.data ?? []).where((h) => !h.endDate.isBefore(now)).toList();
+            final list = snapshot.data ?? [];
 
-        if (list.isEmpty) return const Center(child: Text("No active hackathons found."));
+            if (list.isEmpty) return const Center(child: Text("No matching hackathons found."));
 
-        return ListView.builder(
-          padding: const EdgeInsets.all(16),
-          itemCount: list.length,
-          itemBuilder: (context, index) => _buildPremiumHackathonCard(list[index]),
-        );
+            return ListView.builder(
+              padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
+              itemCount: list.length,
+              itemBuilder: (context, index) => _buildPremiumHackathonCard(list[index]),
+            );
+          },
+        ),
+      ),
+    ],
+  );
+}
+
+// 3. دالة البحث المحدثة لربط النص بالـ ViewModel
+Widget _buildSearchBar(OrgHackathonsViewModel vm) {
+  return Padding(
+    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+    child: TextField(
+      decoration: InputDecoration(
+        hintText: "Search hackathons,institutions,domain",
+        hintStyle: TextStyle(color: Colors.grey.shade400, fontSize: 14),
+        prefixIcon: const Icon(Icons.search, color: Color(0xFF6D56B3)),
+        filled: true,
+        fillColor: Colors.white,
+        contentPadding: const EdgeInsets.symmetric(vertical: 0),
+        border: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(15),
+          borderSide: BorderSide(color: Colors.grey.shade200),
+        ),
+        enabledBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(15),
+          borderSide: BorderSide(color: Colors.grey.shade200),
+        ),
+        focusedBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(15),
+          borderSide: const BorderSide(color: Color(0xFF6D56B3), width: 1.5),
+        ),
+      ),
+      onChanged: (value) {
+        // ✅ تحديث البحث فورا في الـ ViewModel
+        vm.updateSearchQuery(value);
       },
-    );
-  }
+    ),
+  );
+}
 
   Widget _buildPremiumHackathonCard(Hackathon h) {
-    final now = DateTime.now();
-    
-    // Updated Status Logic
-    String status = "Registration Opening Soon";
-    Color sColor = Colors.orange;
-
-    if (now.isAfter(h.applicationOpenDate) && now.isBefore(h.applicationDeadline)) {
-      status = "Registration Open"; 
-      sColor = Colors.green;
-    } else if (now.isAfter(h.applicationDeadline)) {
-      status = "Registration Closed"; 
-      sColor = Colors.redAccent;
-    }
+    final DateTime now = DateTime.now();
+    final bool regNotStarted = now.isBefore(h.applicationOpenDate);
+    final bool regClosed = now.isAfter(h.applicationDeadline);
+    final String? currentUid = FirebaseAuth.instance.currentUser?.uid;
 
     return Container(
       margin: const EdgeInsets.only(bottom: 24),
@@ -110,22 +144,21 @@ class _ExploreUserViewState extends State<ExploreUserView> with SingleTickerProv
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
+            // --- Header & Badge ---
             Row(
-              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Expanded(
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      // Clear Organizer Name Label
                       Text("By ${h.organizationName ?? "Organizer"}", 
                           style: TextStyle(fontWeight: FontWeight.w600, color: _purple.withOpacity(0.7), fontSize: 12)),
                       const SizedBox(height: 4),
-                      Text(h.name, style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Colors.black)),
+                      Text(h.name, style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
                     ],
                   ),
                 ),
-                _statusBadge(status, sColor),
+                _statusBadge(regNotStarted, regClosed),
               ],
             ),
             
@@ -135,12 +168,8 @@ class _ExploreUserViewState extends State<ExploreUserView> with SingleTickerProv
             const SizedBox(height: 10),
             _buildInfoRow(Icons.location_on_outlined, "Location", "${h.city}, ${h.mode}"),
             const SizedBox(height: 10),
-            // NEW: Team Size added under Location
-_buildInfoRow(
-  Icons.groups_outlined, 
-  "Team Size", 
-  h.teamSize > 2 ? "2 - ${h.teamSize} members" : "2 members"
-),            
+            _buildInfoRow(Icons.groups_outlined, "Team Size", h.teamSize > 2 ? "2 - ${h.teamSize} members" : "2 members"),            
+            
             const SizedBox(height: 20),
             
             Container(
@@ -157,37 +186,136 @@ _buildInfoRow(
             
             const SizedBox(height: 20),
             
-            SizedBox(
-              width: double.infinity,
-              height: 50,
-              child: ElevatedButton(
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: _purple, // Fixed to Purple
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(15)),
-                  elevation: 0,
-                ),
-                onPressed: () {
-                  Navigator.push(
-                    context,
-                    MaterialPageRoute(
-                      builder: (context) => HackathonDetailsView(hackathon: h),
-                    ),
+            _btn("View Full Details", _purple, () {
+              Navigator.push(context, MaterialPageRoute(builder: (context) => HackathonDetailsView(hackathon: h)));
+            }),
+
+            const SizedBox(height: 12),
+
+            // ─── منطق الأزرار الذكي (كلها White/Outlined) ───
+            if (currentUid != null)
+              FutureBuilder<QueryDocumentSnapshot<Map<String, dynamic>>?>(
+                future: _getUserTeamPost(currentUid, h.id ?? ""),
+                builder: (context, teamSnap) {
+                  if (teamSnap.connectionState == ConnectionState.waiting) return const SizedBox();
+
+                  // 1. إذا المستخدم مسجل (Manage/View) - زر أبيض بحدود بنفسجية
+                  if (teamSnap.hasData && teamSnap.data != null) {
+                    final bool isOwner = teamSnap.data!.data()['createdBy'] == currentUid;
+                    return _outlinedBtn(
+                      isOwner ? "Manage My Team" : "View My Team", 
+                      _purple, 
+                      () {
+                        Navigator.push(context, MaterialPageRoute(builder: (context) => MyTeamPostView(
+                          teamPostId: teamSnap.data!.id, 
+                          hackathonId: h.id ?? "", 
+                          hackathonTeamSize: h.teamSize
+                        ))).then((_) => setState(() {})); 
+                      }
+                    );
+                  }
+
+                  // 2. إذا لم يكن مسجلاً - أزرار بجانب بعض (كلها Outlined)
+                  return Column(
+                    children: [
+                      if (regClosed)
+                        _outlinedBtn("Registration Closed", Colors.grey, null)
+                      
+                      else if (regNotStarted)
+                        Row(
+                          children: [
+                            Expanded(child: _outlinedBtn("Create Team Post", Colors.grey, null)),
+                            const SizedBox(width: 10),
+                            Expanded(child: _outlinedBtn("Join Team", Colors.grey, null)),
+                          ],
+                        )
+                      
+                      else
+                        Row(
+                          children: [
+                            Expanded(
+                              child: _outlinedBtn("Create Team Post", _purple, () {
+                                Navigator.push(context, MaterialPageRoute(builder: (context) => CreateTeamPostScreen(hackathonId: h.id ?? "", hackathonTeamSize: h.teamSize)));
+                              }),
+                            ),
+                            const SizedBox(width: 10),
+                            Expanded(
+                              child: _outlinedBtn("Join Existing Team", _purple, () {
+                                Navigator.push(context, MaterialPageRoute(builder: (context) => teams_view.ExploreTeamsView(hackathonId: h.id ?? "", hackathonTeamSize: h.teamSize)));
+                              }),
+                            ),
+                          ],
+                        ),
+                    ],
                   );
                 },
-                child: const Text("View Full Details", style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 16)),
               ),
-            ),
           ],
         ),
       ),
     );
   }
 
-  Widget _statusBadge(String text, Color color) {
+  // --- Helper Methods ---
+
+  Future<QueryDocumentSnapshot<Map<String, dynamic>>?> _getUserTeamPost(String uid, String hid) async {
+    final firestore = FirebaseFirestore.instance;
+    final leader = await firestore.collection('team_posts').where('hackathonId', isEqualTo: hid).where('createdBy', isEqualTo: uid).limit(1).get();
+    if (leader.docs.isNotEmpty) return leader.docs.first;
+    
+    final member = await firestore.collection('team_posts').where('hackathonId', isEqualTo: hid).where('members', arrayContains: uid).limit(1).get();
+    if (member.docs.isNotEmpty) return member.docs.first;
+    return null;
+  }
+
+  Widget _btn(String label, Color color, VoidCallback? onTap) {
+    return SizedBox(
+      width: double.infinity,
+      height: 46,
+      child: ElevatedButton(
+        style: ElevatedButton.styleFrom(
+          backgroundColor: color, 
+          disabledBackgroundColor: Colors.grey.shade300,
+          foregroundColor: Colors.white,
+          elevation: 0,
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12))
+        ),
+        onPressed: onTap,
+        child: Text(label, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13)),
+      ),
+    );
+  }
+
+  Widget _outlinedBtn(String label, Color color, VoidCallback? onTap) {
+    return SizedBox(
+      width: double.infinity,
+      height: 46,
+      child: OutlinedButton(
+        style: OutlinedButton.styleFrom(
+          foregroundColor: color, 
+          side: BorderSide(
+            color: onTap == null ? Colors.grey.shade300 : color, 
+            width: 1.5
+          ),
+          disabledForegroundColor: Colors.grey.shade500,
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+        ),
+        onPressed: onTap,
+        child: Text(label, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13)),
+      ),
+    );
+  }
+
+  Widget _statusBadge(bool ns, bool cl) {
+    String label = "Registration Open";
+    Color color = Colors.green;
+    if (ns) { label = "Registration Opening Soon"; color = Colors.orange; }
+    else if (cl) { label = "Registration Closed"; color = Colors.red; }
+    
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
       decoration: BoxDecoration(color: color.withOpacity(0.1), borderRadius: BorderRadius.circular(10)),
-      child: Text(text.toUpperCase(), style: TextStyle(color: color, fontSize: 8, fontWeight: FontWeight.bold)),
+      child: Text(label.toUpperCase(), style: TextStyle(color: color, fontSize: 8, fontWeight: FontWeight.bold)),
     );
   }
 

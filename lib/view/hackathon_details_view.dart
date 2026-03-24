@@ -183,17 +183,53 @@ class _HackathonDetailsViewState extends State<HackathonDetailsView> {
             ))).then((_) => setState(() {})); 
           });
         }
-        return Column(children: [
-          _btn(notStarted ? "Registration Not Open" : (closed ? "Registration Closed" : "Create Team Post"), 
-            canAct ? _purple : Colors.grey, 
-            canAct ? () => Navigator.push(context, MaterialPageRoute(builder: (context) => CreateTeamPostScreen(hackathonId: hid, hackathonTeamSize: widget.hackathon.teamSize))).then((_) => setState(() {})) : null
-          ),
-          const SizedBox(height: 12),
-          _outlinedBtn(closed ? "Registration Closed" : "Join Existing Team", 
-            canAct ? _purple : Colors.grey, 
-            canAct ? () => Navigator.push(context, MaterialPageRoute(builder: (context) => teams_view.ExploreTeamsView(hackathonId: hid, hackathonTeamSize: widget.hackathon.teamSize))).then((_) => setState(() {})) : null
-          ),
-        ]);
+        return Column(
+  children: [
+    // الحالة الأولى: إذا كان التسجيل مغلقاً (Closed) - نعرض زر واحد فقط
+    if (closed) 
+      _btn(
+        "Registration Closed", 
+        Colors.grey, 
+        null // الزر معطل
+      )
+    
+    // الحالة الثانية: إذا كان التسجيل لم يبدأ بعد (Not Started)
+    else if (notStarted) ...[
+      _btn(
+        "Create Team Post (Opening Soon)", 
+        Colors.grey, 
+        null
+      ),
+      const SizedBox(height: 12),
+      _outlinedBtn(
+        "Join Existing Team (Opening Soon)", 
+        Colors.grey, 
+        null
+      ),
+    ]
+
+    // الحالة الثالثة: التسجيل مفتوح حالياً (Open)
+    else ...[
+      _btn(
+        "Create Team Post", 
+        _purple, 
+        () => Navigator.push(
+          context, 
+          MaterialPageRoute(builder: (context) => CreateTeamPostScreen(hackathonId: hid, hackathonTeamSize: widget.hackathon.teamSize))
+        ).then((_) => setState(() {}))
+      ),
+      const SizedBox(height: 12),
+      _outlinedBtn(
+        "Join Existing Team", 
+        _purple, 
+        () => Navigator.push(
+          context, 
+          MaterialPageRoute(builder: (context) => teams_view.ExploreTeamsView(hackathonId: hid, hackathonTeamSize: widget.hackathon.teamSize))
+        ).then((_) => setState(() {}))
+      ),
+    ],
+  ],
+);
       },
     );
   }

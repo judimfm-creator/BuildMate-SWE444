@@ -232,7 +232,7 @@ class MyTeamPostView extends StatelessWidget {
   }
 
   Widget _buildStatusHeader(bool isSubmitted, int currentMembers) {
-    String statusText = isSubmitted ? "Status: Registered & Locked" : (currentMembers >= hackathonTeamSize ? "Status: Team is Full" : "Status: Building Team");
+    String statusText = isSubmitted ? "Status: Registered" : (currentMembers >= hackathonTeamSize ? "Status: Team is Full" : "Status: Building Team");
     Color statusColor = isSubmitted ? Colors.green : (currentMembers >= hackathonTeamSize ? Colors.orange.shade800 : purple);
     IconData icon = isSubmitted ? Icons.lock_outline : (currentMembers >= hackathonTeamSize ? Icons.stars_outlined : Icons.groups_outlined);
 
