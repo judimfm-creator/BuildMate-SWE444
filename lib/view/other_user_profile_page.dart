@@ -174,7 +174,7 @@ class _OtherUserProfilePageState extends State<OtherUserProfilePage>
 
               SliverToBoxAdapter(
                 child: SizedBox(
-                  height: 500,
+                  height: MediaQuery.of(context).size.height * 0.65,
                   child: TabBarView(
                     controller: _tabController,
                     children: [
@@ -352,8 +352,6 @@ class _OtherUserProfilePageState extends State<OtherUserProfilePage>
         }
 
         return ListView.builder(
-          shrinkWrap: true,
-          physics: const NeverScrollableScrollPhysics(),
           padding: const EdgeInsets.only(top: 12, bottom: 24),
           itemCount: ongoing.length,
           itemBuilder: (_, i) {
@@ -395,8 +393,6 @@ class _OtherUserProfilePageState extends State<OtherUserProfilePage>
         }
 
         return ListView.builder(
-          shrinkWrap: true,
-          physics: const NeverScrollableScrollPhysics(),
           padding: const EdgeInsets.only(top: 12, bottom: 24),
           itemCount: previous.length,
           itemBuilder: (_, i) {
