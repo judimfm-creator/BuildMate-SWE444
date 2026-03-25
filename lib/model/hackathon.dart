@@ -42,6 +42,26 @@ class Hackathon {
     this.organizationPhotoUrl,
   });
 
+  Map<String, dynamic> toMap() {
+    return {
+      'organizationId': organizationId,
+      'name': name,
+      'description': description,
+      'domain': domain,
+      'teamSize': teamSize,
+      'city': city,
+      'location': location,
+      'mode': mode,
+      'rolesNeeded': rolesNeeded,
+      'educationCriteria': educationCriteria,
+      'applicationOpenDate': applicationOpenDate.toIso8601String(),
+      'applicationDeadline': applicationDeadline.toIso8601String(),
+      'startDate': startDate.toIso8601String(),
+      'endDate': endDate.toIso8601String(),
+    };
+  }
+
+
   // ميثود مساعدة لتحويل التاريخ بأمان من أي نوع (String أو Timestamp)
   static DateTime _parseDate(dynamic date) {
     if (date is Timestamp) {

@@ -5,7 +5,10 @@ import '../widgets/buildmate_app_bar.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 
 class CreateHackathonView extends StatefulWidget {
-  const CreateHackathonView({super.key});
+  // ✅ أضفنا hackathonToEdit — لو موجود = Edit mode، لو null = Create mode
+  final Hackathon? hackathonToEdit;
+
+  const CreateHackathonView({super.key, this.hackathonToEdit});
 
   @override
   State<CreateHackathonView> createState() => _CreateHackathonViewState();
@@ -81,10 +84,67 @@ class _CreateHackathonViewState extends State<CreateHackathonView> {
 
   static const Color purple = Color(0xFF6D56B3);
 
+  // ✅ هل نحن في وضع التعديل؟
+  bool get _isEditMode => widget.hackathonToEdit != null;
+
   int get _maxRoles {
     final n = int.tryParse(teamSizeController.text.trim());
     if (n != null && n >= 2) return n;
     return availableRoles.length;
+  }
+
+  @override
+  void initState() {
+    super.initState();
+    // ✅ لو Edit mode، نعبّي الفورم بالبيانات الموجودة
+    if (_isEditMode) {
+      _prefillForm(widget.hackathonToEdit!);
+    }
+  }
+
+  // ✅ دالة تعبئة الفورم بالبيانات القديمة
+  void _prefillForm(Hackathon h) {
+    nameController.text = h.name;
+    descriptionController.text = h.description;
+    teamSizeController.text = h.teamSize.toString();
+    cityController.text = h.city;
+    locationController.text = h.location;
+    selectedMode = h.mode;
+    selectedEducation = h.educationCriteria;
+    applicationOpenDate = h.applicationOpenDate;
+    applicationDeadline = h.applicationDeadline;
+    startDate = h.startDate;
+    endDate = h.endDate;
+
+    // Domain: لو موجود في القائمة نختاره، لو لا = Other
+    if (domains.contains(h.domain)) {
+      selectedDomain = h.domain;
+    } else {
+      selectedDomain = 'Other';
+      otherDomainController.text = h.domain;
+    }
+
+    // Roles: نفرز بين الأدوار المعروفة والـ Other
+    final knownRoles = availableRoles.where((r) => r != 'Other').toList();
+    final List<String> known = [];
+    final List<String> others = [];
+
+    for (final role in h.rolesNeeded) {
+      if (knownRoles.contains(role)) {
+        known.add(role);
+      } else {
+        others.add(role);
+      }
+    }
+
+    if (others.isNotEmpty) {
+      known.add('Other');
+      otherRoleControllers = others
+          .map((r) => TextEditingController(text: r))
+          .toList();
+    }
+
+    selectedRoles = known;
   }
 
   @override
@@ -159,22 +219,13 @@ class _CreateHackathonViewState extends State<CreateHackathonView> {
     setState(() {
       applicationOpenDate = picked;
       applicationOpenDateError = null;
-
-      if (applicationDeadline != null &&
-          !applicationDeadline!.isAfter(picked)) {
+      if (applicationDeadline != null && !applicationDeadline!.isAfter(picked)) {
         applicationDeadline = null;
       }
-
       if (startDate != null && applicationDeadline != null) {
-        if (!startDate!.isAfter(applicationDeadline!)) {
-          startDate = null;
-        }
+        if (!startDate!.isAfter(applicationDeadline!)) startDate = null;
       }
-
-      if (endDate != null && startDate == null) {
-        endDate = null;
-      }
-
+      if (endDate != null && startDate == null) endDate = null;
       applicationDeadlineError = null;
       startDateError = null;
       endDateError = null;
@@ -200,15 +251,8 @@ class _CreateHackathonViewState extends State<CreateHackathonView> {
     setState(() {
       applicationDeadline = picked;
       applicationDeadlineError = null;
-
-      if (startDate != null && !startDate!.isAfter(picked)) {
-        startDate = null;
-      }
-
-      if (endDate != null && startDate == null) {
-        endDate = null;
-      }
-
+      if (startDate != null && !startDate!.isAfter(picked)) startDate = null;
+      if (endDate != null && startDate == null) endDate = null;
       startDateError = null;
       endDateError = null;
     });
@@ -233,10 +277,7 @@ class _CreateHackathonViewState extends State<CreateHackathonView> {
     setState(() {
       startDate = picked;
       startDateError = null;
-
-      if (endDate != null && endDate!.isBefore(picked)) {
-        endDate = null;
-      }
+      if (endDate != null && endDate!.isBefore(picked)) endDate = null;
       endDateError = null;
     });
   }
@@ -266,10 +307,8 @@ class _CreateHackathonViewState extends State<CreateHackathonView> {
     final isFormValid = _formKey.currentState!.validate();
 
     setState(() {
-      applicationOpenDateError =
-      (applicationOpenDate == null) ? "Required" : null;
-      applicationDeadlineError =
-      (applicationDeadline == null) ? "Required" : null;
+      applicationOpenDateError = (applicationOpenDate == null) ? "Required" : null;
+      applicationDeadlineError = (applicationDeadline == null) ? "Required" : null;
       startDateError = (startDate == null) ? "Required" : null;
       endDateError = (endDate == null) ? "Required" : null;
     });
@@ -278,14 +317,11 @@ class _CreateHackathonViewState extends State<CreateHackathonView> {
         applicationOpenDate == null ||
         applicationDeadline == null ||
         startDate == null ||
-        endDate == null) {
-      return;
-    }
+        endDate == null) return;
 
     if (!applicationDeadline!.isAfter(applicationOpenDate!)) {
       setState(() {
-        applicationDeadlineError =
-        "Close date must be at least one day after open date";
+        applicationDeadlineError = "Close date must be at least one day after open date";
       });
       return;
     }
@@ -293,13 +329,6 @@ class _CreateHackathonViewState extends State<CreateHackathonView> {
     if (!endDate!.isAfter(startDate!)) {
       setState(() {
         endDateError = "End date must be at least one day after start date";
-      });
-      return;
-    }
-
-    if (endDate!.isBefore(startDate!)) {
-      setState(() {
-        endDateError = "Must be on or after start date";
       });
       return;
     }
@@ -328,7 +357,11 @@ class _CreateHackathonViewState extends State<CreateHackathonView> {
         .toList();
 
     final hackathon = Hackathon(
-      organizationId: currentUserId,
+      // ✅ في Edit mode نحتفظ بنفس الـ id والـ organizationId
+      id: _isEditMode ? widget.hackathonToEdit!.id : null,
+      organizationId: _isEditMode
+          ? widget.hackathonToEdit!.organizationId
+          : currentUserId,
       name: nameController.text.trim(),
       description: descriptionController.text.trim(),
       domain: selectedDomain == 'Other'
@@ -350,48 +383,62 @@ class _CreateHackathonViewState extends State<CreateHackathonView> {
     );
 
     try {
-      await _controller.submit(hackathon);
+      if (_isEditMode) {
+        // ✅ استدعاء دالة التعديل بدل الإنشاء
+        await _controller.update(hackathon);
+      } else {
+        await _controller.submit(hackathon);
+      }
+
       if (!mounted) return;
 
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text("Hackathon saved successfully ✅")),
+        SnackBar(
+          content: Text(_isEditMode
+              ? "Hackathon updated successfully ✅"
+              : "Hackathon saved successfully ✅"),
+        ),
       );
 
-      _formKey.currentState!.reset();
-      nameController.clear();
-      descriptionController.clear();
-      teamSizeController.clear();
-      cityController.clear();
-      locationController.clear();
-      otherDomainController.clear();
+      if (_isEditMode) {
+        // في Edit mode نرجع للصفحة السابقة بعد الحفظ
+        Navigator.pop(context);
+      } else {
+        // في Create mode نعيد تهيئة الفورم
+        _formKey.currentState!.reset();
+        nameController.clear();
+        descriptionController.clear();
+        teamSizeController.clear();
+        cityController.clear();
+        locationController.clear();
+        otherDomainController.clear();
 
-      for (final c in otherRoleControllers) {
-        c.dispose();
+        for (final c in otherRoleControllers) {
+          c.dispose();
+        }
+
+        setState(() {
+          selectedMode = null;
+          selectedDomain = null;
+          selectedEducation = null;
+          selectedRoles = [];
+          applicationOpenDate = null;
+          applicationDeadline = null;
+          startDate = null;
+          endDate = null;
+          applicationOpenDateError = null;
+          applicationDeadlineError = null;
+          startDateError = null;
+          endDateError = null;
+          otherRoleControllers = [TextEditingController()];
+        });
       }
-
-      setState(() {
-        selectedMode = null;
-        selectedDomain = null;
-        selectedEducation = null;
-        selectedRoles = [];
-        applicationOpenDate = null;
-        applicationDeadline = null;
-        startDate = null;
-        endDate = null;
-        applicationOpenDateError = null;
-        applicationDeadlineError = null;
-        startDateError = null;
-        endDateError = null;
-        otherRoleControllers = [TextEditingController()];
-      });
     } catch (e) {
       if (!mounted) return;
-
       String message = "Something went wrong. Please try again.";
       if (e.toString().contains("TimeoutException")) {
         message = "No internet connection. Please check your network.";
       }
-
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text(message)),
       );
@@ -405,7 +452,8 @@ class _CreateHackathonViewState extends State<CreateHackathonView> {
     return Scaffold(
       backgroundColor: Colors.white,
       appBar: BuildMateAppBar(
-        titleText: "Create Hackathon",
+        // ✅ عنوان الـ AppBar يتغير حسب الوضع
+        titleText: _isEditMode ? "Edit Hackathon" : "Create Hackathon",
         showBack: true,
         onBack: () => Navigator.pop(context),
       ),
@@ -461,9 +509,7 @@ class _CreateHackathonViewState extends State<CreateHackathonView> {
                     maxLines: null,
                     validator: (v) {
                       if (selectedDomain == 'Other' &&
-                          (v == null || v.trim().isEmpty)) {
-                        return "Required";
-                      }
+                          (v == null || v.trim().isEmpty)) return "Required";
                       if (v != null && RegExp(r'^\d+$').hasMatch(v.trim())) {
                         return "Cannot be numbers only";
                       }
@@ -491,9 +537,7 @@ class _CreateHackathonViewState extends State<CreateHackathonView> {
                         validator: (v) {
                           if (v == null || v.trim().isEmpty) return "Required";
                           final n = int.tryParse(v.trim());
-                          if (n == null || n < 2) {
-                            return "Team size must be 2 or more";
-                          }
+                          if (n == null || n < 2) return "Team size must be 2 or more";
                           return null;
                         },
                       ),
@@ -535,48 +579,35 @@ class _CreateHackathonViewState extends State<CreateHackathonView> {
                       InkWell(
                         onTap: () async {
                           final maxRoles = _maxRoles;
-
                           final result = await showDialog<List<String>>(
                             context: context,
                             builder: (context) {
-                              List<String> tempSelected =
-                              List.from(selectedRoles);
-
+                              List<String> tempSelected = List.from(selectedRoles);
                               return StatefulBuilder(
                                 builder: (context, setDialogState) {
                                   return AlertDialog(
                                     title: Text("Select Roles (max $maxRoles)"),
                                     content: SingleChildScrollView(
                                       child: Column(
-                                        children:
-                                        availableRoles.map((role) {
-                                          final isSelected =
-                                          tempSelected.contains(role);
+                                        children: availableRoles.map((role) {
+                                          final isSelected = tempSelected.contains(role);
                                           final isDisabled = !isSelected &&
                                               tempSelected.length >= maxRoles;
-
                                           return CheckboxListTile(
                                             value: isSelected,
-                                            title: Text(
-                                              role,
-                                              style: TextStyle(
-                                                color: isDisabled
-                                                    ? Colors.grey
-                                                    : null,
-                                              ),
-                                            ),
+                                            title: Text(role,
+                                                style: TextStyle(
+                                                    color: isDisabled ? Colors.grey : null)),
                                             onChanged: isDisabled
                                                 ? null
                                                 : (checked) {
                                               setDialogState(() {
                                                 if (checked == true) {
-                                                  if (!tempSelected
-                                                      .contains(role)) {
+                                                  if (!tempSelected.contains(role)) {
                                                     tempSelected.add(role);
                                                   }
                                                 } else {
-                                                  tempSelected
-                                                      .remove(role);
+                                                  tempSelected.remove(role);
                                                 }
                                               });
                                             },
@@ -587,29 +618,19 @@ class _CreateHackathonViewState extends State<CreateHackathonView> {
                                     actions: [
                                       if (tempSelected.length >= maxRoles)
                                         Padding(
-                                          padding:
-                                          const EdgeInsets.symmetric(
-                                            horizontal: 16,
-                                            vertical: 4,
-                                          ),
-                                          child: Text(
-                                            "Max $maxRoles roles reached",
-                                            style: const TextStyle(
-                                              color: Colors.orange,
-                                              fontSize: 12,
-                                            ),
-                                          ),
+                                          padding: const EdgeInsets.symmetric(
+                                              horizontal: 16, vertical: 4),
+                                          child: Text("Max $maxRoles roles reached",
+                                              style: const TextStyle(
+                                                  color: Colors.orange, fontSize: 12)),
                                         ),
                                       TextButton(
-                                        onPressed: () =>
-                                            Navigator.pop(context),
+                                        onPressed: () => Navigator.pop(context),
                                         child: const Text("Cancel"),
                                       ),
                                       ElevatedButton(
-                                        onPressed: () => Navigator.pop(
-                                          context,
-                                          tempSelected,
-                                        ),
+                                        onPressed: () =>
+                                            Navigator.pop(context, tempSelected),
                                         style: _primaryButtonStyle(),
                                         child: const Text("Done"),
                                       ),
@@ -624,51 +645,38 @@ class _CreateHackathonViewState extends State<CreateHackathonView> {
                             setState(() {
                               selectedRoles = result;
                               if (!result.contains("Other")) {
-                                for (final c in otherRoleControllers) {
-                                  c.dispose();
-                                }
-                                otherRoleControllers = [
-                                  TextEditingController(),
-                                ];
+                                for (final c in otherRoleControllers) c.dispose();
+                                otherRoleControllers = [TextEditingController()];
                               }
                             });
                           }
                         },
                         child: InputDecorator(
                           decoration: _fieldDecoration(
-                            label: "Roles Needed",
-                            icon: Icons.work_outline,
-                          ),
-                          child: Text(
-                            selectedRoles.isEmpty
-                                ? "Select roles"
-                                : selectedRoles.join(", "),
-                          ),
+                              label: "Roles Needed", icon: Icons.work_outline),
+                          child: Text(selectedRoles.isEmpty
+                              ? "Select roles"
+                              : selectedRoles.join(", ")),
                         ),
                       ),
                       if (selectedRoles.contains("Other"))
                         Padding(
                           padding: const EdgeInsets.only(top: 8),
                           child: Column(
-                            crossAxisAlignment:
-                            CrossAxisAlignment.start,
+                            crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
                               ...List.generate(
                                 otherRoleControllers.length,
                                     (index) => Padding(
-                                  padding:
-                                  const EdgeInsets.only(bottom: 8),
+                                  padding: const EdgeInsets.only(bottom: 8),
                                   child: Row(
                                     children: [
                                       Expanded(
                                         child: TextFormField(
-                                          controller:
-                                          otherRoleControllers[index],
-                                          textInputAction:
-                                          TextInputAction.next,
+                                          controller: otherRoleControllers[index],
+                                          textInputAction: TextInputAction.next,
                                           decoration: _fieldDecoration(
-                                            label: otherRoleControllers.length >
-                                                1
+                                            label: otherRoleControllers.length > 1
                                                 ? "Other Role #${index + 1}"
                                                 : "Other Role",
                                             icon: Icons.edit_outlined,
@@ -677,16 +685,13 @@ class _CreateHackathonViewState extends State<CreateHackathonView> {
                                           maxLines: null,
                                           validator: (v) {
                                             if (index == 0 &&
-                                                selectedRoles
-                                                    .contains("Other") &&
-                                                (v == null ||
-                                                    v.trim().isEmpty)) {
+                                                selectedRoles.contains("Other") &&
+                                                (v == null || v.trim().isEmpty)) {
                                               return "Required";
                                             }
                                             if (v != null &&
                                                 v.trim().isNotEmpty &&
-                                                RegExp(r'^\d+$')
-                                                    .hasMatch(v.trim())) {
+                                                RegExp(r'^\d+$').hasMatch(v.trim())) {
                                               return "Cannot be numbers only";
                                             }
                                             return null;
@@ -695,15 +700,11 @@ class _CreateHackathonViewState extends State<CreateHackathonView> {
                                       ),
                                       if (otherRoleControllers.length > 1)
                                         IconButton(
-                                          icon: const Icon(
-                                            Icons.remove_circle_outline,
-                                            color: Colors.red,
-                                          ),
+                                          icon: const Icon(Icons.remove_circle_outline,
+                                              color: Colors.red),
                                           onPressed: () => setState(() {
-                                            otherRoleControllers[index]
-                                                .dispose();
-                                            otherRoleControllers
-                                                .removeAt(index);
+                                            otherRoleControllers[index].dispose();
+                                            otherRoleControllers.removeAt(index);
                                           }),
                                         ),
                                     ],
@@ -718,18 +719,12 @@ class _CreateHackathonViewState extends State<CreateHackathonView> {
                                     _maxRoles
                                     ? null
                                     : () => setState(() {
-                                  otherRoleControllers.add(
-                                    TextEditingController(),
-                                  );
+                                  otherRoleControllers
+                                      .add(TextEditingController());
                                 }),
-                                icon: const Icon(
-                                  Icons.add_circle_outline,
-                                  size: 18,
-                                ),
+                                icon: const Icon(Icons.add_circle_outline, size: 18),
                                 label: const Text("Add another role"),
-                                style: TextButton.styleFrom(
-                                  foregroundColor: purple,
-                                ),
+                                style: TextButton.styleFrom(foregroundColor: purple),
                               ),
                             ],
                           ),
@@ -813,12 +808,15 @@ class _CreateHackathonViewState extends State<CreateHackathonView> {
                       width: 18,
                       height: 18,
                       child: CircularProgressIndicator(
-                        strokeWidth: 2,
-                        color: Colors.white,
-                      ),
+                          strokeWidth: 2, color: Colors.white),
                     )
                         : const Icon(Icons.check_circle_outline),
-                    label: Text(isSubmitting ? "Saving..." : "Submit"),
+                    // ✅ النص يتغير حسب الوضع
+                    label: Text(isSubmitting
+                        ? "Saving..."
+                        : _isEditMode
+                        ? "Save Changes"
+                        : "Submit"),
                   ),
                 ),
               ],
@@ -834,10 +832,8 @@ class _CreateHackathonViewState extends State<CreateHackathonView> {
       padding: const EdgeInsets.only(bottom: 8, top: 6),
       child: Align(
         alignment: Alignment.centerLeft,
-        child: Text(
-          text,
-          style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w700),
-        ),
+        child: Text(text,
+            style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w700)),
       ),
     );
   }
@@ -864,9 +860,7 @@ class _CreateHackathonViewState extends State<CreateHackathonView> {
         onChanged: onChanged,
         validator: validator ??
                 (value) =>
-            (value == null || value.trim().isEmpty)
-                ? "Required"
-                : null,
+            (value == null || value.trim().isEmpty) ? "Required" : null,
         decoration: _fieldDecoration(label: label, icon: icon, hint: hint),
       ),
     );
@@ -906,10 +900,7 @@ class _CreateHackathonViewState extends State<CreateHackathonView> {
         onTap: onTap,
         child: InputDecorator(
           decoration: _fieldDecoration(
-            label: label,
-            icon: icon,
-            errorText: errorText,
-          ),
+              label: label, icon: icon, errorText: errorText),
           child: Text(valueText.isEmpty ? "Select date" : valueText),
         ),
       ),

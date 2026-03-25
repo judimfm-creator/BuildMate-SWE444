@@ -11,7 +11,9 @@ import 'package:buildmate/model/hackathon.dart';
 import '../widgets/hackathon_card.dart';
 
 class OrgProfilePage extends StatefulWidget {
-  const OrgProfilePage({super.key});
+  final bool showBack;
+  const OrgProfilePage({super.key, this.showBack = false});
+
 
   @override
   State<OrgProfilePage> createState() => _OrgProfilePageState();
@@ -26,6 +28,7 @@ class _OrgProfilePageState extends State<OrgProfilePage> {
     final viewModel = Provider.of<OrgProfileViewModel>(context);
     final String userEmail = FirebaseAuth.instance.currentUser?.email ??
         "Not Available";
+
 
     return StreamBuilder<OrgModel?>(
       stream: viewModel.orgDataStream,
@@ -266,7 +269,6 @@ class _OrgProfilePageState extends State<OrgProfilePage> {
   return HackathonCard(
   hackathon: h,
   isPast: true,
-  onDelete: () => _confirmDelete(context, vm, h),
   );
   },
   );
