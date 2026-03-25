@@ -4,13 +4,13 @@ import '../../viewmodel/org_hackathons_view_model.dart';
 import '../../model/hackathon.dart';
 import '../widgets/hackathon_mini_card.dart';
 import 'org_announced_page.dart';
-import 'org_past_hackathons_page.dart';
+import 'org_profile_page.dart';
 
 class OrgHomePage extends StatelessWidget {
   const OrgHomePage({super.key});
 
+
   static const Color _purple = Color(0xFF6D56B3);
-  static const Color _orange = Color(0xFFFFA726);
 
   @override
   Widget build(BuildContext context) {
@@ -21,42 +21,9 @@ class OrgHomePage extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // ── Search Bar ──
-          Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 16),
-            child: Container(
-              height: 48,
-              decoration: BoxDecoration(
-                color: Colors.white,
-                borderRadius: BorderRadius.circular(12),
-                border: Border.all(color: Colors.grey.shade300),
-                boxShadow: [
-                  BoxShadow(
-                    color: Colors.black.withOpacity(0.04),
-                    blurRadius: 6,
-                    offset: const Offset(0, 2),
-                  ),
-                ],
-              ),
-              child: Row(
-                children: [
-                  const SizedBox(width: 14),
-                  Expanded(
-                    child: Text(
-                      "Hackathons",
-                      style: TextStyle(
-                          fontSize: 14, color: Colors.grey.shade500),
-                    ),
-                  ),
-                  const Icon(Icons.search, color: _purple),
-                  const SizedBox(width: 12),
-                ],
-              ),
-            ),
-          ),
+
           const SizedBox(height: 22),
 
-          // ── All Hackathons title ──
           const Padding(
             padding: EdgeInsets.symmetric(horizontal: 16),
             child: Text(
@@ -68,28 +35,35 @@ class OrgHomePage extends StatelessWidget {
               ),
             ),
           ),
+
           const SizedBox(height: 18),
 
-          // ── Announced Section ──
           _HackathonSection(
             title: "Announced Hackathons ✨",
             stream: vm.ongoingStream,
+            isPastSection: false,
             onExploreTap: () => Navigator.push(
               context,
-              MaterialPageRoute(builder: (_) => const OrgAnnouncedPage()),
+              MaterialPageRoute(
+                builder: (_) => const OrgAnnouncedPage(showBack: true),
+              ),
             ),
           ),
+
           const SizedBox(height: 22),
 
-          // ── Past Section ──
           _HackathonSection(
             title: "Past Hackathons 🏅",
             stream: vm.pastStream,
+            isPastSection: true,
             onExploreTap: () => Navigator.push(
               context,
-              MaterialPageRoute(builder: (_) => const OrgPastHackathonsPage()),
+              MaterialPageRoute(
+                builder: (_) => const OrgProfilePage(showBack: true),
+              ),
             ),
           ),
+
           const SizedBox(height: 20),
         ],
       ),
@@ -97,18 +71,17 @@ class OrgHomePage extends StatelessWidget {
   }
 }
 
-// ─────────────────────────────────────────────
-// Reusable section widget
-// ─────────────────────────────────────────────
 class _HackathonSection extends StatelessWidget {
   final String title;
   final Stream<List<Hackathon>> stream;
   final VoidCallback onExploreTap;
+  final bool isPastSection;
 
   const _HackathonSection({
     required this.title,
     required this.stream,
     required this.onExploreTap,
+    required this.isPastSection,
   });
 
   static const Color _purple = Color(0xFF6D56B3);
@@ -116,26 +89,32 @@ class _HackathonSection extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final double sectionHeight = isPastSection ? 310 : 370;
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        // Title row + Explore more
         Padding(
           padding: const EdgeInsets.symmetric(horizontal: 16),
           child: Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              Text(
-                title,
-                style: const TextStyle(
-                  fontSize: 14,
-                  fontWeight: FontWeight.w600,
-                  color: Colors.black87,
+              Expanded(
+                child: Text(
+                  title,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: const TextStyle(
+                    fontSize: 14,
+                    fontWeight: FontWeight.w600,
+                    color: Colors.black87,
+                  ),
                 ),
               ),
-              GestureDetector(
+              const SizedBox(width: 8),
+              InkWell(
                 onTap: onExploreTap,
                 child: const Row(
+                  mainAxisSize: MainAxisSize.min,
                   children: [
                     Text(
                       "Explore more",
@@ -153,18 +132,36 @@ class _HackathonSection extends StatelessWidget {
             ],
           ),
         ),
+
         const SizedBox(height: 12),
 
-        // Horizontal list
         StreamBuilder<List<Hackathon>>(
           stream: stream,
           builder: (context, snapshot) {
             if (snapshot.connectionState == ConnectionState.waiting) {
-              return const SizedBox(
-                height: 170,
+              return SizedBox(
+                height: sectionHeight,
+                child: const Center(
+                  child: CircularProgressIndicator(
+                    color: _purple,
+                    strokeWidth: 2,
+                  ),
+                ),
+              );
+            }
+
+            if (snapshot.hasError) {
+              return SizedBox(
+                height: sectionHeight,
                 child: Center(
-                    child: CircularProgressIndicator(
-                        color: _purple, strokeWidth: 2)),
+                  child: Text(
+                    "Something went wrong",
+                    style: TextStyle(
+                      fontSize: 13,
+                      color: Colors.grey.shade400,
+                    ),
+                  ),
+                ),
               );
             }
 
@@ -172,25 +169,29 @@ class _HackathonSection extends StatelessWidget {
 
             if (list.isEmpty) {
               return SizedBox(
-                height: 110,
+                height: sectionHeight,
                 child: Center(
                   child: Text(
                     "No hackathons yet",
                     style: TextStyle(
-                        fontSize: 13, color: Colors.grey.shade400),
+                      fontSize: 13,
+                      color: Colors.grey.shade400,
+                    ),
                   ),
                 ),
               );
             }
 
             return SizedBox(
-              height: 200,
+              height: 355,
               child: ListView.builder(
                 scrollDirection: Axis.horizontal,
                 padding: const EdgeInsets.symmetric(horizontal: 16),
                 itemCount: list.length,
-                itemBuilder: (_, i) =>
-                    HackathonMiniCard(hackathon: list[i]),
+                itemBuilder: (_, i) => HackathonMiniCard(
+                  hackathon: list[i],
+                  isPast: isPastSection,
+                ),
               ),
             );
           },

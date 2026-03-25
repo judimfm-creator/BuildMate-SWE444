@@ -7,6 +7,8 @@ import '../widgets/buildmate_app_bar.dart';
 
 class OrgPastHackathonsPage extends StatelessWidget {
   const OrgPastHackathonsPage({super.key});
+  final bool showBack=false;
+
 
   static const Color _purple = Color(0xFF6D56B3);
 
@@ -63,7 +65,6 @@ class OrgPastHackathonsPage extends StatelessWidget {
               return HackathonCard(
                 hackathon: h,
                 isPast: true,
-                onDelete: () => _confirmDelete(context, vm, h),
               );
             },
           );
