@@ -29,10 +29,8 @@ class OrgNavBar extends StatelessWidget {
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceAround,
         children: [
-
           _navItem(Icons.home_outlined, 0),
           _navItem(Icons.campaign_outlined, 1),
-
           GestureDetector(
             onTap: () => onTap(2),
             child: Container(
@@ -45,11 +43,11 @@ class OrgNavBar extends StatelessWidget {
               child: const Icon(
                 Icons.add,
                 color: Colors.white,
+                size: 30,
               ),
             ),
           ),
-
-          _navItem(Icons.groups_outlined, 3),
+          _navItem(Icons.pending_actions_outlined, 3),
           _navItem(Icons.person_outline, 4),
         ],
       ),
@@ -57,12 +55,13 @@ class OrgNavBar extends StatelessWidget {
   }
 
   Widget _navItem(IconData icon, int index) {
+    final bool isSelected = selectedIndex == index;
+
     return IconButton(
       icon: Icon(
         icon,
-        color: selectedIndex == index
-            ? const Color(0xFFFFA726)
-            : Colors.grey,
+        color: isSelected ? const Color(0xFFFFA726) : Colors.grey,
+        size: 28,
       ),
       onPressed: () => onTap(index),
     );
