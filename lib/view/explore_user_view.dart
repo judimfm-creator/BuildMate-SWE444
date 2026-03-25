@@ -9,6 +9,8 @@ import 'hackathon_details_view.dart';
 import 'create_team_post_view.dart';
 import 'hackathon_teams_view.dart' as teams_view;
 import 'my_team_post_view.dart';
+import '../model/team_post_model.dart';
+import 'team_post_details_view.dart';
 
 class ExploreUserView extends StatefulWidget {
   final int initialTabIndex;
@@ -138,7 +140,7 @@ class _ExploreUserViewState extends State<ExploreUserView>
         controller: _tabController,
         children: [
           _buildHackathonList(),
-          const Center(child: Text("Teams Feature Coming Soon")),
+          _buildTeamsList(), // ✅ تم استبدال النص بهذه الدالة
         ],
       ),
     );
@@ -210,6 +212,204 @@ class _ExploreUserViewState extends State<ExploreUserView>
             ),
           ),
         ],
+      ),
+    );
+  }
+
+  Widget _buildTeamsList() {
+    final currentUid = FirebaseAuth.instance.currentUser?.uid;
+
+    return StreamBuilder<List<Map<String, dynamic>>>(
+      // 1. نجلب كل بيانات الفرق والهاكاثونات المرتبطة فيها مرة واحدة
+      stream: FirebaseFirestore.instance
+          .collection('team_posts')
+          .orderBy('createdAt', descending: true)
+          .snapshots()
+          .asyncMap((snapshot) async {
+
+        final futures = snapshot.docs.map((doc) async {
+          final data = doc.data() as Map<String, dynamic>;
+          final team = TeamPostModel.fromMap(doc.id, data);
+
+          final hackathonDoc = await FirebaseFirestore.instance
+              .collection('hackathons')
+              .doc(team.hackathonId)
+              .get();
+
+          Hackathon? hackathon;
+          String hackathonName = "Unknown Hackathon";
+
+          if (hackathonDoc.exists) {
+            hackathon = Hackathon.fromFirestore(hackathonDoc);
+            hackathonName = hackathon.name;
+          }
+
+          return {
+            'team': team,
+            'hackathon': hackathon,
+            'hackathonName': hackathonName,
+          };
+        });
+
+        return await Future.wait(futures);
+      }),
+      builder: (context, snapshot) {
+        if (snapshot.connectionState == ConnectionState.waiting) {
+          return const Center(child: CircularProgressIndicator(color: _purple));
+        }
+
+        if (!snapshot.hasData || snapshot.data!.isEmpty) {
+          return const Center(
+            child: Padding(
+              padding: EdgeInsets.only(top: 40),
+              child: Text("No teams available right now."),
+            ),
+          );
+        }
+
+        // 2. الفلترة المباشرة بناءً على اختيارات اليوزر في الواجهة
+        final now = DateTime.now();
+        var list = snapshot.data!.where((item) {
+          final team = item['team'] as TeamPostModel;
+          final h = item['hackathon'] as Hackathon?;
+          final hName = item['hackathonName'] as String;
+
+          // --- القواعد الأساسية ---
+          // إخفاء الهاكاثونات المنتهية، وإخفاء الفرق الخاصة بالمستخدم نفسه
+          if (h == null || h.applicationDeadline.isBefore(now)) return false;
+          if (team.createdBy == currentUid) return false;
+
+          // --- فلاتر البحث والنافذة ---
+
+          // 1. شريط البحث (يبحث في اسم الفريق واسم الهاكاثون)
+          bool mSearch = _searchController.text.isEmpty ||
+              team.teamName.toLowerCase().contains(_searchController.text.toLowerCase()) ||
+              hName.toLowerCase().contains(_searchController.text.toLowerCase());
+
+          // 2. فلتر المدينة
+          bool mCity = _cityController.text.isEmpty ||
+              h.city.toLowerCase().contains(_cityController.text.toLowerCase());
+
+          // 3. فلتر طريقة الحضور
+          bool mMode = selectedMode == null || h.mode == selectedMode;
+
+          // 4. فلتر المستوى التعليمي
+          bool mEdu = selectedEducation == null || h.educationCriteria == selectedEducation;
+
+          // 5. فلتر حالة التسجيل (ملاحظة: المنتهي استبعدناه مسبقاً، لكن هذا يحترم خيار اليوزر لو فلتر)
+          bool mStatus = true;
+          if (selectedStatus != null) {
+            if (selectedStatus == "Registration Upcoming Soon") {
+              mStatus = now.isBefore(h.applicationOpenDate);
+            } else if (selectedStatus == "Registration Open") {
+              mStatus = now.isAfter(h.applicationOpenDate) && now.isBefore(h.applicationDeadline);
+            } else if (selectedStatus == "Registration Closed") {
+              mStatus = now.isAfter(h.applicationDeadline);
+            }
+          }
+
+          // 6. تواريخ الحدث والتسجيل
+          bool mEvStart = selectedStartEventDate == null || isSameDay(h.startDate, selectedStartEventDate!);
+          bool mEvEnd = selectedEndEventDate == null || isSameDay(h.endDate, selectedEndEventDate!);
+          bool mDeadline = selectedEndRegDate == null || isSameDay(h.applicationDeadline, selectedEndRegDate!);
+
+          // لازم الفريق يطابق كل شروط الفلتر عشان ينعرض
+          return mSearch && mCity && mMode && mEdu && mStatus && mEvStart && mEvEnd && mDeadline;
+        }).toList();
+
+        // في حال كان الفلتر مطبق بس ما فيه ولا فريق يطابق
+        if (list.isEmpty) {
+          return const Center(
+            child: Padding(
+              padding: EdgeInsets.only(top: 40),
+              child: Text("No teams match your filters.", style: TextStyle(color: Colors.grey)),
+            ),
+          );
+        }
+
+        // عرض الفرق المفلترة
+        return ListView.builder(
+          padding: const EdgeInsets.all(16),
+          itemCount: list.length,
+          itemBuilder: (context, index) {
+            final item = list[index];
+            return _buildTeamCard(item['team'], item['hackathon'], item['hackathonName']);
+          },
+        );
+      },
+    );
+  }
+
+// ✅ استقبال البيانات كـ Parameters بدل ما نسوي FutureBuilder
+  Widget _buildTeamCard(TeamPostModel team, Hackathon? hackathon, String hackathonName) {
+    return Container(
+      margin: const EdgeInsets.only(bottom: 20),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(24),
+        boxShadow: [
+          BoxShadow(color: _purple.withOpacity(0.08), blurRadius: 15, offset: const Offset(0, 8))
+        ],
+      ),
+      child: Padding(
+        padding: const EdgeInsets.all(20),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text("Team Name", style: TextStyle(fontWeight: FontWeight.w600, color: _purple.withOpacity(0.7), fontSize: 11)),
+                      const SizedBox(height: 4),
+                      Text(team.teamName, style: const TextStyle(fontSize: 17, fontWeight: FontWeight.bold)),
+                    ],
+                  ),
+                ),
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                  decoration: BoxDecoration(color: _purple.withOpacity(0.1), borderRadius: BorderRadius.circular(8)),
+                  child: const Text("Looking for Members", style: TextStyle(color: _purple, fontSize: 8, fontWeight: FontWeight.bold)),
+                ),
+              ],
+            ),
+            const Divider(height: 25),
+            _buildInfoRow(Icons.emoji_events_outlined, "Hackathon", hackathonName),
+            const SizedBox(height: 8),
+            _buildInfoRow(Icons.person_outline, "Leader's Role", team.myRole),
+            const SizedBox(height: 8),
+            _buildInfoRow(Icons.wc_outlined, "Gender Preference", team.genderPreference),
+            const SizedBox(height: 15),
+
+            Row(
+              children: [
+                Expanded(
+                  child: _outlinedBtn("Full Details", _purple, () {
+                    if (hackathon != null) {
+                      Navigator.push(context, MaterialPageRoute(
+                        builder: (context) => TeamPostDetailsView(team: team, hackathon: hackathon),
+                      ));
+                    }
+                  }),
+                ),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: _btn("Request to join", _purple, () {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(
+                        content: Text("Coming Soon"),
+                        backgroundColor: _purple,
+                        behavior: SnackBarBehavior.floating,
+                      ),
+                    );
+                  }),
+                ),
+              ],
+            ),
+          ],
+        ),
       ),
     );
   }
