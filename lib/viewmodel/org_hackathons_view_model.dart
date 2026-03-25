@@ -9,7 +9,7 @@ class OrgHackathonsViewModel extends ChangeNotifier {
 
   // ─── متغيرات البحث الجديدة ───
   String _searchQuery = "";
-
+String get searchQuery => _searchQuery;
   // دالة لتحديث نص البحث من الواجهة
   void updateSearchQuery(String query) {
     _searchQuery = query.toLowerCase();

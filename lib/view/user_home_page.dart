@@ -32,7 +32,7 @@ class _UserHomePageState extends State<UserHomePage> {
     );
   }
 
-  // دالة البحث عن الفريق
+  // دالة البحث عن الفريق (تستخدم في الـ FutureBuilder)
   Future<QueryDocumentSnapshot<Map<String, dynamic>>?> _getUserTeamPost(String uid, String hid) async {
     final firestore = FirebaseFirestore.instance;
     final leader = await firestore.collection('team_posts').where('hackathonId', isEqualTo: hid).where('createdBy', isEqualTo: uid).limit(1).get();
@@ -114,7 +114,7 @@ class _UserHomePageState extends State<UserHomePage> {
 
   Widget _buildProfessionalMiniCard(Hackathon h) {
     final String? currentUid = FirebaseAuth.instance.currentUser?.uid;
-    final String hid = h.id ?? ""; // نضمن أن الـ ID ليس null
+    final String hid = h.id ?? ""; 
 
     return Container(
       width: 300, 
@@ -174,7 +174,7 @@ class _UserHomePageState extends State<UserHomePage> {
                     children: [
                       Icon(Icons.timer_outlined, size: 12, color: Colors.redAccent),
                       SizedBox(width: 4),
-                      Text("Deadline:", style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: Colors.grey)),
+                      Text("Registration Deadline:", style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: Colors.grey)),
                     ],
                   ),
                   Text(
@@ -187,7 +187,7 @@ class _UserHomePageState extends State<UserHomePage> {
             
             const SizedBox(height: 12),
 
-            // زر التفاصيل
+            // زر التفاصيل الأساسي
             SizedBox(
               width: double.infinity,
               height: 42,
@@ -206,7 +206,7 @@ class _UserHomePageState extends State<UserHomePage> {
 
             const SizedBox(height: 10),
 
-            // منطق الأزرار الذكي
+            // ─── منطق الأزرار الذكي مع ميزة التحديث التلقائي ───
             if (currentUid != null)
               FutureBuilder<QueryDocumentSnapshot<Map<String, dynamic>>?>(
                 future: _getUserTeamPost(currentUid, hid),
@@ -224,7 +224,9 @@ class _UserHomePageState extends State<UserHomePage> {
                           teamPostId: teamSnap.data!.id, 
                           hackathonId: hid, 
                           hackathonTeamSize: h.teamSize
-                        ))).then((_) => setState(() {})); 
+                        ))).then((_) {
+                           if (mounted) setState(() {}); // تحديث الصفحة عند العودة
+                        }); 
                       },
                     );
                   }
@@ -237,7 +239,12 @@ class _UserHomePageState extends State<UserHomePage> {
                           icon: Icons.add_circle_outline,
                           color: _purple,
                           onTap: () {
-                            Navigator.push(context, MaterialPageRoute(builder: (context) => CreateTeamPostScreen(hackathonId: hid, hackathonTeamSize: h.teamSize)));
+                            Navigator.push(context, MaterialPageRoute(builder: (context) => CreateTeamPostScreen(
+                              hackathonId: hid, 
+                              hackathonTeamSize: h.teamSize
+                            ))).then((_) {
+                               if (mounted) setState(() {}); // تحديث الصفحة فور العودة من الإنشاء
+                            });
                           },
                         ),
                       ),
@@ -248,7 +255,12 @@ class _UserHomePageState extends State<UserHomePage> {
                           icon: Icons.person_add_alt_1_outlined,
                           color: _purple,
                           onTap: () {
-                            Navigator.push(context, MaterialPageRoute(builder: (context) => teams_view.ExploreTeamsView(hackathonId: hid, hackathonTeamSize: h.teamSize)));
+                            Navigator.push(context, MaterialPageRoute(builder: (context) => teams_view.ExploreTeamsView(
+                              hackathonId: hid, 
+                              hackathonTeamSize: h.teamSize
+                            ))).then((_) {
+                               if (mounted) setState(() {}); // تحديث الصفحة عند العودة من الانضمام
+                            });
                           },
                         ),
                       ),
