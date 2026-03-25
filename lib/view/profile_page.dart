@@ -179,7 +179,7 @@ class _ProfilePageState extends State<ProfilePage>
 
               SliverToBoxAdapter(
                 child: SizedBox(
-                  height: 520,
+                  height: MediaQuery.of(context).size.height * 0.65,
                   child: TabBarView(
                     controller: _tabController,
                     children: [
@@ -379,7 +379,7 @@ class _ProfilePageState extends State<ProfilePage>
           final started = !h.startDate.isAfter(now);
           final notEnded = !h.endDate.isBefore(now);
 
-          return started && notEnded && status == 'approved';
+          return started && notEnded && (status == 'approved'|| status=='accepted');
         }).toList();
 
         if (ongoing.isEmpty) {
@@ -387,8 +387,7 @@ class _ProfilePageState extends State<ProfilePage>
         }
 
         return ListView.builder(
-          shrinkWrap: true,
-          physics: const NeverScrollableScrollPhysics(),
+          padding: const EdgeInsets.only(bottom: 24),
           itemCount: ongoing.length,
           itemBuilder: (_, i) {
             final item = ongoing[i];
@@ -418,16 +417,15 @@ class _ProfilePageState extends State<ProfilePage>
           final h = item['hackathon'] as Hackathon;
           final status = (item['status'] ?? 'pending_approval').toString();
 
-          return h.endDate.isBefore(now) && status == 'approved';
+          return h.endDate.isBefore(now) && (status == 'approved' || status=='accepted');
         }).toList();
 
         if (previous.isEmpty) {
-          return _empty("No previous projects");
+          return _empty("No previous hackathons");
         }
 
         return ListView.builder(
-          shrinkWrap: true,
-          physics: const NeverScrollableScrollPhysics(),
+          padding: const EdgeInsets.only(bottom: 24),
           itemCount: previous.length,
           itemBuilder: (_, i) {
             final item = previous[i];

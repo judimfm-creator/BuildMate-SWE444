@@ -243,7 +243,7 @@ class InstitutionTeamPostDetailsView extends StatelessWidget {
           const SizedBox(width: 12),
           const Expanded(
             child: Text(
-              "Buttons are Available after registration deadline", 
+              "Buttons are available after registration deadline", 
               style: TextStyle(fontSize: 12, color: Colors.orange, fontWeight: FontWeight.w600, height: 1.4),
             ),
           ),

@@ -1,11 +1,14 @@
 import 'dart:io';
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 import 'package:font_awesome_flutter/font_awesome_flutter.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 import '../model/user_model.dart';
+import '../model/hackathon.dart';
 import '../services/user_service.dart';
 import '../widgets/buildmate_app_bar.dart';
+import '../widgets/user_hackathon_card.dart';
 
 class OtherUserProfilePage extends StatefulWidget {
   final String userId;
@@ -49,6 +52,42 @@ class _OtherUserProfilePageState extends State<OtherUserProfilePage>
 
     final Uri url = Uri.parse(cleanUrl);
     await launchUrl(url, mode: LaunchMode.inAppBrowserView);
+  }
+
+  Future<List<Map<String, dynamic>>> _getUserHackathons(String userId) async {
+    final teamPostsSnapshot = await FirebaseFirestore.instance
+        .collection('team_posts')
+        .where('members', arrayContains: userId)
+        .get();
+
+    List<Map<String, dynamic>> result = [];
+
+    for (var doc in teamPostsSnapshot.docs) {
+      final data = doc.data();
+
+      final String hackathonId = (data['hackathonId'] ?? '').toString();
+      final List members = data['members'] ?? [];
+      final String status = (data['status'] ?? 'pending_approval').toString();
+
+      if (hackathonId.isEmpty) continue;
+
+      final hackathonDoc = await FirebaseFirestore.instance
+          .collection('hackathons')
+          .doc(hackathonId)
+          .get();
+
+      if (hackathonDoc.exists) {
+        final hackathon = Hackathon.fromFirestore(hackathonDoc);
+
+        result.add({
+          'hackathon': hackathon,
+          'membersCount': members.length,
+          'status': status,
+        });
+      }
+    }
+
+    return result;
   }
 
   @override
@@ -135,18 +174,12 @@ class _OtherUserProfilePageState extends State<OtherUserProfilePage>
 
               SliverToBoxAdapter(
                 child: SizedBox(
-                  height: 500,
+                  height: MediaQuery.of(context).size.height * 0.65,
                   child: TabBarView(
                     controller: _tabController,
                     children: [
-                      _buildEmptyPlaceholder(
-                        "No ongoing hackathons",
-                        Icons.rocket_launch_outlined,
-                      ),
-                      _buildEmptyPlaceholder(
-                        "No previous projects",
-                        Icons.history,
-                      ),
+                      _buildOngoingHackathonsTab(widget.userId),
+                      _buildPreviousHackathonsTab(widget.userId),
                     ],
                   ),
                 ),
@@ -287,6 +320,91 @@ class _OtherUserProfilePageState extends State<OtherUserProfilePage>
         Tab(text: "Ongoing"),
         Tab(text: "Previous"),
       ],
+    );
+  }
+
+  Widget _buildOngoingHackathonsTab(String userId) {
+    return FutureBuilder<List<Map<String, dynamic>>>(
+      future: _getUserHackathons(userId),
+      builder: (context, snapshot) {
+        if (!snapshot.hasData) {
+          return const Center(child: CircularProgressIndicator());
+        }
+
+        final now = DateTime.now();
+        final data = snapshot.data!;
+
+        final ongoing = data.where((item) {
+          final h = item['hackathon'] as Hackathon;
+          final status = (item['status'] ?? 'pending_approval').toString();
+
+          final started = !h.startDate.isAfter(now);
+          final notEnded = !h.endDate.isBefore(now);
+
+          return started && notEnded && (status == 'approved' || status=='accepted');
+        }).toList();
+
+        if (ongoing.isEmpty) {
+          return _buildEmptyPlaceholder(
+            "No ongoing hackathons",
+            Icons.rocket_launch_outlined,
+          );
+        }
+
+        return ListView.builder(
+          padding: const EdgeInsets.only(top: 12, bottom: 24),
+          itemCount: ongoing.length,
+          itemBuilder: (_, i) {
+            final item = ongoing[i];
+            return UserHackathonCard(
+              hackathon: item['hackathon'] as Hackathon,
+              currentMembers: item['membersCount'] as int,
+              isPrevious: false,
+            );
+          },
+        );
+      },
+    );
+  }
+
+  Widget _buildPreviousHackathonsTab(String userId) {
+    return FutureBuilder<List<Map<String, dynamic>>>(
+      future: _getUserHackathons(userId),
+      builder: (context, snapshot) {
+        if (!snapshot.hasData) {
+          return const Center(child: CircularProgressIndicator());
+        }
+
+        final now = DateTime.now();
+        final data = snapshot.data!;
+
+        final previous = data.where((item) {
+          final h = item['hackathon'] as Hackathon;
+          final status = (item['status'] ?? 'pending_approval').toString();
+
+          return h.endDate.isBefore(now) && (status == 'approved' || status=='accepted');
+        }).toList();
+
+        if (previous.isEmpty) {
+          return _buildEmptyPlaceholder(
+            "No previous hackathons",
+            Icons.history,
+          );
+        }
+
+        return ListView.builder(
+          padding: const EdgeInsets.only(top: 12, bottom: 24),
+          itemCount: previous.length,
+          itemBuilder: (_, i) {
+            final item = previous[i];
+            return UserHackathonCard(
+              hackathon: item['hackathon'] as Hackathon,
+              currentMembers: item['membersCount'] as int,
+              isPrevious: true,
+            );
+          },
+        );
+      },
     );
   }
 
