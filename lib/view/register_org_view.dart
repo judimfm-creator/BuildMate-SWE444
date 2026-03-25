@@ -139,9 +139,24 @@ class _RegisterOrgViewState extends State<RegisterOrgView> {
                 "minimum 3 characters",
                 Icons.corporate_fare,
                 wrap: true, // ✅ راب
-                validator: (v) => (v != null && v.trim().length < 3)
-                    ? "Organization name must be at least 3 characters"
-                    : null,
+                validator: (v) {
+                  if (v == null || v.trim().isEmpty) {
+                    return "Organization name must be at least 3 characters";
+                  }
+                  String text = v.trim();
+                  // 1. حساب عدد الحروف الإنجليزية فقط (يتجاهل المسافات)
+                  int letterCount = text.replaceAll(RegExp(r'[^a-zA-Z]'), '').length;
+
+                  // 2. التأكد من: يبدأ بحرف، ولا يحتوي إلا على حروف ومسافات وبعض الرموز المسموحة
+                  if (!RegExp(r"^[a-zA-Z][a-zA-Z\s\-\,\.]*$").hasMatch(text)) {
+                    return "Only English letters are allowed";
+                  }
+
+                  if (letterCount < 3) {
+                    return "Must have at least 3 letters";
+                  }
+                  return null;
+                },
               ),
               _buildField(
                 _usernameController,
@@ -218,9 +233,26 @@ class _RegisterOrgViewState extends State<RegisterOrgView> {
                 "e.g., Riyadh, KSU Campus",
                 Icons.location_on_outlined,
                 wrap: true, // ✅ راب
-                validator: (v) => (v == null || v.trim().isEmpty)
-                    ? "e.g., Riyadh, KSU Campus"
-                    : null,
+                validator: (v) {
+                  // في ملف التسجيل اللوكيشن مطلوب (إلزامي)، لذلك نتحقق أنه مو فاضي أولاً
+                  if (v == null || v.trim().isEmpty) {
+                    return "e.g., Riyadh, KSU Campus";
+                  }
+
+                  String text = v.trim();
+                  // 1. حساب عدد الحروف الإنجليزية فقط (يتجاهل الفواصل والشرطات والنقاط)
+                  int letterCount = text.replaceAll(RegExp(r'[^a-zA-Z]'), '').length;
+
+                  // 2. التأكد من: يبدأ بحرف، والرموز المسموحة هي حروف، مسافات، ، . -
+                  if (!RegExp(r"^[a-zA-Z][a-zA-Z\s\-\,\.]*$").hasMatch(text)) {
+                    return "Only English letters are allowed";
+                  }
+
+                  if (letterCount < 3) {
+                    return "Must have at least 3 letters";
+                  }
+                  return null;
+                },
               ),
               _buildField(
                 _bioController,

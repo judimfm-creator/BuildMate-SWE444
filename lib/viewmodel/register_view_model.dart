@@ -139,8 +139,6 @@ Future<void> updateProfile({
       return;
     }
     Map<String, dynamic> dataToUpdate = {
-      'fullName': name ?? '',
-      'username': username ?? '',
       'bio': bio.trim(),
       'skills': skills,
       'city': city.trim(),

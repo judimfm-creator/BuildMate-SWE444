@@ -454,12 +454,39 @@ class _ProfileManagementPageState extends State<ProfileManagementPage> {
             ),
           ),
           if (_isEditMode) ...[
-            // زر الكاميرا (مطابق لـ Complete Profile ويستدعي شغل زميلتك)
+            // ✅ تم تعديل هذا الزر ليطابق نظام المنشأة (كاميرا أو استوديو)
             Positioned(
               bottom: 0,
               right: 0,
               child: GestureDetector(
-                onTap: () => registerVm.pickImage(ImageSource.gallery), // ميثود زميلتك
+                onTap: () {
+                  showModalBottomSheet(
+                    context: context,
+                    builder: (context) => Column(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        ListTile(
+                          leading: const Icon(Icons.camera_alt),
+                          title: const Text("Take Photo"),
+                          onTap: () {
+                            registerVm.pickImage(ImageSource.camera);
+                            if (isMarked) setState(() => _itemsMarkedForDeletion.remove("photo"));
+                            Navigator.pop(context);
+                          },
+                        ),
+                        ListTile(
+                          leading: const Icon(Icons.image),
+                          title: const Text("Upload Image"),
+                          onTap: () {
+                            registerVm.pickImage(ImageSource.gallery);
+                            if (isMarked) setState(() => _itemsMarkedForDeletion.remove("photo"));
+                            Navigator.pop(context);
+                          },
+                        ),
+                      ],
+                    ),
+                  );
+                },
                 child: CircleAvatar(
                   radius: 16,
                   backgroundColor: deepMediumPurple,

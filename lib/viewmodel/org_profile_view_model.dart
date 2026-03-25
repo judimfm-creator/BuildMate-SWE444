@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:buildmate/model/org_model.dart';
+import 'package:image_picker/image_picker.dart';
+
 
 class OrgProfileViewModel extends ChangeNotifier {
   final FirebaseAuth _auth = FirebaseAuth.instance;
@@ -17,14 +19,16 @@ class OrgProfileViewModel extends ChangeNotifier {
     });
   }
 
-Future<void> updateOrgProfile({
+
+  Future<void> updateOrgProfile({
     required String name,
     required String phone,
     required String location,
     required String bio,
-    String? image, 
+    String? username, // 1. إضافة اسم المستخدم هنا
+    String? image,
     required BuildContext context,
-  }) async {
+  })async {
     try {
       String uid = _auth.currentUser?.uid ?? "";
       
@@ -36,6 +40,9 @@ Future<void> updateOrgProfile({
         'biography': bio,
       };
 
+      if (username != null) {
+        data['username'] = username;
+      }
       // الحل هنا: لا نرسل حقل الصورة للفايربيز إلا لو كان فيه قيمة (تحديث أو حذف متعمد)
       if (image != null) {
         data['profilePhotoPath'] = image;

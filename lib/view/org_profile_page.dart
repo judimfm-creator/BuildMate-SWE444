@@ -43,34 +43,60 @@ class _OrgProfilePageState extends State<OrgProfilePage> {
           length: 1,
           child: Scaffold(
             backgroundColor: Colors.white,
-            // ✅ تم حذف الـ AppBar بالكامل هنا
-            body: SingleChildScrollView(
+            // ✅ تم استخدام CustomScrollView بنفس ستايل اليوزر لعرض الاسم بالأعلى
+            body: CustomScrollView(
               physics: const BouncingScrollPhysics(),
-              child: Column(
-                children: [
-                  const SizedBox(height: 60),
-                  // مساحة تعويضية علوية بعد حذف الـ AppBar
-                  _buildOrgHeader(org),
-                  const SizedBox(height: 25),
-                  _buildManageButton(context),
-                  const SizedBox(height: 35),
-
-                  _buildContactSection(org, userEmail),
-
-                  const SizedBox(height: 35),
-
-                  _buildTabBarSection(),
-
-                  const SizedBox(
-                    height: 300,
-                    child: TabBarView(
-                      children: [
-                        _PastHackathonsTab(),
-                      ],
+              slivers: [
+                SliverAppBar(
+                  pinned: false,
+                  floating: false,
+                  backgroundColor: primaryPurple.withOpacity(0.05),
+                  surfaceTintColor: primaryPurple.withOpacity(0.05),
+                  elevation: 0,
+                  toolbarHeight: 38,
+                  expandedHeight: 38,
+                  automaticallyImplyLeading: false,
+                  primary: false,
+                  flexibleSpace: FlexibleSpaceBar(
+                    centerTitle: true,
+                    titlePadding: EdgeInsets.zero,
+                    title: Container(
+                      alignment: Alignment.center,
+                      child: Text(
+                        org?.orgName ?? "Organization Name", // ✅ عرض اسم المنظمة هنا
+                        style: TextStyle(
+                          color: primaryPurple,
+                          fontWeight: FontWeight.w800,
+                          fontSize: 16,
+                          letterSpacing: 0.5,
+                        ),
+                      ),
                     ),
                   ),
-                ],
-              ),
+                ),
+                SliverToBoxAdapter(
+                  child: Column(
+                    children: [
+                      const SizedBox(height: 20),
+                      _buildOrgHeader(org),
+                      const SizedBox(height: 25),
+                      _buildManageButton(context),
+                      const SizedBox(height: 35),
+                      _buildContactSection(org, userEmail),
+                      const SizedBox(height: 35),
+                      _buildTabBarSection(),
+                    ],
+                  ),
+                ),
+                // ✅ عرض الهكاثونات السابقة في التاب
+                SliverFillRemaining(
+                  child: TabBarView(
+                    children: [
+                      const _PastHackathonsTab(),
+                    ],
+                  ),
+                ),
+              ],
             ),
           ),
         );
