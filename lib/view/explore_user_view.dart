@@ -75,6 +75,21 @@ class _ExploreUserViewState extends State<ExploreUserView>
       selectedStartEventDate != null ||
       selectedEndEventDate != null;
 
+  Widget _buildClearFilterButton() {
+    return Container(
+      height: 45, width: 45,
+      decoration: BoxDecoration(
+          color: Colors.red.withOpacity(0.1),
+          borderRadius: BorderRadius.circular(12)
+      ),
+      child: IconButton(
+        icon: const Icon(Icons.filter_alt_off, color: Colors.red, size: 20),
+        onPressed: _clearAllFilters,
+        tooltip: "Clear Filters",
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final vm = context.watch<OrgHackathonsViewModel>();
@@ -86,12 +101,18 @@ class _ExploreUserViewState extends State<ExploreUserView>
         elevation: 0,
         automaticallyImplyLeading: false,
         titleSpacing: 0,
-        // ✅ تم تحسين المسافات هنا لمنع الالتصاق
         title: Padding(
           padding: const EdgeInsets.fromLTRB(16, 12, 16, 8),
           child: Row(
             children: [
               Expanded(child: _buildSearchBar(vm)),
+
+              // ✅ إضافة زر حذف الفلاتر هنا ليظهر فقط عند وجود فلاتر نشطة
+              if (_hasActiveFilters()) ...[
+                const SizedBox(width: 8),
+                _buildClearFilterButton(),
+              ],
+
               const SizedBox(width: 8),
               _buildFilterButton(),
             ],
@@ -100,7 +121,7 @@ class _ExploreUserViewState extends State<ExploreUserView>
         bottom: PreferredSize(
           preferredSize: const Size.fromHeight(50),
           child: Container(
-            margin: const EdgeInsets.only(top: 4), // مسافة إضافية
+            margin: const EdgeInsets.only(top: 4),
             child: TabBar(
               controller: _tabController,
               indicatorColor: _purple,
@@ -134,27 +155,7 @@ class _ExploreUserViewState extends State<ExploreUserView>
       },
       child: Column(
         children: [
-          if (_hasActiveFilters())
-            Padding(
-              padding: const EdgeInsets.fromLTRB(16, 12, 16, 8),
-              child: Row(
-                children: [
-                  const Text("Filters Applied",
-                      style: TextStyle(fontSize: 11, color: Colors.grey)),
-                  const Spacer(),
-                  GestureDetector(
-                    onTap: _clearAllFilters,
-                    child: const Text(
-                      "Clear All",
-                      style: TextStyle(
-                          color: Colors.red,
-                          fontSize: 11,
-                          fontWeight: FontWeight.bold),
-                    ),
-                  ),
-                ],
-              ),
-            ),
+          // ✅ تم حذف الجزء القديم الخاص بـ "Clear All" من هنا لأنه صار فوق ثابت
           Expanded(
             child: StreamBuilder<List<Hackathon>>(
               stream: vm.filteredHackathonsStream,
@@ -169,26 +170,25 @@ class _ExploreUserViewState extends State<ExploreUserView>
                 list = list.where((h) {
                   bool mCity = _cityController.text.isEmpty ||
                       h.city.toLowerCase().contains(_cityController.text.toLowerCase());
-                  
+
                   bool mMode = selectedMode == null || h.mode == selectedMode;
-                  
+
                   bool mEdu = selectedEducation == null ||
                       (h.educationCriteria ?? "Any") == selectedEducation;
 
                   bool mStatus = true;
                   if (selectedStatus != null) {
-                    if (selectedStatus == "Registration Upcoming Soon")
+                    if (selectedStatus == "Registration Upcoming Soon") {
                       mStatus = now.isBefore(h.applicationOpenDate);
-                    else if (selectedStatus == "Registration Open")
+                    } else if (selectedStatus == "Registration Open") {
                       mStatus = now.isAfter(h.applicationOpenDate) && now.isBefore(h.applicationDeadline);
-                    else if (selectedStatus == "Registration Closed")
+                    } else if (selectedStatus == "Registration Closed") {
                       mStatus = now.isAfter(h.applicationDeadline);
+                    }
                   }
 
-                  // ✅ إصلاح منطق تواريخ الحدث
                   bool mEvStart = selectedStartEventDate == null || isSameDay(h.startDate, selectedStartEventDate!);
                   bool mEvEnd = selectedEndEventDate == null || isSameDay(h.endDate, selectedEndEventDate!);
-
                   bool mDeadline = selectedEndRegDate == null || isSameDay(h.applicationDeadline, selectedEndRegDate!);
 
                   return mCity && mMode && mStatus && mEdu && mEvStart && mEvEnd && mDeadline;
