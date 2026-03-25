@@ -379,7 +379,7 @@ class _ProfilePageState extends State<ProfilePage>
           final started = !h.startDate.isAfter(now);
           final notEnded = !h.endDate.isBefore(now);
 
-          return started && notEnded && status == 'approved';
+          return started && notEnded && (status == 'approved'|| status=='accepted');
         }).toList();
 
         if (ongoing.isEmpty) {
@@ -418,11 +418,11 @@ class _ProfilePageState extends State<ProfilePage>
           final h = item['hackathon'] as Hackathon;
           final status = (item['status'] ?? 'pending_approval').toString();
 
-          return h.endDate.isBefore(now) && status == 'approved';
+          return h.endDate.isBefore(now) && (status == 'approved' || status=='accepted');
         }).toList();
 
         if (previous.isEmpty) {
-          return _empty("No previous projects");
+          return _empty("No previous hackathons");
         }
 
         return ListView.builder(
