@@ -11,6 +11,9 @@ import 'package:buildmate/view/org_profile_page.dart';
 import 'package:buildmate/view/explore_user_view.dart';
 import 'package:buildmate/view/user_home_page.dart';
 
+// ✅ إضافة هذا السطر لتمكين الصفحات الأخرى من تغيير التبويب
+_HomeScreenState? homeScreenState;
+
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
 
@@ -23,9 +26,17 @@ class _HomeScreenState extends State<HomeScreen> {
   bool _isLoading = true;
   bool _isOrg = false;
 
+  // ✅ إضافة هذه الدالة لتغيير الصفحة برمجياً
+  void changeTab(int index) {
+    setState(() {
+      _selectedIndex = index;
+    });
+  }
+
   @override
   void initState() {
     super.initState();
+    homeScreenState = this; // ✅ ربط الحالة الحالية بالمتغير العالمي
     _checkUserType();
   }
 
@@ -50,25 +61,23 @@ class _HomeScreenState extends State<HomeScreen> {
       return const Scaffold(body: Center(child: CircularProgressIndicator()));
     }
 
-    // هنا السر: ربط الـ Index بالصفحات الحقيقية وليس مجرد Text
     final List<Widget> orgPages = [
       const Center(child: Text("Home")),      // 0
       const Center(child: Text("Campaigns")), // 1
       const Center(child: Text("Add")),       // 2
       const Center(child: Text("Teams")),     // 3
-      const OrgProfilePage(),                // 4 - تم التأكد من وضع الصفحة الفعلية هنا
+      const OrgProfilePage(),                // 4
     ];
 
     final List<Widget> userPages = [
       const UserHomePage(),     // 0
-      const ExploreUserView(),// 1
+      const ExploreUserView(),  // 1
       const Center(child: Text("Teams")),     // 2
-      const ProfilePage(),                   // 3 - صفحة Hailah22
+      const ProfilePage(),                   // 3
     ];
 
-   return Scaffold(
+    return Scaffold(
       backgroundColor: Colors.white,
-      // التعديل هنا: نخفي الـ AppBar فقط إذا كنا في صفحة البروفايل (رقم 3)
       appBar: (!_isOrg && _selectedIndex == 3) 
           ? null 
           : BuildMateAppBar(

@@ -669,8 +669,8 @@ class _ExploreUserViewState extends State<ExploreUserView>
 
   Widget _statusBadge(bool ns, bool cl) {
     String label = "Registration Open"; Color color = Colors.green;
-    if (ns) { label = "Upcoming"; color = Colors.orange; }
-    else if (cl) { label = "Closed"; color = Colors.red; }
+    if (ns) { label = "Registration Upcoming Soon"; color = Colors.orange; }
+    else if (cl) { label = "Registration Closed"; color = Colors.red; }
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
       decoration: BoxDecoration(color: color.withOpacity(0.1), borderRadius: BorderRadius.circular(8)),
