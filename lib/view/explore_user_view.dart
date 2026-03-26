@@ -11,6 +11,12 @@ import 'hackathon_teams_view.dart' as teams_view;
 import 'my_team_post_view.dart';
 import '../model/team_post_model.dart';
 import 'team_post_details_view.dart';
+import 'dart:async'; // ✅ إضافة مهمة جداً
+import 'package:cloud_firestore/cloud_firestore.dart';
+
+// 1. المتغيرات العامة (تكون برا الكلاسات تماماً - فوق class ExploreUserView)
+int targetExploreTab = 0;
+final StreamController<int> exploreTabStream = StreamController<int>.broadcast();
 
 class ExploreUserView extends StatefulWidget {
   final int initialTabIndex;
@@ -20,9 +26,10 @@ class ExploreUserView extends StatefulWidget {
   State<ExploreUserView> createState() => _ExploreUserViewState();
 }
 
-class _ExploreUserViewState extends State<ExploreUserView>
-    with SingleTickerProviderStateMixin {
+class _ExploreUserViewState extends State<ExploreUserView>  with SingleTickerProviderStateMixin {
+// 2. المتغيرات الخاصة بالكلاس (تكون داخل State)
   late TabController _tabController;
+  late StreamSubscription<int> _tabSubscription; // ✅ مكانها الصحيح هنا
   final TextEditingController _searchController = TextEditingController();
   final TextEditingController _cityController = TextEditingController();
 
@@ -36,16 +43,23 @@ class _ExploreUserViewState extends State<ExploreUserView>
   String? selectedEducation;
   DateTime? selectedEndRegDate;
   DateTime? selectedStartEventDate; 
-  DateTime? selectedEndEventDate; 
+  DateTime? selectedEndEventDate;
 
   @override
   void initState() {
     super.initState();
-    _tabController = TabController(length: 2, vsync: this, initialIndex: widget.initialTabIndex);
+    _tabController = TabController(length: 2, vsync: this, initialIndex: targetExploreTab);
+
+    _tabSubscription = exploreTabStream.stream.listen((index) {
+      if (mounted && _tabController.index != index) {
+        _tabController.animateTo(index); // ✅ الأنميشن شغال تمام
+      }
+    });
   }
 
   @override
   void dispose() {
+    _tabSubscription.cancel(); // ✅ تنظيف الذاكرة
     _tabController.dispose();
     _searchController.dispose();
     _cityController.dispose();
@@ -275,9 +289,8 @@ class _ExploreUserViewState extends State<ExploreUserView>
           final hName = item['hackathonName'] as String;
 
           // --- القواعد الأساسية ---
-          // إخفاء الهاكاثونات المنتهية، وإخفاء الفرق الخاصة بالمستخدم نفسه
-          if (h == null || h.applicationDeadline.isBefore(now)) return false;
-          if (team.createdBy == currentUid) return false;
+          // إذا الهاكاثون محذوف من الداتابيس نخفي الفريق عشان ما يكرش التطبيق
+          if (h == null) return false;
 
           // --- فلاتر البحث والنافذة ---
 
@@ -296,7 +309,7 @@ class _ExploreUserViewState extends State<ExploreUserView>
           // 4. فلتر المستوى التعليمي
           bool mEdu = selectedEducation == null || h.educationCriteria == selectedEducation;
 
-          // 5. فلتر حالة التسجيل (ملاحظة: المنتهي استبعدناه مسبقاً، لكن هذا يحترم خيار اليوزر لو فلتر)
+          // 5. فلتر حالة التسجيل
           bool mStatus = true;
           if (selectedStatus != null) {
             if (selectedStatus == "Registration Upcoming Soon") {
