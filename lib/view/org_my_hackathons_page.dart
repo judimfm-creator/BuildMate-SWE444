@@ -8,11 +8,12 @@ import 'org_hackathon_details_page.dart';
 class OrgMyHackathonsPage extends StatelessWidget {
   const OrgMyHackathonsPage({super.key});
 
-  static const Color _pageBg = Color(0xFFF1F4F8);
-  static const Color _titleColor = Color.fromARGB(255, 2, 7, 14);
-  static const Color _buttonPurple = Color(0xFF6D56B3); 
-  static const Color _cardBorder = Color(0xFFE5E7EB);
-  static const Color _statusGreen = Color(0xFF4CAF50);
+  static const Color _pageBg = Color(0xFFF8F7FB);
+  static const Color _titleColor = Color(0xFF111827);
+  static const Color _buttonPurple = Color(0xFF6D56B3);
+  static const Color _cardBorder = Color(0xFFE6E1F3);
+  static const Color _lightPurple = Color(0xFFF0EEFF);
+  static const Color _orange = Color(0xFFFFA726);
 
   DateTime? _parseDate(dynamic value) {
     if (value == null) return null;
@@ -42,8 +43,18 @@ class OrgMyHackathonsPage extends StatelessWidget {
     if (date == null) return "Date not available";
 
     const months = [
-      'Jan','Feb','Mar','Apr','May','Jun',
-      'Jul','Aug','Sep','Oct','Nov','Dec',
+      'Jan',
+      'Feb',
+      'Mar',
+      'Apr',
+      'May',
+      'Jun',
+      'Jul',
+      'Aug',
+      'Sep',
+      'Oct',
+      'Nov',
+      'Dec',
     ];
 
     return "${months[date.month - 1]} ${date.day}";
@@ -51,7 +62,7 @@ class OrgMyHackathonsPage extends StatelessWidget {
 
   String _buildDateRange(DateTime? start, DateTime? end) {
     if (start == null || end == null) return "Date not available";
-    return "${_formatDate(start)} - ${_formatDate(end)} ${end.year}";
+    return "${_formatDate(start)} - ${_formatDate(end)}";
   }
 
   Hackathon _buildHackathonFromDoc(
@@ -101,7 +112,11 @@ class OrgMyHackathonsPage extends StatelessWidget {
             .snapshots(),
         builder: (context, snapshot) {
           if (snapshot.connectionState == ConnectionState.waiting) {
-            return const Center(child: CircularProgressIndicator());
+            return const Center(
+              child: CircularProgressIndicator(
+                color: _buttonPurple,
+              ),
+            );
           }
 
           if (snapshot.hasError) {
@@ -116,13 +131,13 @@ class OrgMyHackathonsPage extends StatelessWidget {
           final docs = snapshot.data?.docs ?? [];
 
           return Padding(
-            padding: const EdgeInsets.all(16),
+            padding: const EdgeInsets.all(14),
             child: Container(
               width: double.infinity,
-              padding: const EdgeInsets.fromLTRB(14, 14, 14, 18),
+              padding: const EdgeInsets.fromLTRB(14, 14, 14, 16),
               decoration: BoxDecoration(
                 color: Colors.white,
-                borderRadius: BorderRadius.circular(20),
+                borderRadius: BorderRadius.circular(18),
                 boxShadow: const [
                   BoxShadow(
                     color: Color(0x14000000),
@@ -137,47 +152,56 @@ class OrgMyHackathonsPage extends StatelessWidget {
                   const Text(
                     "Available Hackathons",
                     style: TextStyle(
-                      fontSize: 18,
+                      fontSize: 16,
                       fontWeight: FontWeight.w800,
                       color: _titleColor,
                     ),
                   ),
-                  const SizedBox(height: 14),
-                  Container(height: 1, color: const Color(0xFFE9EDF2)),
-                  const SizedBox(height: 14),
+                  const SizedBox(height: 12),
+                  Container(
+                    height: 1,
+                    color: const Color(0xFFE9EDF2),
+                  ),
+                  const SizedBox(height: 12),
                   Expanded(
                     child: docs.isEmpty
                         ? const Center(
                             child: Text(
                               "No hackathons yet",
-                              style: TextStyle(fontSize: 15, color: Colors.grey),
+                              style: TextStyle(
+                                fontSize: 13,
+                                color: Colors.grey,
+                              ),
                             ),
                           )
                         : ListView.separated(
                             itemCount: docs.length,
                             separatorBuilder: (_, __) =>
-                                const SizedBox(height: 14),
+                                const SizedBox(height: 12),
                             itemBuilder: (context, index) {
                               final data = docs[index].data();
 
                               final String hackathonName =
-                                  (data['name'] ?? 'Untitled Hackathon').toString();
+                                  (data['name'] ?? 'Untitled Hackathon')
+                                      .toString();
 
                               final DateTime? openDate =
                                   _parseDate(data['applicationOpenDate']);
                               final DateTime? deadlineDate =
                                   _parseDate(data['applicationDeadline']);
 
-                              final bool isOpen = deadlineDate != null
-                                  ? DateTime.now().isBefore(
-                                      deadlineDate.add(const Duration(days: 1)))
-                                  : false;
+                              final now = DateTime.now();
+
+                              final bool isOpen = openDate != null &&
+                                  deadlineDate != null &&
+                                  !now.isBefore(openDate) &&
+                                  !now.isAfter(deadlineDate);
 
                               return Container(
-                                padding: const EdgeInsets.all(16),
+                                padding: const EdgeInsets.all(14),
                                 decoration: BoxDecoration(
                                   color: Colors.white,
-                                  borderRadius: BorderRadius.circular(14),
+                                  borderRadius: BorderRadius.circular(16),
                                   border: Border.all(color: _cardBorder),
                                   boxShadow: const [
                                     BoxShadow(
@@ -192,31 +216,36 @@ class OrgMyHackathonsPage extends StatelessWidget {
                                   children: [
                                     Text(
                                       hackathonName,
+                                      maxLines: 1,
+                                      overflow: TextOverflow.ellipsis,
                                       style: const TextStyle(
-                                        fontSize: 17,
+                                        fontSize: 14,
                                         fontWeight: FontWeight.w800,
-                                        color: Color.fromARGB(255, 3, 9, 16),
+                                        color: Color(0xFF111827),
                                       ),
                                     ),
-                                    const SizedBox(height: 8),
+                                    const SizedBox(height: 6),
                                     Text(
                                       _buildDateRange(openDate, deadlineDate),
                                       style: const TextStyle(
-                                        fontSize: 14,
+                                        fontSize: 12,
                                         color: Color(0xFF6B7280),
+                                        fontWeight: FontWeight.w500,
                                       ),
                                     ),
-                                    const SizedBox(height: 14),
+                                    const SizedBox(height: 12),
                                     Row(
                                       children: [
                                         Expanded(
                                           child: Row(
                                             children: [
                                               Container(
-                                                width: 14,
-                                                height: 14,
-                                                decoration: const BoxDecoration(
-                                                  color: _statusGreen,
+                                                width: 10,
+                                                height: 10,
+                                                decoration: BoxDecoration(
+                                                  color: isOpen
+                                                      ? Colors.green
+                                                      : Colors.red,
                                                   shape: BoxShape.circle,
                                                 ),
                                               ),
@@ -227,27 +256,32 @@ class OrgMyHackathonsPage extends StatelessWidget {
                                                       ? "Open for Registration"
                                                       : "Closed",
                                                   style: TextStyle(
-                                                    fontSize: 14,
-                                                    fontWeight: FontWeight.w500,
+                                                    fontSize: 12,
+                                                    fontWeight: FontWeight.w600,
                                                     color: isOpen
                                                         ? Colors.black87
                                                         : Colors.red,
                                                   ),
-                                                  overflow: TextOverflow.ellipsis,
+                                                  overflow:
+                                                      TextOverflow.ellipsis,
                                                 ),
                                               ),
                                             ],
                                           ),
                                         ),
-                                        const SizedBox(width: 12),
+                                        const SizedBox(width: 10),
                                         SizedBox(
-                                          width: 128,
-                                          height: 42,
+                                          width: 118,
+                                          height: 38,
                                           child: ElevatedButton(
                                             style: ElevatedButton.styleFrom(
-                                              backgroundColor: _buttonPurple, // 💜
+                                              backgroundColor: _buttonPurple,
                                               foregroundColor: Colors.white,
                                               elevation: 0,
+                                              padding:
+                                                  const EdgeInsets.symmetric(
+                                                horizontal: 10,
+                                              ),
                                               shape: RoundedRectangleBorder(
                                                 borderRadius:
                                                     BorderRadius.circular(12),
@@ -272,13 +306,46 @@ class OrgMyHackathonsPage extends StatelessWidget {
                                             child: const Text(
                                               "View Details",
                                               style: TextStyle(
-                                                fontSize: 14,
+                                                fontSize: 12,
                                                 fontWeight: FontWeight.w700,
                                               ),
                                             ),
                                           ),
                                         ),
                                       ],
+                                    ),
+                                    const SizedBox(height: 10),
+                                    Container(
+                                      width: double.infinity,
+                                      padding: const EdgeInsets.symmetric(
+                                        horizontal: 10,
+                                        vertical: 8,
+                                      ),
+                                      decoration: BoxDecoration(
+                                        color: _lightPurple,
+                                        borderRadius: BorderRadius.circular(12),
+                                      ),
+                                      child: Row(
+                                        children: [
+                                          Icon(
+                                            Icons.calendar_month_outlined,
+                                            size: 14,
+                                            color: _orange,
+                                          ),
+                                          const SizedBox(width: 6),
+                                          Expanded(
+                                            child: Text(
+                                              "Registration: ${_buildDateRange(openDate, deadlineDate)}",
+                                              style: const TextStyle(
+                                                fontSize: 11,
+                                                color: Colors.black87,
+                                                fontWeight: FontWeight.w500,
+                                              ),
+                                              overflow: TextOverflow.ellipsis,
+                                            ),
+                                          ),
+                                        ],
+                                      ),
                                     ),
                                   ],
                                 ),

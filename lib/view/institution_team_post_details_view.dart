@@ -1,5 +1,9 @@
+import 'dart:io';
+
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
+
+import 'other_user_profile_page.dart';
 
 class InstitutionTeamPostDetailsView extends StatelessWidget {
   final String teamPostId;
@@ -11,78 +15,135 @@ class InstitutionTeamPostDetailsView extends StatelessWidget {
 
   static const Color _purple = Color(0xFF6D56B3);
   static const Color _lightPurple = Color(0xFFF0EEFF);
+  static const Color _pageBg = Color(0xFFF8F9FD);
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: const Color(0xFFF8F9FD),
+      backgroundColor: _pageBg,
       appBar: AppBar(
-        title: const Text('Review Team Members', 
-          style: TextStyle(fontWeight: FontWeight.bold, fontSize: 18)),
+        title: const Text(
+          'Review Team Members',
+          style: TextStyle(
+            fontWeight: FontWeight.bold,
+            fontSize: 18,
+          ),
+        ),
         centerTitle: true,
         backgroundColor: Colors.white,
         foregroundColor: _purple,
         elevation: 0.5,
       ),
       body: StreamBuilder<DocumentSnapshot<Map<String, dynamic>>>(
-        stream: FirebaseFirestore.instance.collection('team_posts').doc(teamPostId).snapshots(),
+        stream: FirebaseFirestore.instance
+            .collection('team_posts')
+            .doc(teamPostId)
+            .snapshots(),
         builder: (context, snapshot) {
           if (snapshot.connectionState == ConnectionState.waiting) {
-            return const Center(child: CircularProgressIndicator(color: _purple));
+            return const Center(
+              child: CircularProgressIndicator(color: _purple),
+            );
           }
+
           if (!snapshot.hasData || !snapshot.data!.exists) {
-            return const Center(child: Text('Data not found.'));
+            return const Center(
+              child: Text('Data not found.'),
+            );
           }
 
           final data = snapshot.data!.data() ?? {};
-          final List<dynamic> memberIds = data['members'] ?? [];
-          final String status = data['status'] ?? 'pending';
-          final String hackathonId = data['hackathonId'] ?? '';
+          final List<dynamic> memberIdsDynamic =
+              (data['members'] as List?) ?? (data['memberIds'] as List?) ?? [];
+          final List<String> memberIds =
+              memberIdsDynamic.map((e) => e.toString()).toList();
 
-          return FutureBuilder<DocumentSnapshot>(
-            future: FirebaseFirestore.instance.collection('hackathons').doc(hackathonId).get(),
+          final String status = (data['status'] ?? 'pending').toString();
+          final String hackathonId = (data['hackathonId'] ?? '').toString();
+
+          return FutureBuilder<DocumentSnapshot<Map<String, dynamic>>>(
+            future: FirebaseFirestore.instance
+                .collection('hackathons')
+                .doc(hackathonId)
+                .get(),
             builder: (context, hackSnap) {
               bool isDeadlinePassed = false;
-              
-              if (hackSnap.hasData && hackSnap.data!.exists) {
-                final hackData = hackSnap.data!.data() as Map<String, dynamic>?;
-                if (hackData != null && hackData['applicationDeadline'] != null) {
-                  final dynamic deadlineRaw = hackData['applicationDeadline'];
-                  
-                  DateTime? deadlineDate;
-                  if (deadlineRaw is Timestamp) {
-                    deadlineDate = deadlineRaw.toDate();
-                  } else if (deadlineRaw is String) {
-                    deadlineDate = DateTime.tryParse(deadlineRaw);
-                  }
 
-                  if (deadlineDate != null) {
-                    isDeadlinePassed = DateTime.now().isAfter(deadlineDate);
-                  }
+              if (hackSnap.hasData && hackSnap.data!.exists) {
+                final hackData = hackSnap.data!.data();
+                final dynamic deadlineRaw = hackData?['applicationDeadline'];
+
+                DateTime? deadlineDate;
+
+                if (deadlineRaw is Timestamp) {
+                  deadlineDate = deadlineRaw.toDate();
+                } else if (deadlineRaw is String) {
+                  deadlineDate = DateTime.tryParse(deadlineRaw);
+                } else if (deadlineRaw is DateTime) {
+                  deadlineDate = deadlineRaw;
+                }
+
+                if (deadlineDate != null) {
+                  isDeadlinePassed = DateTime.now().isAfter(deadlineDate);
                 }
               }
 
               return SingleChildScrollView(
-                padding: const EdgeInsets.all(20),
+                padding: const EdgeInsets.all(16),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    const Text("Team Members Details", 
-                      style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
-                    const SizedBox(height: 20),
-                    
-                    ...memberIds.map((id) => _buildMemberCard(id.toString())),
+                    Container(
+                      width: double.infinity,
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 14,
+                        vertical: 12,
+                      ),
+                      decoration: BoxDecoration(
+                        color: _lightPurple,
+                        borderRadius: BorderRadius.circular(14),
+                      ),
+                      child: const Text(
+                        "Team Members",
+                        style: TextStyle(
+                          fontSize: 14,
+                          fontWeight: FontWeight.w800,
+                          color: _purple,
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: 16),
 
-                    const SizedBox(height: 32),
+                    if (memberIds.isEmpty)
+                      Container(
+                        width: double.infinity,
+                        padding: const EdgeInsets.all(16),
+                        decoration: BoxDecoration(
+                          color: Colors.white,
+                          borderRadius: BorderRadius.circular(16),
+                        ),
+                        child: const Text(
+                          "No members found.",
+                          style: TextStyle(
+                            fontSize: 13,
+                            color: Colors.black54,
+                          ),
+                        ),
+                      )
+                    else
+                      ...memberIds.map(
+                        (uid) => _buildMemberCard(context, uid),
+                      ),
 
-                    // الأزرار أولاً
-                    _buildDecisionButtons(context, status, isDeadlinePassed),
+                    const SizedBox(height: 24),
 
-                    // الملاحظة تحت الأزرار مباشرة
-                    if (!isDeadlinePassed && (status == 'pending' || status == 'pending_approval'))
-                      _buildClearDeadlineNote(),
+                    _buildDecisionSection(
+                      context,
+                      status,
+                      isDeadlinePassed,
+                    ),
 
-                    const SizedBox(height: 40),
+                    const SizedBox(height: 24),
                   ],
                 ),
               );
@@ -93,59 +154,123 @@ class InstitutionTeamPostDetailsView extends StatelessWidget {
     );
   }
 
-  Widget _buildMemberCard(String uid) {
+  Widget _buildMemberCard(BuildContext context, String uid) {
     return FutureBuilder<DocumentSnapshot<Map<String, dynamic>>>(
       future: FirebaseFirestore.instance.collection('users').doc(uid).get(),
       builder: (context, userSnap) {
-        if (!userSnap.hasData) return const Padding(padding: EdgeInsets.symmetric(vertical: 10), child: LinearProgressIndicator());
-        if (!userSnap.data!.exists) return const SizedBox.shrink();
+        if (userSnap.connectionState == ConnectionState.waiting) {
+          return Container(
+            margin: const EdgeInsets.only(bottom: 14),
+            padding: const EdgeInsets.all(14),
+            decoration: BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.circular(18),
+            ),
+            child: const LinearProgressIndicator(
+              color: _purple,
+            ),
+          );
+        }
+
+        if (!userSnap.hasData || !userSnap.data!.exists) {
+          return const SizedBox.shrink();
+        }
 
         final u = userSnap.data!.data() ?? {};
-        final skills = u['skills'] is List ? (u['skills'] as List).join(", ") : (u['skills']?.toString() ?? "N/A");
+        final String fullName = (u['fullName'] ?? 'User').toString();
+        final String username = (u['username'] ?? '').toString();
+        final ImageProvider? profileImage = _resolveProfileImage(u);
 
         return Container(
-          margin: const EdgeInsets.only(bottom: 24),
-          padding: const EdgeInsets.all(20),
+          margin: const EdgeInsets.only(bottom: 14),
+          padding: const EdgeInsets.all(14),
           decoration: BoxDecoration(
             color: Colors.white,
-            borderRadius: BorderRadius.circular(24),
+            borderRadius: BorderRadius.circular(18),
             border: Border.all(color: Colors.grey.shade200),
-            boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.02), blurRadius: 10)],
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withOpacity(0.03),
+                blurRadius: 10,
+                offset: const Offset(0, 2),
+              ),
+            ],
           ),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
+          child: Row(
             children: [
-              Row(
-                children: [
-                  CircleAvatar(
-                    radius: 28,
-                    backgroundColor: _lightPurple,
-                    child: Text(u['fullName'] != null ? u['fullName'][0] : '?', 
-                      style: const TextStyle(color: _purple, fontSize: 22, fontWeight: FontWeight.bold)),
+              CircleAvatar(
+                radius: 26,
+                backgroundColor: _lightPurple,
+                backgroundImage: profileImage,
+                child: profileImage == null
+                    ? Text(
+                        fullName.isNotEmpty ? fullName[0].toUpperCase() : '?',
+                        style: const TextStyle(
+                          color: _purple,
+                          fontSize: 20,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      )
+                    : null,
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      fullName,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: const TextStyle(
+                        fontWeight: FontWeight.w700,
+                        fontSize: 15,
+                        color: Colors.black87,
+                      ),
+                    ),
+                    const SizedBox(height: 3),
+                    Text(
+                      username.isNotEmpty ? "@$username" : "@username",
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: TextStyle(
+                        color: _purple.withOpacity(0.85),
+                        fontSize: 12,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(width: 8),
+              SizedBox(
+                height: 34,
+                child: OutlinedButton(
+                  style: OutlinedButton.styleFrom(
+                    side: const BorderSide(color: _purple, width: 1.1),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(10),
+                    ),
+                    padding: const EdgeInsets.symmetric(horizontal: 12),
                   ),
-                  const SizedBox(width: 15),
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(u['fullName'] ?? 'fullName', style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 17)),
-                        Text("@${u['username'] ?? 'username'}", style: TextStyle(color: _purple.withOpacity(0.8), fontSize: 13, fontWeight: FontWeight.w600)),
-                      ],
+                  onPressed: () {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (_) => OtherUserProfilePage(userId: uid),
+                      ),
+                    );
+                  },
+                  child: const Text(
+                    "View Profile",
+                    style: TextStyle(
+                      color: _purple,
+                      fontSize: 11,
+                      fontWeight: FontWeight.w700,
                     ),
                   ),
-                ],
+                ),
               ),
-              const Divider(height: 30),
-              _dataLine(Icons.email_outlined, "Email", u['email']),
-              _dataLine(Icons.phone_outlined, "Phone", u['phoneNumber']),
-              _dataLine(Icons.location_city_outlined, "City", u['city']),
-              _dataLine(Icons.wc_outlined, "Gender", u['gender']),
-              _dataLine(Icons.psychology_outlined, "Skills", skills),
-              
-              // الروابط مع خط أزرق تحتها
-              const SizedBox(height: 10),
-              _underlineLink(Icons.link, "LinkedIn", u['linkedin']),
-              _underlineLink(Icons.code, "GitHub", u['github']),
             ],
           ),
         );
@@ -153,102 +278,142 @@ class InstitutionTeamPostDetailsView extends StatelessWidget {
     );
   }
 
-  Widget _dataLine(IconData icon, String label, dynamic value) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 4),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Icon(icon, size: 16, color: Colors.grey.shade400),
-          const SizedBox(width: 10),
-          Text("$label: ", style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 12, color: Colors.black54)),
-          Expanded(child: Text(value?.toString() ?? "N/A", style: const TextStyle(fontSize: 12, color: Colors.black87))),
-        ],
-      ),
-    );
+  ImageProvider? _resolveProfileImage(Map<String, dynamic> userData) {
+    final candidates = [
+      userData['profilePhoto'],
+      userData['profilePhotoPath'],
+      userData['photoUrl'],
+      userData['imageUrl'],
+      userData['avatar'],
+    ];
+
+    for (final value in candidates) {
+      if (value is String && value.trim().isNotEmpty) {
+        final path = value.trim();
+
+        if (path.startsWith('http')) {
+          return NetworkImage(path);
+        }
+
+        final file = File(path);
+        if (file.existsSync()) {
+          return FileImage(file);
+        }
+      }
+    }
+    return null;
   }
 
-  Widget _underlineLink(IconData icon, String label, dynamic value) {
-    if (value == null || value.toString().isEmpty) return const SizedBox.shrink();
-    return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 4),
-      child: Row(
-        children: [
-          Icon(icon, size: 16, color: Colors.blue.shade400),
-          const SizedBox(width: 10),
-          Text("$label: ", style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 12, color: Colors.black54)),
-          Expanded(
-            child: Text(
-              value.toString(),
-              style: const TextStyle(
-                fontSize: 12, 
-                color: Colors.blue, 
-                decoration: TextDecoration.underline, // الخط تحت الرابط
-              ),
-              overflow: TextOverflow.ellipsis,
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildDecisionButtons(BuildContext context, String status, bool isDeadlinePassed) {
+  Widget _buildDecisionSection(
+    BuildContext context,
+    String status,
+    bool isDeadlinePassed,
+  ) {
     if (status == 'accepted' || status == 'rejected') {
-      Color c = status == 'accepted' ? Colors.green : Colors.red;
+      final c = status == 'accepted' ? Colors.green : Colors.red;
       return Container(
-        width: double.infinity, padding: const EdgeInsets.all(16),
-        decoration: BoxDecoration(color: c.withOpacity(0.1), borderRadius: BorderRadius.circular(12)),
-        child: Text("APPLICATION ${status.toUpperCase()}", textAlign: TextAlign.center, style: TextStyle(fontWeight: FontWeight.bold, color: c)),
+        width: double.infinity,
+        padding: const EdgeInsets.all(16),
+        decoration: BoxDecoration(
+          color: c.withOpacity(0.1),
+          borderRadius: BorderRadius.circular(12),
+        ),
+        child: Text(
+          "APPLICATION ${status.toUpperCase()}",
+          textAlign: TextAlign.center,
+          style: TextStyle(
+            fontWeight: FontWeight.bold,
+            color: c,
+          ),
+        ),
       );
     }
+
+    if (!isDeadlinePassed) {
+      return Container(
+        width: double.infinity,
+        padding: const EdgeInsets.all(14),
+        decoration: BoxDecoration(
+          color: Colors.orange.withOpacity(0.10),
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(color: Colors.orange.withOpacity(0.30)),
+        ),
+        child: Row(
+          children: const [
+            Icon(
+              Icons.visibility_outlined,
+              color: Colors.orange,
+              size: 20,
+            ),
+            SizedBox(width: 12),
+            Expanded(
+              child: Text(
+                "View only until registration closes.",
+                style: TextStyle(
+                  fontSize: 12,
+                  color: Colors.orange,
+                  fontWeight: FontWeight.w600,
+                  height: 1.4,
+                ),
+              ),
+            ),
+          ],
+        ),
+      );
+    }
+
     return Row(
       children: [
-        Expanded(child: _actionBtn("Accept Team", Colors.green, isDeadlinePassed ? () => _updateStatus(context, 'accepted') : null)),
+        Expanded(
+          child: _actionBtn(
+            "Accept Team",
+            Colors.green,
+            () => _updateStatus(context, 'accepted'),
+          ),
+        ),
         const SizedBox(width: 12),
-        Expanded(child: _actionBtn("Reject Team", Colors.redAccent, isDeadlinePassed ? () => _updateStatus(context, 'rejected') : null)),
+        Expanded(
+          child: _actionBtn(
+            "Reject Team",
+            Colors.redAccent,
+            () => _updateStatus(context, 'rejected'),
+          ),
+        ),
       ],
     );
   }
 
   Future<void> _updateStatus(BuildContext context, String newStatus) async {
-    await FirebaseFirestore.instance.collection('team_posts').doc(teamPostId).update({'status': newStatus});
-    if (context.mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text("Team status updated: $newStatus")));
+    await FirebaseFirestore.instance
+        .collection('team_posts')
+        .doc(teamPostId)
+        .update({'status': newStatus});
+
+    if (context.mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text("Team status updated: $newStatus"),
+        ),
+      );
+    }
   }
 
-  Widget _actionBtn(String l, Color c, VoidCallback? a) => ElevatedButton(
-    style: ElevatedButton.styleFrom(
-      backgroundColor: c, 
-      disabledBackgroundColor: Colors.grey.shade300, 
-      foregroundColor: Colors.white, 
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)), 
-      elevation: 0, 
-      padding: const EdgeInsets.symmetric(vertical: 16)
-    ),
-    onPressed: a, child: Text(l, style: const TextStyle(fontWeight: FontWeight.bold)));
-
-  // الملاحظة بشكل أوضح وتحت الأزرار
-  Widget _buildClearDeadlineNote() => Padding(
-    padding: const EdgeInsets.only(top: 16.0),
-    child: Container(
-      padding: const EdgeInsets.all(14),
-      decoration: BoxDecoration(
-        color: Colors.orange.withOpacity(0.1), 
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: Colors.orange.withOpacity(0.3))
+  Widget _actionBtn(String label, Color color, VoidCallback onPressed) {
+    return ElevatedButton(
+      style: ElevatedButton.styleFrom(
+        backgroundColor: color,
+        foregroundColor: Colors.white,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(12),
+        ),
+        elevation: 0,
+        padding: const EdgeInsets.symmetric(vertical: 16),
       ),
-      child: Row(
-        children: [
-          const Icon(Icons.info_outline, color: Colors.orange, size: 20),
-          const SizedBox(width: 12),
-          const Expanded(
-            child: Text(
-              "Buttons are available after registration deadline", 
-              style: TextStyle(fontSize: 12, color: Colors.orange, fontWeight: FontWeight.w600, height: 1.4),
-            ),
-          ),
-        ],
+      onPressed: onPressed,
+      child: Text(
+        label,
+        style: const TextStyle(fontWeight: FontWeight.bold),
       ),
-    ),
-  );
+    );
+  }
 }
