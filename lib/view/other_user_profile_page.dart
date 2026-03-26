@@ -79,6 +79,25 @@ class _OtherUserProfilePageState extends State<OtherUserProfilePage>
       if (hackathonDoc.exists) {
         final hackathon = Hackathon.fromFirestore(hackathonDoc);
 
+        if (hackathon.organizationId.isNotEmpty) {
+          final orgDoc = await FirebaseFirestore.instance
+              .collection('organizations')
+              .doc(hackathon.organizationId)
+              .get();
+
+          if (orgDoc.exists) {
+            final orgData = orgDoc.data() ?? {};
+
+            hackathon.organizationName =
+                orgData['orgName'] ??
+                    orgData['username'] ??
+                    'Organizer';
+
+            hackathon.organizationPhotoUrl =
+            orgData['profilePhotoPath'];
+          }
+        }
+
         result.add({
           'hackathon': hackathon,
           'membersCount': members.length,
