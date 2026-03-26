@@ -9,6 +9,14 @@ import 'hackathon_details_view.dart';
 import 'create_team_post_view.dart';
 import 'hackathon_teams_view.dart' as teams_view;
 import 'my_team_post_view.dart';
+import '../model/team_post_model.dart';
+import 'team_post_details_view.dart';
+import 'dart:async'; // ✅ إضافة مهمة جداً
+import 'package:cloud_firestore/cloud_firestore.dart';
+
+// 1. المتغيرات العامة (تكون برا الكلاسات تماماً - فوق class ExploreUserView)
+int targetExploreTab = 0;
+final StreamController<int> exploreTabStream = StreamController<int>.broadcast();
 
 class ExploreUserView extends StatefulWidget {
   final int initialTabIndex;
@@ -18,9 +26,10 @@ class ExploreUserView extends StatefulWidget {
   State<ExploreUserView> createState() => _ExploreUserViewState();
 }
 
-class _ExploreUserViewState extends State<ExploreUserView>
-    with SingleTickerProviderStateMixin {
+class _ExploreUserViewState extends State<ExploreUserView>  with SingleTickerProviderStateMixin {
+// 2. المتغيرات الخاصة بالكلاس (تكون داخل State)
   late TabController _tabController;
+  late StreamSubscription<int> _tabSubscription; // ✅ مكانها الصحيح هنا
   final TextEditingController _searchController = TextEditingController();
   final TextEditingController _cityController = TextEditingController();
 
@@ -34,16 +43,23 @@ class _ExploreUserViewState extends State<ExploreUserView>
   String? selectedEducation;
   DateTime? selectedEndRegDate;
   DateTime? selectedStartEventDate; 
-  DateTime? selectedEndEventDate; 
+  DateTime? selectedEndEventDate;
 
   @override
   void initState() {
     super.initState();
-    _tabController = TabController(length: 2, vsync: this, initialIndex: widget.initialTabIndex);
+    _tabController = TabController(length: 2, vsync: this, initialIndex: targetExploreTab);
+
+    _tabSubscription = exploreTabStream.stream.listen((index) {
+      if (mounted && _tabController.index != index) {
+        _tabController.animateTo(index); // ✅ الأنميشن شغال تمام
+      }
+    });
   }
 
   @override
   void dispose() {
+    _tabSubscription.cancel(); // ✅ تنظيف الذاكرة
     _tabController.dispose();
     _searchController.dispose();
     _cityController.dispose();
@@ -75,6 +91,21 @@ class _ExploreUserViewState extends State<ExploreUserView>
       selectedStartEventDate != null ||
       selectedEndEventDate != null;
 
+  Widget _buildClearFilterButton() {
+    return Container(
+      height: 45, width: 45,
+      decoration: BoxDecoration(
+          color: Colors.red.withOpacity(0.1),
+          borderRadius: BorderRadius.circular(12)
+      ),
+      child: IconButton(
+        icon: const Icon(Icons.filter_alt_off, color: Colors.red, size: 20),
+        onPressed: _clearAllFilters,
+        tooltip: "Clear Filters",
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final vm = context.watch<OrgHackathonsViewModel>();
@@ -86,12 +117,18 @@ class _ExploreUserViewState extends State<ExploreUserView>
         elevation: 0,
         automaticallyImplyLeading: false,
         titleSpacing: 0,
-        // ✅ تم تحسين المسافات هنا لمنع الالتصاق
         title: Padding(
           padding: const EdgeInsets.fromLTRB(16, 12, 16, 8),
           child: Row(
             children: [
               Expanded(child: _buildSearchBar(vm)),
+
+              // ✅ إضافة زر حذف الفلاتر هنا ليظهر فقط عند وجود فلاتر نشطة
+              if (_hasActiveFilters()) ...[
+                const SizedBox(width: 8),
+                _buildClearFilterButton(),
+              ],
+
               const SizedBox(width: 8),
               _buildFilterButton(),
             ],
@@ -100,7 +137,7 @@ class _ExploreUserViewState extends State<ExploreUserView>
         bottom: PreferredSize(
           preferredSize: const Size.fromHeight(50),
           child: Container(
-            margin: const EdgeInsets.only(top: 4), // مسافة إضافية
+            margin: const EdgeInsets.only(top: 4),
             child: TabBar(
               controller: _tabController,
               indicatorColor: _purple,
@@ -117,7 +154,7 @@ class _ExploreUserViewState extends State<ExploreUserView>
         controller: _tabController,
         children: [
           _buildHackathonList(),
-          const Center(child: Text("Teams Feature Coming Soon")),
+          _buildTeamsList(), // ✅ تم استبدال النص بهذه الدالة
         ],
       ),
     );
@@ -134,27 +171,7 @@ class _ExploreUserViewState extends State<ExploreUserView>
       },
       child: Column(
         children: [
-          if (_hasActiveFilters())
-            Padding(
-              padding: const EdgeInsets.fromLTRB(16, 12, 16, 8),
-              child: Row(
-                children: [
-                  const Text("Filters Applied",
-                      style: TextStyle(fontSize: 11, color: Colors.grey)),
-                  const Spacer(),
-                  GestureDetector(
-                    onTap: _clearAllFilters,
-                    child: const Text(
-                      "Clear All",
-                      style: TextStyle(
-                          color: Colors.red,
-                          fontSize: 11,
-                          fontWeight: FontWeight.bold),
-                    ),
-                  ),
-                ],
-              ),
-            ),
+          // ✅ تم حذف الجزء القديم الخاص بـ "Clear All" من هنا لأنه صار فوق ثابت
           Expanded(
             child: StreamBuilder<List<Hackathon>>(
               stream: vm.filteredHackathonsStream,
@@ -169,26 +186,25 @@ class _ExploreUserViewState extends State<ExploreUserView>
                 list = list.where((h) {
                   bool mCity = _cityController.text.isEmpty ||
                       h.city.toLowerCase().contains(_cityController.text.toLowerCase());
-                  
+
                   bool mMode = selectedMode == null || h.mode == selectedMode;
-                  
+
                   bool mEdu = selectedEducation == null ||
                       (h.educationCriteria ?? "Any") == selectedEducation;
 
                   bool mStatus = true;
                   if (selectedStatus != null) {
-                    if (selectedStatus == "Registration Upcoming Soon")
+                    if (selectedStatus == "Registration Upcoming Soon") {
                       mStatus = now.isBefore(h.applicationOpenDate);
-                    else if (selectedStatus == "Registration Open")
+                    } else if (selectedStatus == "Registration Open") {
                       mStatus = now.isAfter(h.applicationOpenDate) && now.isBefore(h.applicationDeadline);
-                    else if (selectedStatus == "Registration Closed")
+                    } else if (selectedStatus == "Registration Closed") {
                       mStatus = now.isAfter(h.applicationDeadline);
+                    }
                   }
 
-                  // ✅ إصلاح منطق تواريخ الحدث
                   bool mEvStart = selectedStartEventDate == null || isSameDay(h.startDate, selectedStartEventDate!);
                   bool mEvEnd = selectedEndEventDate == null || isSameDay(h.endDate, selectedEndEventDate!);
-
                   bool mDeadline = selectedEndRegDate == null || isSameDay(h.applicationDeadline, selectedEndRegDate!);
 
                   return mCity && mMode && mStatus && mEdu && mEvStart && mEvEnd && mDeadline;
@@ -210,6 +226,203 @@ class _ExploreUserViewState extends State<ExploreUserView>
             ),
           ),
         ],
+      ),
+    );
+  }
+
+  Widget _buildTeamsList() {
+    final currentUid = FirebaseAuth.instance.currentUser?.uid;
+
+    return StreamBuilder<List<Map<String, dynamic>>>(
+      // 1. نجلب كل بيانات الفرق والهاكاثونات المرتبطة فيها مرة واحدة
+      stream: FirebaseFirestore.instance
+          .collection('team_posts')
+          .orderBy('createdAt', descending: true)
+          .snapshots()
+          .asyncMap((snapshot) async {
+
+        final futures = snapshot.docs.map((doc) async {
+          final data = doc.data() as Map<String, dynamic>;
+          final team = TeamPostModel.fromMap(doc.id, data);
+
+          final hackathonDoc = await FirebaseFirestore.instance
+              .collection('hackathons')
+              .doc(team.hackathonId)
+              .get();
+
+          Hackathon? hackathon;
+          String hackathonName = "Unknown Hackathon";
+
+          if (hackathonDoc.exists) {
+            hackathon = Hackathon.fromFirestore(hackathonDoc);
+            hackathonName = hackathon.name;
+          }
+
+          return {
+            'team': team,
+            'hackathon': hackathon,
+            'hackathonName': hackathonName,
+          };
+        });
+
+        return await Future.wait(futures);
+      }),
+      builder: (context, snapshot) {
+        if (snapshot.connectionState == ConnectionState.waiting) {
+          return const Center(child: CircularProgressIndicator(color: _purple));
+        }
+
+        if (!snapshot.hasData || snapshot.data!.isEmpty) {
+          return const Center(
+            child: Padding(
+              padding: EdgeInsets.only(top: 40),
+              child: Text("No teams available right now."),
+            ),
+          );
+        }
+
+        // 2. الفلترة المباشرة بناءً على اختيارات اليوزر في الواجهة
+        final now = DateTime.now();
+        var list = snapshot.data!.where((item) {
+          final team = item['team'] as TeamPostModel;
+          final h = item['hackathon'] as Hackathon?;
+          final hName = item['hackathonName'] as String;
+
+          // --- القواعد الأساسية ---
+          // إذا الهاكاثون محذوف من الداتابيس نخفي الفريق عشان ما يكرش التطبيق
+          if (h == null) return false;
+
+          // --- فلاتر البحث والنافذة ---
+
+          // 1. شريط البحث (يبحث في اسم الفريق واسم الهاكاثون)
+          bool mSearch = _searchController.text.isEmpty ||
+              team.teamName.toLowerCase().contains(_searchController.text.toLowerCase()) ||
+              hName.toLowerCase().contains(_searchController.text.toLowerCase());
+
+          // 2. فلتر المدينة
+          bool mCity = _cityController.text.isEmpty ||
+              h.city.toLowerCase().contains(_cityController.text.toLowerCase());
+
+          // 3. فلتر طريقة الحضور
+          bool mMode = selectedMode == null || h.mode == selectedMode;
+
+          // 4. فلتر المستوى التعليمي
+          bool mEdu = selectedEducation == null || h.educationCriteria == selectedEducation;
+
+          // 5. فلتر حالة التسجيل
+          bool mStatus = true;
+          if (selectedStatus != null) {
+            if (selectedStatus == "Registration Upcoming Soon") {
+              mStatus = now.isBefore(h.applicationOpenDate);
+            } else if (selectedStatus == "Registration Open") {
+              mStatus = now.isAfter(h.applicationOpenDate) && now.isBefore(h.applicationDeadline);
+            } else if (selectedStatus == "Registration Closed") {
+              mStatus = now.isAfter(h.applicationDeadline);
+            }
+          }
+
+          // 6. تواريخ الحدث والتسجيل
+          bool mEvStart = selectedStartEventDate == null || isSameDay(h.startDate, selectedStartEventDate!);
+          bool mEvEnd = selectedEndEventDate == null || isSameDay(h.endDate, selectedEndEventDate!);
+          bool mDeadline = selectedEndRegDate == null || isSameDay(h.applicationDeadline, selectedEndRegDate!);
+
+          // لازم الفريق يطابق كل شروط الفلتر عشان ينعرض
+          return mSearch && mCity && mMode && mEdu && mStatus && mEvStart && mEvEnd && mDeadline;
+        }).toList();
+
+        // في حال كان الفلتر مطبق بس ما فيه ولا فريق يطابق
+        if (list.isEmpty) {
+          return const Center(
+            child: Padding(
+              padding: EdgeInsets.only(top: 40),
+              child: Text("No teams match your filters.", style: TextStyle(color: Colors.grey)),
+            ),
+          );
+        }
+
+        // عرض الفرق المفلترة
+        return ListView.builder(
+          padding: const EdgeInsets.all(16),
+          itemCount: list.length,
+          itemBuilder: (context, index) {
+            final item = list[index];
+            return _buildTeamCard(item['team'], item['hackathon'], item['hackathonName']);
+          },
+        );
+      },
+    );
+  }
+
+// ✅ استقبال البيانات كـ Parameters بدل ما نسوي FutureBuilder
+  Widget _buildTeamCard(TeamPostModel team, Hackathon? hackathon, String hackathonName) {
+    return Container(
+      margin: const EdgeInsets.only(bottom: 20),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(24),
+        boxShadow: [
+          BoxShadow(color: _purple.withOpacity(0.08), blurRadius: 15, offset: const Offset(0, 8))
+        ],
+      ),
+      child: Padding(
+        padding: const EdgeInsets.all(20),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text("Team Name", style: TextStyle(fontWeight: FontWeight.w600, color: _purple.withOpacity(0.7), fontSize: 11)),
+                      const SizedBox(height: 4),
+                      Text(team.teamName, style: const TextStyle(fontSize: 17, fontWeight: FontWeight.bold)),
+                    ],
+                  ),
+                ),
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                  decoration: BoxDecoration(color: _purple.withOpacity(0.1), borderRadius: BorderRadius.circular(8)),
+                  child: const Text("Looking for Members", style: TextStyle(color: _purple, fontSize: 8, fontWeight: FontWeight.bold)),
+                ),
+              ],
+            ),
+            const Divider(height: 25),
+            _buildInfoRow(Icons.emoji_events_outlined, "Hackathon", hackathonName),
+            const SizedBox(height: 8),
+            _buildInfoRow(Icons.person_outline, "Leader's Role", team.myRole),
+            const SizedBox(height: 8),
+            _buildInfoRow(Icons.wc_outlined, "Gender Preference", team.genderPreference),
+            const SizedBox(height: 15),
+
+            Row(
+              children: [
+                Expanded(
+                  child: _outlinedBtn("Full Details", _purple, () {
+                    if (hackathon != null) {
+                      Navigator.push(context, MaterialPageRoute(
+                        builder: (context) => TeamPostDetailsView(team: team, hackathon: hackathon),
+                      ));
+                    }
+                  }),
+                ),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: _btn("Request to join", _purple, () {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(
+                        content: Text("Coming Soon"),
+                        backgroundColor: _purple,
+                        behavior: SnackBarBehavior.floating,
+                      ),
+                    );
+                  }),
+                ),
+              ],
+            ),
+          ],
+        ),
       ),
     );
   }
@@ -469,8 +682,8 @@ class _ExploreUserViewState extends State<ExploreUserView>
 
   Widget _statusBadge(bool ns, bool cl) {
     String label = "Registration Open"; Color color = Colors.green;
-    if (ns) { label = "Upcoming"; color = Colors.orange; }
-    else if (cl) { label = "Closed"; color = Colors.red; }
+    if (ns) { label = "Registration Upcoming Soon"; color = Colors.orange; }
+    else if (cl) { label = "Registration Closed"; color = Colors.red; }
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
       decoration: BoxDecoration(color: color.withOpacity(0.1), borderRadius: BorderRadius.circular(8)),

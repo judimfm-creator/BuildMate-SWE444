@@ -9,6 +9,9 @@ import 'explore_user_view.dart';
 import 'create_team_post_view.dart'; 
 import 'hackathon_teams_view.dart' as teams_view;
 import 'my_team_post_view.dart';
+import '../../model/team_post_model.dart';
+import 'team_post_details_view.dart';
+import '../../home_screen.dart'; // لتفعيل homeScreenState
 
 class UserHomePage extends StatefulWidget {
   const UserHomePage({super.key});
@@ -24,12 +27,15 @@ class _UserHomePageState extends State<UserHomePage> {
   static const Color _purple = Color(0xFF6D56B3);
 
   void _navigateToExplore(int tabIndex) {
-    Navigator.push(
-      context,
-      MaterialPageRoute(
-        builder: (_) => ExploreUserView(initialTabIndex: tabIndex),
-      ),
-    );
+    targetExploreTab = tabIndex;
+
+    // ننقل اليوزر لصفحة الاكسبلور
+    homeScreenState?.changeTab(1);
+
+    // نأخر الأمر شوي عشان الشاشة تلحق تظهر
+    Future.delayed(const Duration(milliseconds: 100), () {
+      exploreTabStream.add(tabIndex);
+    });
   }
 
   // دالة البحث عن الفريق (تستخدم في الـ FutureBuilder)
@@ -68,10 +74,162 @@ class _UserHomePageState extends State<UserHomePage> {
             _UserSection(
               key: _teamsKey,
               title: "Teams 👥",
-              onExploreTap: () => _navigateToExplore(1),
-              child: _buildEmptyTeamsState(),
+              onExploreTap: () => _navigateToExplore(1), // هذي جاهزة وتودي للـ Teams tab مباشرة
+              child: _buildTeamsList(), // ✅ تم التعديل هنا
             ),
             const SizedBox(height: 100),
+          ],
+        ),
+      ),
+    );
+  }
+
+  // ─── دوال بناء قائمة وكروت الفرق ───
+
+  Widget _buildTeamsList() {
+    return StreamBuilder<List<Map<String, dynamic>>>(
+      stream: FirebaseFirestore.instance
+          .collection('team_posts')
+          .orderBy('createdAt', descending: true)
+          .limit(10) // نعرض أحدث 10 فرق فقط في الصفحة الرئيسية
+          .snapshots()
+          .asyncMap((snapshot) async {
+
+        final futures = snapshot.docs.map((doc) async {
+          final data = doc.data() as Map<String, dynamic>;
+          final team = TeamPostModel.fromMap(doc.id, data);
+
+          final hackathonDoc = await FirebaseFirestore.instance
+              .collection('hackathons')
+              .doc(team.hackathonId)
+              .get();
+
+          Hackathon? hackathon;
+          if (hackathonDoc.exists) {
+            hackathon = Hackathon.fromFirestore(hackathonDoc);
+          }
+
+          return {'team': team, 'hackathon': hackathon};
+        });
+
+        return await Future.wait(futures);
+      }),
+      builder: (context, snapshot) {
+        if (snapshot.connectionState == ConnectionState.waiting) {
+          return const SizedBox(height: 250, child: Center(child: CircularProgressIndicator(color: _purple)));
+        }
+
+        if (!snapshot.hasData || snapshot.data!.isEmpty) {
+          return _buildEmptyTeamsState();
+        }
+
+        var list = snapshot.data!.where((item) {
+          final h = item['hackathon'] as Hackathon?;
+          return h != null; // نتأكد إن الهاكاثون موجود
+        }).toList();
+
+        if (list.isEmpty) {
+          return _buildEmptyTeamsState();
+        }
+
+        return SizedBox(
+          height: 265, // ارتفاع مناسب لكرت الفريق
+          child: ListView.builder(
+            scrollDirection: Axis.horizontal,
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+            itemCount: list.length,
+            itemBuilder: (context, index) {
+              final item = list[index];
+              return _buildProfessionalTeamMiniCard(item['team'], item['hackathon']);
+            },
+          ),
+        );
+      },
+    );
+  }
+
+  Widget _buildProfessionalTeamMiniCard(TeamPostModel team, Hackathon hackathon) {
+    return Container(
+      width: 300, // نفس عرض كرت الهاكاثون
+      margin: const EdgeInsets.only(right: 16),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(color: Colors.grey.shade200),
+        boxShadow: [
+          BoxShadow(color: Colors.black.withOpacity(0.04), blurRadius: 10, offset: const Offset(0, 4)),
+        ],
+      ),
+      child: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Row(
+              children: [
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text("Team Name",
+                          style: TextStyle(fontWeight: FontWeight.bold, color: _purple.withOpacity(0.8), fontSize: 10)),
+                      Text(team.teamName,
+                          style: const TextStyle(fontSize: 15, fontWeight: FontWeight.bold),
+                          maxLines: 1, overflow: TextOverflow.ellipsis),
+                    ],
+                  ),
+                ),
+                _miniStatusBadge("Looking for Members", _purple),
+              ],
+            ),
+            const Divider(height: 20),
+
+            _compactInfoRow(Icons.emoji_events_outlined, hackathon.name),
+            const SizedBox(height: 8),
+            _compactInfoRow(Icons.person_outline, "Leader: ${team.myRole}"),
+            const SizedBox(height: 8),
+            _compactInfoRow(Icons.wc_outlined, "Gender: ${team.genderPreference}"),
+
+            const SizedBox(height: 16),
+
+            // الأزرار
+            Row(
+              children: [
+                Expanded(
+                  child: SizedBox(
+                    height: 38,
+                    child: ElevatedButton(
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: _purple,
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                        elevation: 0,
+                        padding: EdgeInsets.zero,
+                      ),
+                      onPressed: () {
+                        Navigator.push(context, MaterialPageRoute(
+                          builder: (context) => TeamPostDetailsView(team: team, hackathon: hackathon),
+                        ));
+                      },
+                      child: const Text("Details", style: TextStyle(color: Colors.white, fontSize: 11, fontWeight: FontWeight.bold)),
+                    ),
+                  ),
+                ),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: _buildActionBtnOutlined(
+                    label: "Join",
+                    icon: Icons.group_add_outlined,
+                    color: _purple,
+                    onTap: () {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        const SnackBar(content: Text("Coming Soon"), backgroundColor: _purple, behavior: SnackBarBehavior.floating),
+                      );
+                    },
+                  ),
+                ),
+              ],
+            ),
           ],
         ),
       ),

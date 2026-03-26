@@ -168,9 +168,17 @@ class _HackathonDetailsViewState extends State<HackathonDetailsView> {
   Widget _buildActionButtons(BuildContext context, bool isInst, String uid, bool canAct, bool notStarted, bool closed) {
     final String hid = widget.hackathon.id ?? "";
     if (isInst) {
-      return _btn("View Team Posts", _purple, () => Navigator.push(context, MaterialPageRoute(builder: (context) => institution_posts.InstitutionTeamPostsView(hackathonId: hid))));
+      return _btn(
+        "View Teams Submission", 
+        _purple, 
+        () => Navigator.push(
+          context, 
+          MaterialPageRoute(
+            builder: (context) => institution_posts.InstitutionTeamPostsView(hackathonId: hid)
+          )
+        )
+      );
     }
-
     return FutureBuilder<QueryDocumentSnapshot<Map<String, dynamic>>?>(
       future: _getUserTeamPost(uid, hid),
       builder: (context, teamSnap) {

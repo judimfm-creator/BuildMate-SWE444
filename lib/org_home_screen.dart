@@ -7,57 +7,61 @@ import 'widgets/buildmate_app_bar.dart';
 import 'view/org_profile_page.dart';
 import 'view/org_announced_page.dart';
 import 'view/org_home_page.dart';
+import 'view/org_my_hackathons_page.dart'; // الصفحة المضافة
 
 class InstitutionHomeScreen extends StatefulWidget {
   const InstitutionHomeScreen({super.key});
+
   @override
   State<InstitutionHomeScreen> createState() => _InstitutionHomeScreenState();
 }
 
 class _InstitutionHomeScreenState extends State<InstitutionHomeScreen> {
-  int _navIndex = 0;
+  int _navIndex = 0; // هذا يتبع أزرار الـ NavBar (0, 1, 2, 3, 4)
 
-  // دالة تسجيل الخروج الموحدة
+  // تسجيل خروج
   Future<void> logout() async {
     await Provider.of<RegisterViewModel>(context, listen: false).logout(context);
   }
 
-  // صفحات التابات (بدون صفحة Create لأنها تفتح كـ Route مستقل)
+  // الصفحات الفعلية المعروضة (4 صفحات لأن صفحة "الزائد" تفتح كـ Route مستقل)
   final List<Widget> _pages = const [
-    OrgHomePage(),           // 0 - Home
-    OrgAnnouncedPage(),      // 1 - Announced (Ongoing hackathons)
-    Center(child: Text("Teams")),
-    OrgProfilePage(), // صفحة بروفايل المنظمة
+    OrgHomePage(),           // 0 - الرئيسية
+    OrgAnnouncedPage(),      // 1 - الهاكاثونات المعلنة
+    OrgMyHackathonsPage(),   // 2 - هاكاثوناتي (بدل Teams)
+    OrgProfilePage(),        // 3 - الملف الشخصي
   ];
 
-  // navIndex 0,1 → pageIndex 0,1 | navIndex 2 → (+) | navIndex 3,4 → pageIndex 2,3
+  // تحويل Index الـ NavBar إلى Index القائمة اللي فوق
+  // إذا ضغطنا 0 أو 1 -> تفتح 0 أو 1
+  // إذا ضغطنا 3 أو 4 -> تفتح 2 أو 3 (لأننا تجاوزنا زر الزائد)
   int get _pageIndex {
     if (_navIndex < 2) return _navIndex;
     if (_navIndex > 2) return _navIndex - 1;
-    return 0; // لا يُستخدم (زر + يفتح route)
+    return 0; // حالة مؤقتة لزر الزائد
   }
 
   void _onItemTapped(int index) {
     if (index == 2) {
+      // زر الزائد يفتح صفحة "إنشاء" بشكل مستقل
       Navigator.push(
         context,
         MaterialPageRoute(builder: (_) => const CreateHackathonView()),
       );
-      return;
+      return; 
     }
+    // بقية الأزرار تغير الصفحة تحت الـ AppBar
     setState(() => _navIndex = index);
   }
 
   @override
   Widget build(BuildContext context) {
-    const purple = Color(0xFF6D56B3);
-
     return Scaffold(
       backgroundColor: Colors.white,
       appBar: BuildMateAppBar(
-        onLogout: logout, // استخدام الدالة الموحدة
+        onLogout: logout,
       ),
-      // استخدام IndexedStack للحفاظ على حالة الصفحات عند التنقل
+      // الـ body الحين مرتب وبحجم طبيعي 100%
       body: IndexedStack(
         index: _pageIndex,
         children: _pages,

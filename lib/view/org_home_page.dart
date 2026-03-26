@@ -5,10 +5,10 @@ import '../../model/hackathon.dart';
 import '../widgets/hackathon_mini_card.dart';
 import 'org_announced_page.dart';
 import 'org_profile_page.dart';
+import '../widgets/hackathon_mini_card.dart'; // تأكدي إن المسار صح
 
 class OrgHomePage extends StatelessWidget {
   const OrgHomePage({super.key});
-
 
   static const Color _purple = Color(0xFF6D56B3);
 
@@ -21,9 +21,7 @@ class OrgHomePage extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-
           const SizedBox(height: 22),
-
           const Padding(
             padding: EdgeInsets.symmetric(horizontal: 16),
             child: Text(
@@ -35,9 +33,7 @@ class OrgHomePage extends StatelessWidget {
               ),
             ),
           ),
-
           const SizedBox(height: 18),
-
           _HackathonSection(
             title: "Announced Hackathons ✨",
             stream: vm.ongoingStream,
@@ -49,9 +45,7 @@ class OrgHomePage extends StatelessWidget {
               ),
             ),
           ),
-
           const SizedBox(height: 22),
-
           _HackathonSection(
             title: "Past Hackathons 🏅",
             stream: vm.pastStream,
@@ -63,7 +57,6 @@ class OrgHomePage extends StatelessWidget {
               ),
             ),
           ),
-
           const SizedBox(height: 20),
         ],
       ),
@@ -89,8 +82,6 @@ class _HackathonSection extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final double sectionHeight = isPastSection ? 310 : 370;
-
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -111,10 +102,9 @@ class _HackathonSection extends StatelessWidget {
                 ),
               ),
               const SizedBox(width: 8),
-              InkWell(
+              GestureDetector(
                 onTap: onExploreTap,
                 child: const Row(
-                  mainAxisSize: MainAxisSize.min,
                   children: [
                     Text(
                       "Explore more",
@@ -132,16 +122,14 @@ class _HackathonSection extends StatelessWidget {
             ],
           ),
         ),
-
         const SizedBox(height: 12),
-
         StreamBuilder<List<Hackathon>>(
           stream: stream,
           builder: (context, snapshot) {
             if (snapshot.connectionState == ConnectionState.waiting) {
-              return SizedBox(
-                height: sectionHeight,
-                child: const Center(
+              return const SizedBox(
+                height: 100,
+                child: Center(
                   child: CircularProgressIndicator(
                     color: _purple,
                     strokeWidth: 2,
@@ -151,15 +139,12 @@ class _HackathonSection extends StatelessWidget {
             }
 
             if (snapshot.hasError) {
-              return SizedBox(
-                height: sectionHeight,
+              return const SizedBox(
+                height: 100,
                 child: Center(
                   child: Text(
                     "Something went wrong",
-                    style: TextStyle(
-                      fontSize: 13,
-                      color: Colors.grey.shade400,
-                    ),
+                    style: TextStyle(fontSize: 13, color: Colors.grey),
                   ),
                 ),
               );
@@ -168,29 +153,29 @@ class _HackathonSection extends StatelessWidget {
             final list = snapshot.data ?? [];
 
             if (list.isEmpty) {
-              return SizedBox(
-                height: sectionHeight,
+              return const SizedBox(
+                height: 100,
                 child: Center(
                   child: Text(
                     "No hackathons yet",
-                    style: TextStyle(
-                      fontSize: 13,
-                      color: Colors.grey.shade400,
-                    ),
+                    style: TextStyle(fontSize: 13, color: Colors.grey),
                   ),
                 ),
               );
             }
 
-            return SizedBox(
-              height: 355,
-              child: ListView.builder(
-                scrollDirection: Axis.horizontal,
-                padding: const EdgeInsets.symmetric(horizontal: 16),
-                itemCount: list.length,
-                itemBuilder: (_, i) => HackathonMiniCard(
-                  hackathon: list[i],
-                  isPast: isPastSection,
+            return SingleChildScrollView(
+              scrollDirection: Axis.horizontal,
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+              child: IntrinsicHeight(
+                child: Row(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: list
+                      .map((h) => HackathonMiniCard(
+                            hackathon: h,
+                            isPast: isPastSection,
+                          ))
+                      .toList(),
                 ),
               ),
             );
