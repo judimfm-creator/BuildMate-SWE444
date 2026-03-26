@@ -26,15 +26,16 @@ class HackathonMiniCard extends StatelessWidget {
 
     return Container(
       width: 300,
-      margin: const EdgeInsets.only(right: 14),
+      margin: const EdgeInsets.only(right: 16),
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(24),
+        border: Border.all(color: Colors.grey.shade200),
         boxShadow: [
           BoxShadow(
-            color: _purple.withOpacity(0.08),
-            blurRadius: 20,
-            offset: const Offset(0, 10),
+            color: Colors.black.withOpacity(0.04),
+            blurRadius: 10,
+            offset: const Offset(0, 4),
           ),
         ],
       ),
@@ -44,6 +45,7 @@ class HackathonMiniCard extends StatelessWidget {
           crossAxisAlignment: CrossAxisAlignment.start,
           mainAxisSize: MainAxisSize.min,
           children: [
+            // Header
             Row(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
@@ -59,9 +61,7 @@ class HackathonMiniCard extends StatelessWidget {
                   ),
                 ),
                 const SizedBox(width: 8),
-                Flexible(
-                  child: _statusBadge(regNotStarted, regClosed),
-                ),
+                Flexible(child: _statusBadge(regNotStarted, regClosed)),
               ],
             ),
 
@@ -72,13 +72,11 @@ class HackathonMiniCard extends StatelessWidget {
 
             _infoRow(Icons.category_outlined, hackathon.domain),
             const SizedBox(height: 10),
-
             _infoRow(
               Icons.location_on_outlined,
               "${hackathon.city}, ${hackathon.mode}",
             ),
             const SizedBox(height: 10),
-
             _infoRow(
               Icons.groups_outlined,
               hackathon.teamSize > 2
@@ -88,30 +86,22 @@ class HackathonMiniCard extends StatelessWidget {
 
             const SizedBox(height: 16),
 
+            // Deadline box
             Container(
               padding: const EdgeInsets.all(14),
               decoration: BoxDecoration(
                 color: Colors.red.withOpacity(0.05),
                 borderRadius: BorderRadius.circular(14),
-                border: Border.all(
-                  color: Colors.red.withOpacity(0.2),
-                ),
+                border: Border.all(color: Colors.red.withOpacity(0.2)),
               ),
               child: Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
                   const Row(
                     children: [
-                      Icon(
-                        Icons.timer_outlined,
-                        size: 16,
-                        color: Colors.red,
-                      ),
+                      Icon(Icons.timer_outlined, size: 16, color: Colors.red),
                       SizedBox(width: 6),
-                      Text(
-                        "Deadline:",
-                        style: TextStyle(fontSize: 12),
-                      ),
+                      Text("Deadline:", style: TextStyle(fontSize: 12)),
                     ],
                   ),
                   Text(
@@ -127,17 +117,18 @@ class HackathonMiniCard extends StatelessWidget {
             ),
 
             const SizedBox(height: 20),
-
+            
+            // View Full Details Button
             SizedBox(
               width: double.infinity,
               height: 46,
               child: ElevatedButton(
                 style: ElevatedButton.styleFrom(
                   backgroundColor: _purple,
+                  elevation: 0,
                   shape: RoundedRectangleBorder(
                     borderRadius: BorderRadius.circular(14),
                   ),
-                  elevation: 0,
                 ),
                 onPressed: () {
                   Navigator.push(
@@ -159,18 +150,19 @@ class HackathonMiniCard extends StatelessWidget {
               ),
             ),
 
+            // Edit Button (Only shows if not past)
             if (!isPast) ...[
               const SizedBox(height: 12),
               SizedBox(
                 width: double.infinity,
                 height: 46,
-                child: ElevatedButton(
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: Colors.orange,
+                child: OutlinedButton(
+                  style: OutlinedButton.styleFrom(
+                    foregroundColor: _purple,
+                    side: const BorderSide(color: _purple, width: 2),
                     shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(14),
                     ),
-                    elevation: 0,
                   ),
                   onPressed: () {
                     Navigator.push(
@@ -186,7 +178,6 @@ class HackathonMiniCard extends StatelessWidget {
                     style: TextStyle(
                       fontWeight: FontWeight.bold,
                       fontSize: 13,
-                      color: Colors.white,
                     ),
                   ),
                 ),
@@ -199,9 +190,8 @@ class HackathonMiniCard extends StatelessWidget {
   }
 
   Widget _statusBadge(bool ns, bool cl) {
-    String label = "Registration Open";
+    String label = "Open";
     Color color = Colors.green;
-
     if (ns) {
       label = "Opening Soon";
       color = Colors.orange;
@@ -209,7 +199,6 @@ class HackathonMiniCard extends StatelessWidget {
       label = "Closed";
       color = Colors.red;
     }
-
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
       decoration: BoxDecoration(
