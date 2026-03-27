@@ -2,8 +2,7 @@ import 'dart:io';
 
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
-
-import 'other_user_profile_page.dart';
+import 'package:url_launcher/url_launcher.dart';
 
 class InstitutionTeamPostDetailsView extends StatelessWidget {
   final String teamPostId;
@@ -53,6 +52,7 @@ class InstitutionTeamPostDetailsView extends StatelessWidget {
           }
 
           final data = snapshot.data!.data() ?? {};
+
           final List<dynamic> memberIdsDynamic =
               (data['members'] as List?) ?? (data['memberIds'] as List?) ?? [];
           final List<String> memberIds =
@@ -104,7 +104,7 @@ class InstitutionTeamPostDetailsView extends StatelessWidget {
                         borderRadius: BorderRadius.circular(14),
                       ),
                       child: const Text(
-                        "Team Members",
+                        "Team Members Details",
                         style: TextStyle(
                           fontSize: 14,
                           fontWeight: FontWeight.w800,
@@ -160,7 +160,7 @@ class InstitutionTeamPostDetailsView extends StatelessWidget {
       builder: (context, userSnap) {
         if (userSnap.connectionState == ConnectionState.waiting) {
           return Container(
-            margin: const EdgeInsets.only(bottom: 14),
+            margin: const EdgeInsets.only(bottom: 16),
             padding: const EdgeInsets.all(14),
             decoration: BoxDecoration(
               color: Colors.white,
@@ -177,13 +177,29 @@ class InstitutionTeamPostDetailsView extends StatelessWidget {
         }
 
         final u = userSnap.data!.data() ?? {};
+
         final String fullName = (u['fullName'] ?? 'User').toString();
         final String username = (u['username'] ?? '').toString();
+        final String email = (u['email'] ?? '').toString();
+        final String phone = (u['phoneNumber'] ?? '').toString();
+        final String city = (u['city'] ?? '').toString();
+        final String gender = (u['gender'] ?? '').toString();
+        final String linkedin = (u['linkedin'] ?? '').toString();
+        final String github = (u['github'] ?? '').toString();
+
+        String skillsText = '';
+        final dynamic skills = u['skills'];
+        if (skills is List) {
+          skillsText = skills.map((e) => e.toString()).join(', ');
+        } else if (skills != null) {
+          skillsText = skills.toString();
+        }
+
         final ImageProvider? profileImage = _resolveProfileImage(u);
 
         return Container(
-          margin: const EdgeInsets.only(bottom: 14),
-          padding: const EdgeInsets.all(14),
+          margin: const EdgeInsets.only(bottom: 16),
+          padding: const EdgeInsets.all(16),
           decoration: BoxDecoration(
             color: Colors.white,
             borderRadius: BorderRadius.circular(18),
@@ -196,86 +212,249 @@ class InstitutionTeamPostDetailsView extends StatelessWidget {
               ),
             ],
           ),
-          child: Row(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              CircleAvatar(
-                radius: 26,
-                backgroundColor: _lightPurple,
-                backgroundImage: profileImage,
-                child: profileImage == null
-                    ? Text(
-                        fullName.isNotEmpty ? fullName[0].toUpperCase() : '?',
-                        style: const TextStyle(
-                          color: _purple,
-                          fontSize: 20,
-                          fontWeight: FontWeight.bold,
-                        ),
-                      )
-                    : null,
-              ),
-              const SizedBox(width: 12),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      fullName,
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      style: const TextStyle(
-                        fontWeight: FontWeight.w700,
-                        fontSize: 15,
-                        color: Colors.black87,
-                      ),
-                    ),
-                    const SizedBox(height: 3),
-                    Text(
-                      username.isNotEmpty ? "@$username" : "@username",
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      style: TextStyle(
-                        color: _purple.withOpacity(0.85),
-                        fontSize: 12,
-                        fontWeight: FontWeight.w600,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-              const SizedBox(width: 8),
-              SizedBox(
-                height: 34,
-                child: OutlinedButton(
-                  style: OutlinedButton.styleFrom(
-                    side: const BorderSide(color: _purple, width: 1.1),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(10),
-                    ),
-                    padding: const EdgeInsets.symmetric(horizontal: 12),
+              Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  CircleAvatar(
+                    radius: 26,
+                    backgroundColor: _lightPurple,
+                    backgroundImage: profileImage,
+                    child: profileImage == null
+                        ? Text(
+                            fullName.isNotEmpty
+                                ? fullName[0].toUpperCase()
+                                : '?',
+                            style: const TextStyle(
+                              color: _purple,
+                              fontSize: 20,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          )
+                        : null,
                   ),
-                  onPressed: () {
-                    Navigator.push(
-                      context,
-                      MaterialPageRoute(
-                        builder: (_) => OtherUserProfilePage(userId: uid),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: Padding(
+                      padding: const EdgeInsets.only(top: 4),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            fullName,
+                            style: const TextStyle(
+                              fontWeight: FontWeight.w700,
+                              fontSize: 16,
+                              color: Colors.black87,
+                            ),
+                          ),
+                          const SizedBox(height: 4),
+                          Text(
+                            username.isNotEmpty ? "@$username" : "@username",
+                            style: TextStyle(
+                              color: Colors.black.withOpacity(0.55),
+                              fontSize: 13,
+                              fontWeight: FontWeight.w500,
+                            ),
+                          ),
+                        ],
                       ),
-                    );
-                  },
-                  child: const Text(
-                    "View Profile",
-                    style: TextStyle(
-                      color: _purple,
-                      fontSize: 11,
-                      fontWeight: FontWeight.w700,
                     ),
                   ),
-                ),
+                ],
+              ),
+              const SizedBox(height: 14),
+              Divider(color: Colors.grey.shade300, height: 1),
+              const SizedBox(height: 14),
+
+              _infoRow(
+                context,
+                Icons.email_outlined,
+                'Email',
+                email,
+                isEmail: true,
+              ),
+              _infoRow(
+                context,
+                Icons.phone_outlined,
+                'Phone',
+                phone,
+                isPhone: true,
+              ),
+              _infoRow(
+                context,
+                Icons.location_city_outlined,
+                'City',
+                city,
+              ),
+              _infoRow(
+                context,
+                Icons.wc_outlined,
+                'Gender',
+                gender,
+              ),
+              _infoRow(
+                context,
+                Icons.psychology_outlined,
+                'Skills',
+                skillsText,
+              ),
+              _infoRow(
+                context,
+                Icons.link_outlined,
+                'LinkedIn',
+                linkedin,
+                isLink: true,
+              ),
+              _infoRow(
+                context,
+                Icons.code_outlined,
+                'GitHub',
+                github,
+                isLink: true,
               ),
             ],
           ),
         );
       },
     );
+  }
+
+  Widget _infoRow(
+    BuildContext context,
+    IconData icon,
+    String label,
+    String value, {
+    bool isLink = false,
+    bool isEmail = false,
+    bool isPhone = false,
+  }) {
+    if (value.trim().isEmpty) return const SizedBox.shrink();
+
+    final bool isClickable = isLink || isEmail || isPhone;
+
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 10),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Icon(
+            icon,
+            size: 17,
+            color: Colors.grey.shade600,
+          ),
+          const SizedBox(width: 10),
+          Expanded(
+            child: Wrap(
+              children: [
+                Text(
+                  '$label: ',
+                  style: const TextStyle(
+                    color: Colors.black87,
+                    fontSize: 13,
+                    height: 1.4,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+                GestureDetector(
+                  onTap: isClickable
+                      ? () async {
+                          if (isLink) {
+                            await _openLink(context, value);
+                          } else if (isEmail) {
+                            await _openEmail(context, value);
+                          } else if (isPhone) {
+                            await _openPhone(context, value);
+                          }
+                        }
+                      : null,
+                  child: Text(
+                    value,
+                    style: TextStyle(
+                      color: isClickable ? Colors.blue : Colors.black87,
+                      fontSize: 13,
+                      height: 1.4,
+                      fontWeight: FontWeight.w400,
+                      decoration: isClickable
+                          ? TextDecoration.underline
+                          : TextDecoration.none,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Future<void> _openLink(BuildContext context, String url) async {
+    String fixedUrl = url.trim();
+
+    if (fixedUrl.isEmpty) return;
+
+    if (!fixedUrl.startsWith('http://') &&
+        !fixedUrl.startsWith('https://')) {
+      fixedUrl = 'https://$fixedUrl';
+    }
+
+    final Uri uri = Uri.parse(fixedUrl);
+
+    final bool launched = await launchUrl(
+      uri,
+      mode: LaunchMode.externalApplication,
+    );
+
+    if (!launched && context.mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Could not open the link'),
+        ),
+      );
+    }
+  }
+
+  Future<void> _openEmail(BuildContext context, String email) async {
+    final String cleanEmail = email.trim();
+    if (cleanEmail.isEmpty) return;
+
+    final Uri emailUri = Uri(
+      scheme: 'mailto',
+      path: cleanEmail,
+    );
+
+    final bool launched = await launchUrl(emailUri);
+
+    if (!launched && context.mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Could not open email app'),
+        ),
+      );
+    }
+  }
+
+  Future<void> _openPhone(BuildContext context, String phone) async {
+    final String cleanPhone = phone.trim();
+    if (cleanPhone.isEmpty) return;
+
+    final Uri phoneUri = Uri(
+      scheme: 'tel',
+      path: cleanPhone,
+    );
+
+    final bool launched = await launchUrl(phoneUri);
+
+    if (!launched && context.mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Could not open phone app'),
+        ),
+      );
+    }
   }
 
   ImageProvider? _resolveProfileImage(Map<String, dynamic> userData) {
