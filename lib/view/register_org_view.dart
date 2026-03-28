@@ -136,12 +136,12 @@ class _RegisterOrgViewState extends State<RegisterOrgView> {
               _buildField(
                 _orgNameController,
                 "Organization Name",
-                "minimum 3 characters",
+                "minimum 3 letters (letters only)",
                 Icons.corporate_fare,
                 wrap: true, // ✅ راب
                 validator: (v) {
                   if (v == null || v.trim().isEmpty) {
-                    return "Organization name must be at least 3 characters";
+                    return "minimum 3 letters (letters only)";
                   }
                   String text = v.trim();
                   // 1. حساب عدد الحروف الإنجليزية فقط (يتجاهل المسافات)
@@ -149,11 +149,11 @@ class _RegisterOrgViewState extends State<RegisterOrgView> {
 
                   // 2. التأكد من: يبدأ بحرف، ولا يحتوي إلا على حروف ومسافات وبعض الرموز المسموحة
                   if (!RegExp(r"^[a-zA-Z][a-zA-Z\s\-\,\.]*$").hasMatch(text)) {
-                    return "Only English letters are allowed";
+                    return "minimum 3 letters (letters only)";
                   }
 
                   if (letterCount < 3) {
-                    return "Must have at least 3 letters";
+                    return "minimum 3 letters (letters only)";
                   }
                   return null;
                 },

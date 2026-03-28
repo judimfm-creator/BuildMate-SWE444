@@ -66,7 +66,7 @@ class _UserHomePageState extends State<UserHomePage> {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             _UserSection(
-              title: "Open Hackathons 🚀",
+              title: "Hackathons 🚀",
               onExploreTap: () => _navigateToExplore(0),
               child: _buildHackathonsList(),
             ),
