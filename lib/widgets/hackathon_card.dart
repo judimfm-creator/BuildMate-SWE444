@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import '../model/hackathon.dart';
 import '../view/hackathon_details_view.dart';
+import '../view/create_hackathon_view.dart';
 
 class HackathonCard extends StatelessWidget {
   final Hackathon hackathon;
@@ -127,7 +128,12 @@ class HackathonCard extends StatelessWidget {
                     side: const BorderSide(color: _purple, width: 1.2),
                     shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
                   ),
-                  onPressed: onEdit,
+                  onPressed: () => Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (_) => CreateHackathonView(hackathonToEdit: hackathon),
+                    ),
+                  ),
                   child: const Text(
                     "Edit",
                     style: TextStyle(

@@ -59,7 +59,13 @@ class _OrgProfilePageState extends State<OrgProfilePage> {
                   toolbarHeight: 38,
                   expandedHeight: 38,
                   automaticallyImplyLeading: false,
-                  primary: false,
+                  leading: widget.showBack
+                      ? IconButton(
+                    icon: const Icon(Icons.arrow_back_ios, color: Color(0xFF7A62B3)),
+                    onPressed: () => Navigator.pop(context),
+                  )
+                      : const SizedBox.shrink(),
+                  primary: false, //إذا حطيت ترو بينزل السهم تحت شوي
                   flexibleSpace: FlexibleSpaceBar(
                     centerTitle: true,
                     titlePadding: EdgeInsets.zero,
