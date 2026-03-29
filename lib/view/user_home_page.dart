@@ -237,38 +237,70 @@ class _UserHomePageState extends State<UserHomePage> {
   }
 
   Widget _buildHackathonsList() {
-    final vm = context.watch<OrgHackathonsViewModel>();
+  return StreamBuilder<QuerySnapshot>(
+    stream: FirebaseFirestore.instance.collection('hackathons').snapshots(),
+    builder: (context, snapshot) {
+      if (snapshot.connectionState == ConnectionState.waiting && !snapshot.hasData) {
+        return const SizedBox(height: 280, child: Center(child: CircularProgressIndicator(color: _purple)));
+      }
 
-    return StreamBuilder<List<Hackathon>>(
-      stream: vm.exploreHackathonsStream,
-      builder: (context, snapshot) {
-        if (snapshot.connectionState == ConnectionState.waiting) {
-          return const SizedBox(height: 280, child: Center(child: CircularProgressIndicator(color: _purple)));
-        }
+      final now = DateTime.now();
+      final all = snapshot.data?.docs.map((doc) => Hackathon.fromFirestore(doc)).toList() ?? [];
 
-        final now = DateTime.now();
-        final openList = (snapshot.data ?? []).where((h) {
-          return now.isAfter(h.applicationOpenDate) && now.isBefore(h.applicationDeadline);
-        }).toList();
+      // نحدد "الفرص الأخيرة" (تنتهي خلال 48 ساعة)
+      final hotList = all.where((h) {
+        final diff = h.applicationDeadline.difference(now).inHours;
+        return diff <= 48 && diff >= 0;
+      }).toList();
 
-        if (openList.isEmpty) {
-          return _buildEmptyHackathonsState();
-        }
+      bool isHot = hotList.isNotEmpty;
+      final displayList = isHot ? hotList : all.take(3).toList();
 
-        return SizedBox(
-          height: 350,
-          child: ListView.builder(
-            scrollDirection: Axis.horizontal,
-            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-            itemCount: openList.length,
-            itemBuilder: (context, index) {
-              return _buildProfessionalMiniCard(openList[index]);
-            },
+      if (displayList.isEmpty) return _buildEmptyHackathonsState();
+
+      return Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+            child: Container(
+              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+              decoration: BoxDecoration(
+                color: isHot ? Colors.red.withOpacity(0.1) : Colors.blue.withOpacity(0.1),
+                borderRadius: BorderRadius.circular(4),
+              ),
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Icon(isHot ? Icons.timer : Icons.star, size: 12, color: isHot ? Colors.red : Colors.blue),
+                  const SizedBox(width: 4),
+                  Text(
+                    isHot ? "LAST CALL: CLOSING SOON" : "FEATURED HACKATHONS",
+                    style: TextStyle(
+                      fontSize: 10, 
+                      fontWeight: FontWeight.bold, 
+                      color: isHot ? Colors.red : Colors.blue
+                    ),
+                  ),
+                ],
+              ),
+            ),
           ),
-        );
-      },
-    );
-  }
+          // قائمة الكروت...
+          SizedBox(
+            height: 350,
+            child: ListView.builder(
+              scrollDirection: Axis.horizontal,
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+              itemCount: displayList.length,
+              itemBuilder: (context, index) => _buildProfessionalMiniCard(displayList[index]),
+            ),
+          ),
+        ],
+      );
+    },
+  );
+}
 
   Widget _buildProfessionalMiniCard(Hackathon h) {
     final String? currentUid = FirebaseAuth.instance.currentUser?.uid;
@@ -510,7 +542,7 @@ class _UserSection extends StatelessWidget {
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
               Text(title, style: const TextStyle(fontSize: 14, fontWeight: FontWeight.bold)),
-              GestureDetector(onTap: onExploreTap, child: const Text("Explore more", style: TextStyle(color: Color(0xFFFFA726), fontSize: 12))),
+              GestureDetector(onTap: onExploreTap, child: const Text("View all", style: TextStyle(color: Color(0xFFFFA726), fontSize: 12))),
             ],
           ),
         ),
