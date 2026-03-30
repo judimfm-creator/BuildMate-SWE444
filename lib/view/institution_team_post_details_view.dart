@@ -331,9 +331,9 @@ class InstitutionTeamPostDetailsView extends StatelessWidget {
     bool isEmail = false,
     bool isPhone = false,
   }) {
-    if (value.trim().isEmpty) return const SizedBox.shrink();
-
-    final bool isClickable = isLink || isEmail || isPhone;
+    final String cleanValue = value.trim();
+    final bool isEmpty = cleanValue.isEmpty;
+    final bool isClickable = !isEmpty && (isLink || isEmail || isPhone);
 
     return Padding(
       padding: const EdgeInsets.only(bottom: 10),
@@ -362,18 +362,20 @@ class InstitutionTeamPostDetailsView extends StatelessWidget {
                   onTap: isClickable
                       ? () async {
                           if (isLink) {
-                            await _openLink(context, value);
+                            await _openLink(context, cleanValue);
                           } else if (isEmail) {
-                            await _openEmail(context, value);
+                            await _openEmail(context, cleanValue);
                           } else if (isPhone) {
-                            await _openPhone(context, value);
+                            await _openPhone(context, cleanValue);
                           }
                         }
                       : null,
                   child: Text(
-                    value,
+                    isEmpty ? 'Unprovided' : cleanValue,
                     style: TextStyle(
-                      color: isClickable ? Colors.blue : Colors.black87,
+                      color: isEmpty
+                          ? Colors.grey.shade400
+                          : (isClickable ? Colors.blue : Colors.black87),
                       fontSize: 13,
                       height: 1.4,
                       fontWeight: FontWeight.w400,
