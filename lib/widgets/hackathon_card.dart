@@ -106,7 +106,7 @@ class HackathonCard extends StatelessWidget {
                   );
                 },
                 child: Text(
-                  isPast ? "View Details & Teams Submission" : "View Details & Teams Submission",
+                  isPast ? "View Details" : "View Details & Teams Submission",
                   style: const TextStyle(
                     color: Colors.white,
                     fontSize: 13,
