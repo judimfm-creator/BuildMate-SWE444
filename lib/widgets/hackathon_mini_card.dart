@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import '../model/hackathon.dart';
 import '../view/hackathon_details_view.dart';
+import '../view/create_hackathon_view.dart';
 
 class HackathonMiniCard extends StatelessWidget {
   final Hackathon hackathon;
@@ -80,7 +81,7 @@ class HackathonMiniCard extends StatelessWidget {
                   );
                 },
                 child: Text(
-                  isPast ? "View Full Details" : "View Full Details",
+                  isPast ? "View Details & Teams Submission" : "View Details & Teams Submission",
                   style: const TextStyle(
                     color: Colors.white,
                     fontSize: 13,
@@ -101,11 +102,12 @@ class HackathonMiniCard extends StatelessWidget {
                     side: const BorderSide(color: _purple, width: 1.2),
                     shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
                   ),
-                  onPressed: () {
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(content: Text("Edit coming soon"), behavior: SnackBarBehavior.floating),
-                    );
-                  },
+                  onPressed: () => Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (_) => CreateHackathonView(hackathonToEdit: hackathon),
+                    ),
+                  ),
                   child: const Text(
                     "Edit",
                     style: TextStyle(
