@@ -13,6 +13,7 @@ import '../model/team_post_model.dart';
 import 'team_post_details_view.dart';
 import 'dart:async'; // ✅ إضافة مهمة جداً
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'request_to_join_view.dart';
 
 // 1. المتغيرات العامة (تكون برا الكلاسات تماماً - فوق class ExploreUserView)
 int targetExploreTab = 0;
@@ -353,7 +354,6 @@ class _ExploreUserViewState extends State<ExploreUserView>  with SingleTickerPro
     );
   }
 
-// ✅ استقبال البيانات كـ Parameters بدل ما نسوي FutureBuilder
   Widget _buildTeamCard(TeamPostModel team, Hackathon? hackathon, String hackathonName) {
     return Container(
       margin: const EdgeInsets.only(bottom: 20),
@@ -410,13 +410,10 @@ class _ExploreUserViewState extends State<ExploreUserView>  with SingleTickerPro
                 const SizedBox(width: 8),
                 Expanded(
                   child: _btn("Request to join", _purple, () {
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(
-                        content: Text("Coming Soon"),
-                        backgroundColor: _purple,
-                        behavior: SnackBarBehavior.floating,
-                      ),
-                    );
+                    // ✅ التعديل الأكيد هنا: ينقلك للصفحة الجديدة فوراً
+                    Navigator.push(context, MaterialPageRoute(
+                      builder: (context) => RequestToJoinView(team: team, hackathon: hackathon),
+                    ));
                   }),
                 ),
               ],

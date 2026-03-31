@@ -7,6 +7,8 @@ class TeamPostModel {
   final String teamName;
   final String genderPreference;
   final String myRole;
+  final String idea; // ✅ أضفنا فكرة المشروع
+  final List<String> members; // ✅ أضفنا قائمة الأعضاء
   final DateTime createdAt;
 
   TeamPostModel({
@@ -16,6 +18,8 @@ class TeamPostModel {
     required this.teamName,
     required this.genderPreference,
     required this.myRole,
+    required this.idea, // ✅
+    required this.members, // ✅
     required this.createdAt,
   });
 
@@ -26,6 +30,8 @@ class TeamPostModel {
       'teamName': teamName,
       'genderPreference': genderPreference,
       'myRole': myRole,
+      'idea': idea, // ✅
+      'members': members, // ✅
       'createdAt': FieldValue.serverTimestamp(), // ✅ تعديل مهم
     };
   }
@@ -38,6 +44,8 @@ class TeamPostModel {
       teamName: map['teamName'] ?? '',
       genderPreference: map['genderPreference'] ?? '',
       myRole: map['myRole'] ?? '',
+      idea: map['idea'] ?? '', // ✅ إذا مافيه فكرة يرجع نص فارغ
+      members: List<String>.from(map['members'] ?? []), // ✅ تحويل آمن لقائمة الأعضاء
       createdAt: map['createdAt'] != null
           ? (map['createdAt'] as Timestamp).toDate()
           : DateTime.now(), // fallback

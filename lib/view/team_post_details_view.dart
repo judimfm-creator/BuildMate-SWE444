@@ -4,6 +4,7 @@ import 'package:intl/intl.dart';
 import '../model/team_post_model.dart';
 import '../model/hackathon.dart';
 import '../widgets/buildmate_app_bar.dart';
+import 'request_to_join_view.dart';
 
 class TeamPostDetailsView extends StatefulWidget {
   final TeamPostModel team;
@@ -120,13 +121,13 @@ class _TeamPostDetailsViewState extends State<TeamPostDetailsView> {
 
             // 7️⃣ زر طلب الانضمام
             _btn("Request to join team", _purple, () {
-              ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(
-                  content: Text("Coming Soon"),
-                  backgroundColor: _purple,
-                  behavior: SnackBarBehavior.floating,
+              // ✅ تعديل عشان ينقلك لصفحة الطلب بدل الـ Snackbar
+              Navigator.push(context, MaterialPageRoute(
+                builder: (context) => RequestToJoinView(
+                    team: widget.team,
+                    hackathon: widget.hackathon
                 ),
-              );
+              ));
             }),
 
             const SizedBox(height: 40),
