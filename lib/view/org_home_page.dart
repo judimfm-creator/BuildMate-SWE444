@@ -6,6 +6,7 @@ import '../widgets/hackathon_mini_card.dart';
 import 'org_announced_page.dart';
 import 'org_profile_page.dart';
 import '../widgets/hackathon_mini_card.dart'; // تأكدي إن المسار صح
+import '../org_home_screen.dart';
 
 class OrgHomePage extends StatelessWidget {
   const OrgHomePage({super.key});
@@ -38,24 +39,14 @@ class OrgHomePage extends StatelessWidget {
             title: "Announced Hackathons ✨",
             stream: vm.ongoingStream,
             isPastSection: false,
-            onExploreTap: () => Navigator.push(
-              context,
-              MaterialPageRoute(
-                builder: (_) => const OrgAnnouncedPage(showBack: true),
-              ),
-            ),
+              onExploreTap: () => institutionHomeState?.changeTab(1)
           ),
           const SizedBox(height: 22),
           _HackathonSection(
             title: "Past Hackathons 🏅",
             stream: vm.pastStream,
             isPastSection: true,
-            onExploreTap: () => Navigator.push(
-              context,
-              MaterialPageRoute(
-                builder: (_) => const OrgProfilePage(showBack: true),
-              ),
-            ),
+              onExploreTap: () => institutionHomeState?.changeTab(4)
           ),
           const SizedBox(height: 20),
         ],
@@ -171,6 +162,7 @@ class _HackathonSection extends StatelessWidget {
                 child: Row(
                   crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: list
+                      .take(3)
                       .map((h) => HackathonMiniCard(
                             hackathon: h,
                             isPast: isPastSection,

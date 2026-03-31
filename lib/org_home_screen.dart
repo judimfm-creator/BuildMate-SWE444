@@ -13,10 +13,12 @@ class InstitutionHomeScreen extends StatefulWidget {
   const InstitutionHomeScreen({super.key});
 
   @override
-  State<InstitutionHomeScreen> createState() => _InstitutionHomeScreenState();
+  State<InstitutionHomeScreen> createState() => InstitutionHomeScreenState();
 }
 
-class _InstitutionHomeScreenState extends State<InstitutionHomeScreen> {
+InstitutionHomeScreenState? institutionHomeState;
+
+class InstitutionHomeScreenState extends State<InstitutionHomeScreen> {
   int _navIndex = 0; // هذا يتبع أزرار الـ NavBar (0, 1, 2, 3, 4)
 
   // تسجيل خروج
@@ -71,5 +73,15 @@ class _InstitutionHomeScreenState extends State<InstitutionHomeScreen> {
         onTap: _onItemTapped,
       ),
     );
+  }
+  @override
+  void initState() {
+    super.initState();
+    institutionHomeState = this; // ✅ نسجل الـ state عشان نوصله من أي مكان
+  }
+
+// أضف دالة تغيير التاب
+  void changeTab(int index) {
+    setState(() => _navIndex = index);
   }
 }
