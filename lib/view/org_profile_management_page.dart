@@ -138,6 +138,14 @@ class _OrgProfileManagementPageState extends State<OrgProfileManagementPage> {
     bool isPhone = label.toLowerCase().contains("phone");
     bool isEmail = label.toLowerCase().contains("email");
 
+    // ✅ تحديد النص المساعد (Helper Text) الثابت بناءً على الحقل للمنشأة
+    String? helperText;
+    if (canEdit) {
+      if (label == "Organization Name") helperText = "Only English letters, min 3 letters";
+      else if (label == "Username") helperText = "minimum 3 characters, spaces are not allowed";
+      else if (label == "Location") helperText = "Only English letters, min 3 letters";
+    }
+
     return Opacity(
       opacity: canEdit || !isAlwaysDisabled ? 1.0 : 0.6,
       child: Container(
@@ -185,24 +193,24 @@ class _OrgProfileManagementPageState extends State<OrgProfileManagementPage> {
                       border: InputBorder.none,
                       contentPadding: EdgeInsets.zero,
                       counterText: isBio ? null : "",
-                      // ✅ ستايل الخطأ مطابق لبروفايل اليوزر
-                      errorStyle: const TextStyle(fontSize: 10, color: Colors.red),
+                      // ✅ إضافة الـ Helper Text والستايل الرمادي
+                      helperText: helperText,
+                      helperStyle: const TextStyle(fontSize: 10, color: Colors.blueGrey, height: 1.2),
+                      helperMaxLines: 2,
+                      // ✅ ستايل الخطأ لما يصير أحمر
+                      errorStyle: const TextStyle(fontSize: 10, color: Colors.red, height: 1.2),
                       errorMaxLines: 3,
                     ),
-                    // ✅ إضافة الـ Validators بنفس قيود صفحة التسجيل
                     validator: (value) {
                       if (!canEdit) return null;
                       String v = value?.trim() ?? "";
 
                       if (label == "Organization Name") {
-                        // 1. حساب عدد الحروف الإنجليزية فقط (يتجاهل المسافات)
                         int letterCount = v.replaceAll(RegExp(r'[^a-zA-Z]'), '').length;
 
-                        // 2. التأكد من: ليس فارغاً، فيه عالأقل 3 حروف، يبدأ بحرف، ولا يحتوي إلا على حروف ومسافات
                         if (!RegExp(r"^[a-zA-Z][a-zA-Z\s\-\,\.]*$").hasMatch(v)) {
                           return "Only English letters are allowed";
                         }
-
                         if (letterCount < 3 ) {
                           return "Must have at least 3 letters";
                         }
@@ -216,18 +224,14 @@ class _OrgProfileManagementPageState extends State<OrgProfileManagementPage> {
 
                       if (label == "Location") {
                         if (v.isNotEmpty) {
-                          // 1. حساب عدد الحروف الإنجليزية فقط (يتجاهل الفواصل والشرطات والنقاط)
                           int letterCount = v.replaceAll(RegExp(r'[^a-zA-Z]'), '').length;
 
-                          // 2. التأكد من: فيه عالأقل 3 حروف، يبدأ بحرف، والرموز المسموحة هي حروف، مسافات، ، . -
                           if (!RegExp(r"^[a-zA-Z][a-zA-Z\s\-\,\.]*$").hasMatch(v)) {
                             return "Only English letters are allowed";
                           }
-
                           if (letterCount < 3 ) {
                             return "Must have at least 3 letters";
                           }
-
                         }
                       }
                       return null;

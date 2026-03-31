@@ -337,6 +337,15 @@ class _ProfileManagementPageState extends State<ProfileManagementPage> {
     bool isPhone = label.toLowerCase().contains("phone");
     bool isEmail = label.toLowerCase().contains("email");
 
+    // ✅ تحديد النص المساعد (Helper Text) الثابت بناءً على الحقل
+    String? helperText;
+    if (canEdit) {
+      if (label == "Full Name") helperText = "Enter your first, middle, last name(Letters only)";
+      else if (label == "Username") helperText = "minimum 3 characters , spaces are not allowed";
+      else if (label == "LinkedIn") helperText = "Must contain linkedin.com/";
+      else if (label == "GitHub") helperText = "Must contain github.com/";
+    }
+
     return Container(
       margin: const EdgeInsets.only(bottom: 12),
       padding: const EdgeInsets.all(15),
@@ -375,9 +384,14 @@ class _ProfileManagementPageState extends State<ProfileManagementPage> {
                     border: InputBorder.none,
                     contentPadding: EdgeInsets.zero,
                     counterText: isBio ? null : "",
-                    errorStyle: const TextStyle(fontSize: 10, color: Colors.red),
+                    // ✅ إضافة الـ Helper Text والستايل الخاص فيه ليكون رمادي
+                    helperText: helperText,
+                    helperStyle: const TextStyle(fontSize: 10, color: Colors.blueGrey, height: 1.2),
+                    helperMaxLines: 2,
+                    // الستايل لما يصير أحمر وقت الخطأ
+                    errorStyle: const TextStyle(fontSize: 10, color: Colors.red, height: 1.2),
+                    errorMaxLines: 3,
                   ),
-                  // ✅ مطابقة الشروط والرسائل حرفياً مع Create Account
                   validator: (value) {
                     if (!canEdit) return null;
                     String v = value?.trim() ?? "";

@@ -263,7 +263,38 @@ class _ProfilePageState extends State<ProfilePage>
               ),
             ),
           ),
-        const SizedBox(height: 10),
+
+        // ✅ هذا الجزء الجديد لعرض المدينة والجنس
+        if ((user.city != null && user.city!.isNotEmpty) ||
+            (user.gender != null && user.gender!.isNotEmpty && user.gender != "Not Specified"))
+          Padding(
+            padding: const EdgeInsets.only(top: 4, bottom: 8),
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                if (user.city != null && user.city!.isNotEmpty) ...[
+                  Icon(Icons.location_on_outlined, size: 16, color: primaryPurple),
+                  const SizedBox(width: 4),
+                  Text(
+                    user.city!,
+                    style: TextStyle(color: Colors.grey.shade700, fontSize: 13, fontWeight: FontWeight.w500),
+                  ),
+                  if (user.gender != null && user.gender!.isNotEmpty && user.gender != "Not Specified")
+                    const SizedBox(width: 15), // مسافة إذا كان فيه جنس ومدينة مع بعض
+                ],
+                if (user.gender != null && user.gender!.isNotEmpty && user.gender != "Not Specified") ...[
+                  Icon(Icons.wc_outlined, size: 16, color: primaryPurple),
+                  const SizedBox(width: 4),
+                  Text(
+                    user.gender!,
+                    style: TextStyle(color: Colors.grey.shade700, fontSize: 13, fontWeight: FontWeight.w500),
+                  ),
+                ],
+              ],
+            ),
+          ),
+
+        const SizedBox(height: 5),
         Row(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
