@@ -67,14 +67,16 @@ class _UserHomePageState extends State<UserHomePage> {
           children: [
             _UserSection(
               title: "Hackathons 🚀",
+              actionLabel: "View all hackathons",
               onExploreTap: () => _navigateToExplore(0),
               child: _buildHackathonsList(),
             ),
             const SizedBox(height: 30),
             _UserSection(
               key: _teamsKey,
-              title: "Teams 👥",
-              onExploreTap: () => _navigateToExplore(1), // هذي جاهزة وتودي للـ Teams tab مباشرة
+              title: "My Teams 👥",
+              actionLabel: "View all teams",
+              onExploreTap: () => _navigateToExplore(1),
               child: _buildTeamsList(), // ✅ تم التعديل هنا
             ),
             const SizedBox(height: 100),
@@ -87,11 +89,15 @@ class _UserHomePageState extends State<UserHomePage> {
   // ─── دوال بناء قائمة وكروت الفرق ───
 
   Widget _buildTeamsList() {
+    final currentUid = FirebaseAuth.instance.currentUser?.uid;
+
+    if (currentUid == null) return _buildEmptyTeamsState();
+
     return StreamBuilder<List<Map<String, dynamic>>>(
+      // ✅ تعديل الكويري عشان يجيب فقط الفرق اللي اليوزر فيها
       stream: FirebaseFirestore.instance
           .collection('team_posts')
-          .orderBy('createdAt', descending: true)
-          .limit(10) // نعرض أحدث 10 فرق فقط في الصفحة الرئيسية
+          .where('members', arrayContains: currentUid) // الشرط الأساسي
           .snapshots()
           .asyncMap((snapshot) async {
 
@@ -112,7 +118,15 @@ class _UserHomePageState extends State<UserHomePage> {
           return {'team': team, 'hackathon': hackathon};
         });
 
-        return await Future.wait(futures);
+        // ترتيب الفرق حسب تاريخ الإنشاء بعد جلبها (الأحدث أولاً)
+        var results = await Future.wait(futures);
+        results.sort((a, b) {
+          final tA = a['team'] as TeamPostModel;
+          final tB = b['team'] as TeamPostModel;
+          return tB.createdAt.compareTo(tA.createdAt);
+        });
+
+        return results;
       }),
       builder: (context, snapshot) {
         if (snapshot.connectionState == ConnectionState.waiting) {
@@ -125,7 +139,7 @@ class _UserHomePageState extends State<UserHomePage> {
 
         var list = snapshot.data!.where((item) {
           final h = item['hackathon'] as Hackathon?;
-          return h != null; // نتأكد إن الهاكاثون موجود
+          return h != null;
         }).toList();
 
         if (list.isEmpty) {
@@ -133,11 +147,11 @@ class _UserHomePageState extends State<UserHomePage> {
         }
 
         return SizedBox(
-          height: 265, // ارتفاع مناسب لكرت الفريق
+          height: 265,
           child: ListView.builder(
             scrollDirection: Axis.horizontal,
             padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-            itemCount: list.length,
+            itemCount: list.length > 10 ? 10 : list.length, // نعرض بحد أقصى 10 فرق
             itemBuilder: (context, index) {
               final item = list[index];
               return _buildProfessionalTeamMiniCard(item['team'], item['hackathon']);
@@ -149,8 +163,11 @@ class _UserHomePageState extends State<UserHomePage> {
   }
 
   Widget _buildProfessionalTeamMiniCard(TeamPostModel team, Hackathon hackathon) {
+    final currentUid = FirebaseAuth.instance.currentUser?.uid;
+    final bool isLeader = team.createdBy == currentUid;
+
     return Container(
-      width: 300, // نفس عرض كرت الهاكاثون
+      width: 300,
       margin: const EdgeInsets.only(right: 16),
       decoration: BoxDecoration(
         color: Colors.white,
@@ -180,20 +197,21 @@ class _UserHomePageState extends State<UserHomePage> {
                     ],
                   ),
                 ),
-                _miniStatusBadge("Looking for Members", _purple),
+                // ✅ توضيح دور اليوزر في فريقه
+                _miniStatusBadge(isLeader ? "Team Leader" : "Team Member", isLeader ? Colors.orange : _purple),
               ],
             ),
             const Divider(height: 20),
 
             _compactInfoRow(Icons.emoji_events_outlined, hackathon.name),
             const SizedBox(height: 8),
-            _compactInfoRow(Icons.person_outline, "Leader: ${team.myRole}"),
+            _compactInfoRow(Icons.group_outlined, "${team.members.length} / ${hackathon.teamSize} Members"),
             const SizedBox(height: 8),
-            _compactInfoRow(Icons.wc_outlined, "Gender: ${team.genderPreference}"),
+            _compactInfoRow(Icons.event_outlined, "Event: ${hackathon.startDate.day} ${_getMonthName(hackathon.startDate.month)}"),
 
             const SizedBox(height: 16),
 
-            // الأزرار
+            // ✅ الزر يودي لصفحة إدارة الفريق
             Row(
               children: [
                 Expanded(
@@ -208,24 +226,17 @@ class _UserHomePageState extends State<UserHomePage> {
                       ),
                       onPressed: () {
                         Navigator.push(context, MaterialPageRoute(
-                          builder: (context) => TeamPostDetailsView(team: team, hackathon: hackathon),
-                        ));
+                          builder: (context) => MyTeamPostView(
+                            teamPostId: team.id ?? "",
+                            hackathonId: hackathon.id ?? "",
+                            hackathonTeamSize: hackathon.teamSize,
+                          ),
+                        )).then((_) {
+                          if (mounted) setState(() {});
+                        });
                       },
-                      child: const Text("Details", style: TextStyle(color: Colors.white, fontSize: 11, fontWeight: FontWeight.bold)),
+                      child: Text(isLeader ? "Manage Team" : "View Team", style: const TextStyle(color: Colors.white, fontSize: 11, fontWeight: FontWeight.bold)),
                     ),
-                  ),
-                ),
-                const SizedBox(width: 8),
-                Expanded(
-                  child: _buildActionBtnOutlined(
-                    label: "Join",
-                    icon: Icons.group_add_outlined,
-                    color: _purple,
-                    onTap: () {
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        const SnackBar(content: Text("Coming Soon"), backgroundColor: _purple, behavior: SnackBarBehavior.floating),
-                      );
-                    },
                   ),
                 ),
               ],
@@ -528,9 +539,18 @@ class _UserHomePageState extends State<UserHomePage> {
 
 class _UserSection extends StatelessWidget {
   final String title;
+  final String actionLabel; // ✅ (1) هنا عرفناه كمتغير جديد
   final VoidCallback onExploreTap;
   final Widget child;
-  const _UserSection({super.key, required this.title, required this.onExploreTap, required this.child});
+
+  const _UserSection({
+    super.key,
+    required this.title,
+    required this.actionLabel, // ✅ (2) هنا طلبناه في الكونستركتور
+    required this.onExploreTap,
+    required this.child
+  });
+
   @override
   Widget build(BuildContext context) {
     return Column(
@@ -542,7 +562,11 @@ class _UserSection extends StatelessWidget {
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
               Text(title, style: const TextStyle(fontSize: 14, fontWeight: FontWeight.bold)),
-              GestureDetector(onTap: onExploreTap, child: const Text("View all", style: TextStyle(color: Color(0xFFFFA726), fontSize: 12))),
+              GestureDetector(
+                  onTap: onExploreTap,
+                  // ✅ (3) وهنا استخدمناه عشان ينطبع في الشاشة
+                  child: Text(actionLabel, style: const TextStyle(color: Color(0xFFFFA726), fontSize: 12))
+              ),
             ],
           ),
         ),

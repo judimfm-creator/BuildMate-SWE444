@@ -232,7 +232,7 @@ class _ExploreUserViewState extends State<ExploreUserView>  with SingleTickerPro
   }
 
   Widget _buildTeamsList() {
-    final currentUid = FirebaseAuth.instance.currentUser?.uid;
+    final currentUid = FirebaseAuth.instance.currentUser?.uid ?? '';
 
     return StreamBuilder<List<Map<String, dynamic>>>(
       // 1. نجلب كل بيانات الفرق والهاكاثونات المرتبطة فيها مرة واحدة
@@ -242,31 +242,49 @@ class _ExploreUserViewState extends State<ExploreUserView>  with SingleTickerPro
           .snapshots()
           .asyncMap((snapshot) async {
 
+        // ✅ التعديل هنا فقط: جلب الهاكاثونات اللي اليوزر مسجل فيها حالياً
+        final userTeamsSnapshot = await FirebaseFirestore.instance
+            .collection('team_posts')
+            .where('members', arrayContains: currentUid)
+            .get();
+
+        final joinedHackathonIds = userTeamsSnapshot.docs
+            .map((doc) => doc.data()['hackathonId'] as String?)
+            .where((id) => id != null)
+            .toSet();
+
         final futures = snapshot.docs.map((doc) async {
           final data = doc.data() as Map<String, dynamic>;
           final team = TeamPostModel.fromMap(doc.id, data);
+
+          // 🚫 استبعاد إذا اليوزر مسجل مسبقاً في هذا الهاكاثون
+          if (joinedHackathonIds.contains(team.hackathonId)) return null;
 
           final hackathonDoc = await FirebaseFirestore.instance
               .collection('hackathons')
               .doc(team.hackathonId)
               .get();
 
-          Hackathon? hackathon;
-          String hackathonName = "Unknown Hackathon";
+          if (!hackathonDoc.exists) return null;
 
-          if (hackathonDoc.exists) {
-            hackathon = Hackathon.fromFirestore(hackathonDoc);
-            hackathonName = hackathon.name;
-          }
+          final hackathon = Hackathon.fromFirestore(hackathonDoc);
+
+          // 🚫 استبعاد إذا الفريق مكتمل العدد
+          if (team.members.length >= hackathon.teamSize) return null;
+
+          // 🚫 استبعاد إذا انتهى وقت التسجيل في الهاكاثون
+          if (DateTime.now().isAfter(hackathon.applicationDeadline)) return null;
 
           return {
             'team': team,
             'hackathon': hackathon,
-            'hackathonName': hackathonName,
+            'hackathonName': hackathon.name,
           };
         });
 
-        return await Future.wait(futures);
+        final results = await Future.wait(futures);
+        // إزالة القيم الفارغة (الفرق اللي تم استبعادها)
+        return results.where((item) => item != null).cast<Map<String, dynamic>>().toList();
       }),
       builder: (context, snapshot) {
         if (snapshot.connectionState == ConnectionState.waiting) {
@@ -282,7 +300,7 @@ class _ExploreUserViewState extends State<ExploreUserView>  with SingleTickerPro
           );
         }
 
-        // 2. الفلترة المباشرة بناءً على اختيارات اليوزر في الواجهة
+        // 2. الفلترة المباشرة بناءً على اختيارات اليوزر في الواجهة (✅ لم يتم لمس هذا الجزء أبداً)
         final now = DateTime.now();
         var list = snapshot.data!.where((item) {
           final team = item['team'] as TeamPostModel;
