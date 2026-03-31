@@ -94,10 +94,9 @@ class _UserHomePageState extends State<UserHomePage> {
     if (currentUid == null) return _buildEmptyTeamsState();
 
     return StreamBuilder<List<Map<String, dynamic>>>(
-      // ✅ تعديل الكويري عشان يجيب فقط الفرق اللي اليوزر فيها
       stream: FirebaseFirestore.instance
           .collection('team_posts')
-          .where('members', arrayContains: currentUid) // الشرط الأساسي
+          .where('members', arrayContains: currentUid) // يجيب فرق اليوزر
           .snapshots()
           .asyncMap((snapshot) async {
 
@@ -118,7 +117,6 @@ class _UserHomePageState extends State<UserHomePage> {
           return {'team': team, 'hackathon': hackathon};
         });
 
-        // ترتيب الفرق حسب تاريخ الإنشاء بعد جلبها (الأحدث أولاً)
         var results = await Future.wait(futures);
         results.sort((a, b) {
           final tA = a['team'] as TeamPostModel;
@@ -137,9 +135,26 @@ class _UserHomePageState extends State<UserHomePage> {
           return _buildEmptyTeamsState();
         }
 
+        // ✅ هنا ضفنا الشروط المنطقية الجديدة (Business Logic)
+        final now = DateTime.now();
         var list = snapshot.data!.where((item) {
+          final team = item['team'] as TeamPostModel;
           final h = item['hackathon'] as Hackathon?;
-          return h != null;
+
+          if (h == null) return false; // إذا الهاكاثون محذوف نخفي الفريق
+
+          final bool isFull = team.members.length >= h.teamSize;
+          final bool registrationClosed = now.isAfter(h.applicationDeadline);
+          final bool hackathonEnded = now.isAfter(h.endDate);
+
+          // 1. لو الفريق "ما اكتمل" و "التسجيل انتهى" -> إخفاء
+          if (!isFull && registrationClosed) return false;
+
+          // 2. لو الفريق "مكتمل" و "الهاكاثون بكبره انتهى" -> إخفاء
+          if (isFull && hackathonEnded) return false;
+
+          // غير كذا، اعرض الفريق
+          return true;
         }).toList();
 
         if (list.isEmpty) {
@@ -151,7 +166,7 @@ class _UserHomePageState extends State<UserHomePage> {
           child: ListView.builder(
             scrollDirection: Axis.horizontal,
             padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-            itemCount: list.length > 10 ? 10 : list.length, // نعرض بحد أقصى 10 فرق
+            itemCount: list.length > 10 ? 10 : list.length,
             itemBuilder: (context, index) {
               final item = list[index];
               return _buildProfessionalTeamMiniCard(item['team'], item['hackathon']);
@@ -531,22 +546,37 @@ class _UserHomePageState extends State<UserHomePage> {
       margin: const EdgeInsets.symmetric(horizontal: 16),
       padding: const EdgeInsets.all(40),
       width: double.infinity,
-      decoration: BoxDecoration(color: Colors.grey.shade50, borderRadius: BorderRadius.circular(15), border: Border.all(color: Colors.grey.shade200)),
-      child: const Column(children: [Icon(Icons.group_off_outlined, color: Colors.grey, size: 40), SizedBox(height: 10), Text("No teams yet", style: TextStyle(color: Colors.grey))]),
+      decoration: BoxDecoration(
+        color: Colors.grey.shade50,
+        borderRadius: BorderRadius.circular(15),
+        border: Border.all(color: Colors.grey.shade200),
+      ),
+      child: const Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(Icons.group_off_outlined, color: Colors.grey, size: 40),
+          SizedBox(height: 12),
+          Text(
+            "You haven't registered or created any team yet.",
+            style: TextStyle(color: Colors.grey, fontSize: 13, fontWeight: FontWeight.w500),
+            textAlign: TextAlign.center,
+          ),
+        ],
+      ),
     );
   }
-}
+} // ✅✅✅ هذا هو القوس اللي كان ناقص! (يُغلق كلاس _UserHomePageState) ✅✅✅
 
 class _UserSection extends StatelessWidget {
   final String title;
-  final String actionLabel; // ✅ (1) هنا عرفناه كمتغير جديد
+  final String actionLabel;
   final VoidCallback onExploreTap;
   final Widget child;
 
   const _UserSection({
     super.key,
     required this.title,
-    required this.actionLabel, // ✅ (2) هنا طلبناه في الكونستركتور
+    required this.actionLabel,
     required this.onExploreTap,
     required this.child
   });
@@ -564,7 +594,6 @@ class _UserSection extends StatelessWidget {
               Text(title, style: const TextStyle(fontSize: 14, fontWeight: FontWeight.bold)),
               GestureDetector(
                   onTap: onExploreTap,
-                  // ✅ (3) وهنا استخدمناه عشان ينطبع في الشاشة
                   child: Text(actionLabel, style: const TextStyle(color: Color(0xFFFFA726), fontSize: 12))
               ),
             ],

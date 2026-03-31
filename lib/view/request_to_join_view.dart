@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import '../model/team_post_model.dart';
 import '../model/hackathon.dart';
+import 'other_user_profile_page.dart';
 
 class RequestToJoinView extends StatelessWidget {
   final TeamPostModel team;
@@ -185,41 +186,52 @@ class RequestToJoinView extends StatelessWidget {
               roleText = data['skills'][0];
             }
 
-            return Container(
-              margin: const EdgeInsets.only(bottom: 10),
-              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-              decoration: BoxDecoration(
-                color: Colors.grey.shade50,
-                borderRadius: BorderRadius.circular(16),
-                border: Border.all(color: Colors.grey.shade200),
-              ),
-              child: Row(
-                children: [
-                  CircleAvatar(
-                    radius: 20,
-                    backgroundColor: _lightBg,
-                    child: Text(firstLetter, style: const TextStyle(color: _purple, fontWeight: FontWeight.bold)),
+            // ✅ التعديل هنا: إضافة GestureDetector عشان نقدر نضغط على العضو
+            return GestureDetector(
+              onTap: () {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (context) => OtherUserProfilePage(userId: doc.id),
                   ),
-                  const SizedBox(width: 12),
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(name, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14, color: Colors.black87)),
-                        const SizedBox(height: 2),
-                        Text(roleText, style: TextStyle(color: _purple.withOpacity(0.8), fontSize: 12)),
-                      ],
+                );
+              },
+              child: Container(
+                margin: const EdgeInsets.only(bottom: 10),
+                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                decoration: BoxDecoration(
+                  color: Colors.grey.shade50,
+                  borderRadius: BorderRadius.circular(16),
+                  border: Border.all(color: Colors.grey.shade200),
+                ),
+                child: Row(
+                  children: [
+                    CircleAvatar(
+                      radius: 20,
+                      backgroundColor: _lightBg,
+                      child: Text(firstLetter, style: const TextStyle(color: _purple, fontWeight: FontWeight.bold)),
                     ),
-                  ),
-                  if (isLeader)
-                    Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                      decoration: BoxDecoration(color: Colors.orange.withOpacity(0.15), borderRadius: BorderRadius.circular(6)),
-                      child: const Text("Leader", style: TextStyle(color: Colors.orange, fontSize: 10, fontWeight: FontWeight.bold)),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(name, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14, color: Colors.black87)),
+                          const SizedBox(height: 2),
+                          Text(roleText, style: TextStyle(color: _purple.withOpacity(0.8), fontSize: 12)),
+                        ],
+                      ),
                     ),
-                  const SizedBox(width: 8),
-                  const Icon(Icons.chevron_right, color: Colors.grey, size: 20),
-                ],
+                    if (isLeader)
+                      Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                        decoration: BoxDecoration(color: Colors.orange.withOpacity(0.15), borderRadius: BorderRadius.circular(6)),
+                        child: const Text("Leader", style: TextStyle(color: Colors.orange, fontSize: 10, fontWeight: FontWeight.bold)),
+                      ),
+                    const SizedBox(width: 8),
+                    const Icon(Icons.chevron_right, color: Colors.grey, size: 20),
+                  ],
+                ),
               ),
             );
           }).toList(),
