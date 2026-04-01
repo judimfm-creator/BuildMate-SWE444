@@ -3,6 +3,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import '../model/team_post_model.dart';
 import '../model/hackathon.dart';
 import 'other_user_profile_page.dart';
+import 'hackathon_teams_view.dart' as teams_view; // تأكد من المسار الصحيح للملف
 
 class RequestToJoinView extends StatelessWidget {
   final TeamPostModel team;
@@ -140,16 +141,17 @@ class RequestToJoinView extends StatelessWidget {
                     backgroundColor: _purple,
                     shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
                   ),
-                  onPressed: () {
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(
-                        content: Text("Coming Soon"),
-                        backgroundColor: _purple,
-                        behavior: SnackBarBehavior.floating,
-                      ),
-                    );
-                  },
-                  child: const Text("REQUEST TO JOIN TEAM", style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 15, letterSpacing: 1)),                ),
+                  onPressed: () => _showJoinTeamDialog(context), // ✅ استدعاء الدايلوج بدلاً من الانتقال المباشر
+                  child: const Text(
+                    "REQUEST TO JOIN TEAM",
+                    style: TextStyle(
+                        color: Colors.white,
+                        fontWeight: FontWeight.bold,
+                        fontSize: 15,
+                        letterSpacing: 1
+                    ),
+                  ),
+                ),
               ),
             ],
           ),
@@ -235,6 +237,70 @@ class RequestToJoinView extends StatelessWidget {
               ),
             );
           }).toList(),
+        );
+      },
+    );
+  }
+
+  void _showJoinTeamDialog(BuildContext context) {
+    showDialog(
+      context: context,
+      builder: (BuildContext context) {
+        return Dialog(
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
+          child: Padding(
+            padding: const EdgeInsets.all(20),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                // اسم الفريق
+                Text(
+                  team.teamName,
+                  style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
+                ),
+                const SizedBox(height: 8),
+                // اسم الهاكاثون
+                Text(
+                  hackathon?.name ?? "Hackathon",
+                  style: TextStyle(color: _purple.withOpacity(0.8), fontWeight: FontWeight.w500),
+                ),
+                const Divider(height: 30),
+                // فكرة المشروع (Idea)
+                const Text("Project Idea", style: TextStyle(fontWeight: FontWeight.bold)),
+                const SizedBox(height: 8),
+                Text(team.idea.isNotEmpty ? team.idea : "No idea provided"),
+                const SizedBox(height: 24),
+                // زر التأكيد (الذي ينفذ منطق Join Team)
+                SizedBox(
+                  width: double.infinity,
+                  height: 50,
+                  child: ElevatedButton(
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: _purple,
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                    ),
+                    onPressed: () {
+                      Navigator.pop(context); // إغلاق الدايلوج
+                      // تنفيذ منطق الانتقال لصفحة الفرق (المأخوذ من ExploreUserView)
+                      if (hackathon != null) {
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (context) => teams_view.ExploreTeamsView(
+                              hackathonId: hackathon!.id ?? "",
+                              hackathonTeamSize: hackathon!.teamSize,
+                            ),
+                          ),
+                        );
+                      }
+                    },
+                    child: const Text("JOIN TEAM", style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+                  ),
+                ),
+              ],
+            ),
+          ),
         );
       },
     );
