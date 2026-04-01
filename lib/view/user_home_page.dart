@@ -75,7 +75,7 @@ class _UserHomePageState extends State<UserHomePage> {
             _UserSection(
               key: _teamsKey,
               title: "My Teams 👥",
-              actionLabel: "View all teams",
+              actionLabel: "Find Teams to Join",
               onExploreTap: () => _navigateToExplore(1),
               child: _buildTeamsList(), // ✅ تم التعديل هنا
             ),
@@ -114,7 +114,10 @@ class _UserHomePageState extends State<UserHomePage> {
             hackathon = Hackathon.fromFirestore(hackathonDoc);
           }
 
-          return {'team': team, 'hackathon': hackathon};
+          // ✅ جبنا حالة الـ submit من الداتا
+          final bool isSubmitted = data['submittedToInstitution'] == true;
+
+          return {'team': team, 'hackathon': hackathon, 'isSubmitted': isSubmitted};
         });
 
         var results = await Future.wait(futures);
@@ -135,26 +138,30 @@ class _UserHomePageState extends State<UserHomePage> {
           return _buildEmptyTeamsState();
         }
 
-        // ✅ هنا ضفنا الشروط المنطقية الجديدة (Business Logic)
+        // ✅ هنا الشروط المنطقية الجديدة (Business Logic)
         final now = DateTime.now();
         var list = snapshot.data!.where((item) {
           final team = item['team'] as TeamPostModel;
           final h = item['hackathon'] as Hackathon?;
+          final isSubmitted = item['isSubmitted'] == true;
 
-          if (h == null) return false; // إذا الهاكاثون محذوف نخفي الفريق
+          if (h == null) return false;
 
-          final bool isFull = team.members.length >= h.teamSize;
+          // ✅ تمديد نهاية الهاكاثون لتكون الساعة 11:59:59 م من يوم النهاية
+          final DateTime endOfHackathonDay = DateTime(h.endDate.year, h.endDate.month, h.endDate.day, 23, 59, 59);
+
           final bool registrationClosed = now.isAfter(h.applicationDeadline);
-          final bool hackathonEnded = now.isAfter(h.endDate);
+          final bool hackathonEnded = now.isAfter(endOfHackathonDay);
 
-          // 1. لو الفريق "ما اكتمل" و "التسجيل انتهى" -> إخفاء
-          if (!isFull && registrationClosed) return false;
+          if (isSubmitted) {
+            // 1. لو الفريق "سوى Submit"، ما يختفي إلا إذا الهاكاثون انتهى تماماً (بناءً على تاريخ ووقت النهاية)
+            if (hackathonEnded) return false;
+          } else {
+            // 2. لو الفريق "ما سوى Submit"، يختفي بمجرد ما ينتهي وقت التسجيل
+            if (registrationClosed) return false;
+          }
 
-          // 2. لو الفريق "مكتمل" و "الهاكاثون بكبره انتهى" -> إخفاء
-          if (isFull && hackathonEnded) return false;
-
-          // غير كذا، اعرض الفريق
-          return true;
+          return true; // اعرض الفريق
         }).toList();
 
         if (list.isEmpty) {
@@ -169,7 +176,8 @@ class _UserHomePageState extends State<UserHomePage> {
             itemCount: list.length > 10 ? 10 : list.length,
             itemBuilder: (context, index) {
               final item = list[index];
-              return _buildProfessionalTeamMiniCard(item['team'], item['hackathon']);
+              // ✅ مررنا حالة الـ isSubmitted للكارت
+              return _buildProfessionalTeamMiniCard(item['team'], item['hackathon'], item['isSubmitted']);
             },
           ),
         );
@@ -177,7 +185,8 @@ class _UserHomePageState extends State<UserHomePage> {
     );
   }
 
-  Widget _buildProfessionalTeamMiniCard(TeamPostModel team, Hackathon hackathon) {
+  // ✅ أضفنا isSubmitted كمتغير ثالث في الدالة
+  Widget _buildProfessionalTeamMiniCard(TeamPostModel team, Hackathon hackathon, bool isSubmitted) {
     final currentUid = FirebaseAuth.instance.currentUser?.uid;
     final bool isLeader = team.createdBy == currentUid;
 
@@ -199,6 +208,7 @@ class _UserHomePageState extends State<UserHomePage> {
           mainAxisSize: MainAxisSize.min,
           children: [
             Row(
+              crossAxisAlignment: CrossAxisAlignment.start, // عشان الليبلز تترتب زين
               children: [
                 Expanded(
                   child: Column(
@@ -212,8 +222,15 @@ class _UserHomePageState extends State<UserHomePage> {
                     ],
                   ),
                 ),
-                // ✅ توضيح دور اليوزر في فريقه
-                _miniStatusBadge(isLeader ? "Team Leader" : "Team Member", isLeader ? Colors.orange : _purple),
+                // ✅ أضفنا الليبلز هنا تحت بعض (الدور + حالة التسجيل)
+                Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    _miniStatusBadge(isSubmitted ? "Registered" : "Pending", isSubmitted ? Colors.green : Colors.redAccent),
+                    const SizedBox(width: 6), // مسافة أفقية بدال العمودية
+                    _miniStatusBadge(isLeader ? "Team Leader" : "Team Member", isLeader ? Colors.orange : _purple),
+                  ],
+                ),
               ],
             ),
             const Divider(height: 20),
@@ -226,7 +243,6 @@ class _UserHomePageState extends State<UserHomePage> {
 
             const SizedBox(height: 16),
 
-            // ✅ الزر يودي لصفحة إدارة الفريق
             Row(
               children: [
                 Expanded(

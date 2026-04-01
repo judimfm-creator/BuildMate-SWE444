@@ -13,7 +13,6 @@ import '../model/team_post_model.dart';
 import 'team_post_details_view.dart';
 import 'dart:async'; // ✅ إضافة مهمة جداً
 import 'package:cloud_firestore/cloud_firestore.dart';
-import 'request_to_join_view.dart';
 
 // 1. المتغيرات العامة (تكون برا الكلاسات تماماً - فوق class ExploreUserView)
 int targetExploreTab = 0;
@@ -425,13 +424,17 @@ class _ExploreUserViewState extends State<ExploreUserView>  with SingleTickerPro
                     }
                   }),
                 ),
-                const SizedBox(width: 8),
+                const SizedBox(width: 12), // كبرنا المسافة شوي عشان ما يتلاصقون
                 Expanded(
-                  child: _btn("Request to join", _purple, () {
-                    // ✅ التعديل الأكيد هنا: ينقلك للصفحة الجديدة فوراً
-                    Navigator.push(context, MaterialPageRoute(
-                      builder: (context) => RequestToJoinView(team: team, hackathon: hackathon),
-                    ));
+                  child: _btn("Join Team", _purple, () { // صغرنا النص عشان يكفي وتكون الأزرار متطابقة
+                    if (hackathon != null) {
+                      Navigator.push(context, MaterialPageRoute(
+                        builder: (context) => teams_view.ExploreTeamsView(
+                          hackathonId: hackathon.id ?? "",
+                          hackathonTeamSize: hackathon.teamSize,
+                        ),
+                      ));
+                    }
                   }),
                 ),
               ],
