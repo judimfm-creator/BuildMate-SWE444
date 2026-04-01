@@ -71,8 +71,7 @@ class Hackathon {
     }
     return DateTime.now(); // قيمة افتراضية في حال الخطأ
   }
-
-  factory Hackathon.fromFirestore(DocumentSnapshot doc) {
+factory Hackathon.fromFirestore(DocumentSnapshot doc) {
     final data = doc.data() as Map<String, dynamic>? ?? {};
 
     return Hackathon(
@@ -87,8 +86,12 @@ class Hackathon {
       mode: data['mode'] ?? '',
       rolesNeeded: List<String>.from(data['rolesNeeded'] ?? []),
       educationCriteria: data['educationCriteria'] ?? '',
+      
+      // ✅ السطرين اللي كانوا ناقصين لسحب بيانات المنظمة
+// استبدلي السطر القديم بهذا السطر بالضبط
+organizationName: data['orgName'] ?? data['organizationName'] ?? 'Organizer',
+      organizationPhotoUrl: data['organizationPhotoUrl'],
 
-      // ✅ استخدام الميثود المساعدة لضمان عدم حدوث كراش في التواريخ
       applicationOpenDate: _parseDate(data['applicationOpenDate'] ?? data['startDate']),
       applicationDeadline: _parseDate(data['applicationDeadline'] ?? data['startDate']),
       startDate: _parseDate(data['startDate']),

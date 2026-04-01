@@ -91,7 +91,7 @@ class MyTeamPostView extends StatelessWidget {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                _buildStatusHeader(isSubmitted, currentMembers),
+                _buildStatusHeader(isSubmitted, currentMembers,data['status']),
                 const SizedBox(height: 24),
 
                 _sectionTitle("Team Overview"),
@@ -157,54 +157,86 @@ class MyTeamPostView extends StatelessWidget {
 
                 const SizedBox(height: 32),
 
-                if (isLeader) ...[
-                  _actionButton(
-                    label: 'View Join Requests',
-                    icon: Icons.group_add_outlined,
-                    color: Colors.grey.shade300,
-                    onPressed: null,
-                  ),
-                  const SizedBox(height: 12),
-                  _actionButton(
-                    label: isSubmitted
-                        ? 'Registration Submitted'
-                        : 'Finalize & Register Team',
-                    icon: isSubmitted
-                        ? Icons.verified_user
-                        : Icons.rocket_launch,
-                    color: isSubmitted
-                        ? Colors.grey
-                        : (currentMembers >= 2
-                        ? Colors.green
-                        : Colors.grey.shade400),
-                    onPressed: (!isSubmitted && currentMembers >= 2)
-                        ? () => _handleRegistration(context, currentMembers)
-                        : null,
-                  ),
-                  if (!isSubmitted && currentMembers < 2)
-                    Padding(
-                      padding: const EdgeInsets.only(top: 8.0),
-                      child: Row(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: [
-                          Icon(
-                            Icons.info_outline,
-                            size: 14,
-                            color: Colors.orange.shade700,
-                          ),
-                          const SizedBox(width: 5),
-                          const Text(
-                            "Registration opens when you have at least 2 members.",
-                            style: TextStyle(
-                              color: Color(0xFFD35400),
-                              fontSize: 11,
-                              fontWeight: FontWeight.w600,
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                ] else ...[
+              if (isLeader) ...[
+  // 1. تنبيه شرط العدد (في الأعلى ليظهر كـ "قفل" للميزة)
+  if (!isSubmitted && currentMembers < 2)
+    Container(
+      margin: const EdgeInsets.only(bottom: 16),
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: Colors.orange.shade50,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: Colors.orange.shade200),
+      ),
+      child: Row(
+        children: [
+          Icon(Icons.lock_clock_outlined, size: 18, color: Colors.orange.shade800),
+          const SizedBox(width: 10),
+          const Expanded(
+            child: Text(
+              "Registration is locked. You need at least 2 members to finalize.",
+              style: TextStyle(color: Color(0xFFD35400), fontSize: 12, fontWeight: FontWeight.bold),
+            ),
+          ),
+        ],
+      ),
+    ),
+
+  // 2. زر طلبات الانضمام
+  _actionButton(
+    label: 'View Join Requests',
+    icon: Icons.group_add_outlined,
+    color: Colors.grey.shade300,
+    onPressed: null,
+  ),
+  const SizedBox(height: 12),
+
+  // 3. زر التسجيل النهائي
+  _actionButton(
+    label: isSubmitted
+        ? 'Registration Submitted'
+        : 'Finalize & Register Team',
+    icon: isSubmitted ? Icons.verified_user : Icons.rocket_launch,
+    color: isSubmitted
+        ? Colors.grey
+        : (currentMembers >= 2 ? Colors.green : Colors.grey.shade400),
+    onPressed: (!isSubmitted && currentMembers >= 2)
+        ? () => _handleRegistration(context, currentMembers)
+        : null,
+  ),
+
+  // 4. التنبيه الخاص بجودة البيانات (تحت الزر الآن)
+  if (!isSubmitted)
+    Padding(
+      padding: const EdgeInsets.only(top: 12, left: 4, right: 4),
+      child: Container(
+        padding: const EdgeInsets.all(12),
+        decoration: BoxDecoration(
+          color: Colors.amber.shade50.withOpacity(0.5),
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(color: Colors.amber.shade200),
+        ),
+        child: Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Icon(Icons.tips_and_updates_outlined, color: Colors.amber.shade900, size: 18),
+            const SizedBox(width: 10),
+            Expanded(
+              child: Text(
+                "Pro tip: Make sure all members have completed their profiles before registering. Incomplete profiles may affect your acceptance.",
+                style: TextStyle(
+                  fontSize: 11,
+                  color: Colors.amber.shade900,
+                  fontWeight: FontWeight.w600,
+                  height: 1.4,
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
+    ),
+] else ...[
                   _buildMemberNotice(isSubmitted, currentMembers),
                 ],
 
@@ -367,50 +399,69 @@ class MyTeamPostView extends StatelessWidget {
     );
   }
 
-  Widget _buildStatusHeader(bool isSubmitted, int currentMembers) {
-    String statusText = isSubmitted
-        ? "Status: Registered & Locked"
-        : (currentMembers >= hackathonTeamSize
-        ? "Status: Team is Full"
-        : "Status: Building Team");
+Widget _buildStatusHeader(bool isSubmitted, int currentMembers, String? adminStatus) {
+  // adminStatus: هو الحقل الذي يأتي من Firestore (pending_approval, accepted, rejected)
+  
+  String statusText;
+  Color statusColor;
+  IconData icon;
 
-    Color statusColor = isSubmitted
-        ? Colors.green
-        : (currentMembers >= hackathonTeamSize
-        ? Colors.orange.shade800
-        : purple);
+  if (isSubmitted) {
+    // إذا الفريق ضغط Register، ننتقل لمرحلة الانتظار أو النتيجة النهائية
+    switch (adminStatus) {
+      case 'accepted':
+        statusText = "Status: Team Accepted! 🎉";
+        statusColor = Colors.green;
+        icon = Icons.check_circle_outline;
+        break;
+      case 'rejected':
+        statusText = "Status: Team Rejected";
+        statusColor = Colors.red;
+        icon = Icons.error_outline;
+        break;
+      default: // حالة pending_approval
+        statusText = "Status: Registered & Under Review"; // هنا التوضيح للدكتورة
+        statusColor = Colors.blue; // نغير الأخضر للأزرق ليدل على "الانتظار"
+        icon = Icons.hourglass_empty_rounded;
+    }
+  } else {
+    // إذا الفريق لسه ما سجل
+    if (currentMembers >= hackathonTeamSize) {
+      statusText = "Status: Team Full (Ready to Register)";
+      statusColor = Colors.orange.shade800;
+      icon = Icons.stars_outlined;
+    } else {
+      statusText = "Status: Building Team...";
+      statusColor = purple;
+      icon = Icons.groups_outlined;
+    }
+  }
 
-    IconData icon = isSubmitted
-        ? Icons.lock_outline
-        : (currentMembers >= hackathonTeamSize
-        ? Icons.stars_outlined
-        : Icons.groups_outlined);
-
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-      decoration: BoxDecoration(
-        color: statusColor.withOpacity(0.1),
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: statusColor.withOpacity(0.3)),
-      ),
-      child: Row(
-        children: [
-          Icon(icon, size: 20, color: statusColor),
-          const SizedBox(width: 12),
-          Expanded(
-            child: Text(
-              statusText,
-              style: TextStyle(
-                fontWeight: FontWeight.bold,
-                color: statusColor,
-                fontSize: 13,
-              ),
+  return Container(
+    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+    decoration: BoxDecoration(
+      color: statusColor.withOpacity(0.1),
+      borderRadius: BorderRadius.circular(12),
+      border: Border.all(color: statusColor.withOpacity(0.3)),
+    ),
+    child: Row(
+      children: [
+        Icon(icon, size: 20, color: statusColor),
+        const SizedBox(width: 12),
+        Expanded(
+          child: Text(
+            statusText,
+            style: TextStyle(
+              fontWeight: FontWeight.bold,
+              color: statusColor,
+              fontSize: 13,
             ),
           ),
-        ],
-      ),
-    );
-  }
+        ),
+      ],
+    ),
+  );
+}
 
   Widget _infoBox(List<Widget> children) => Container(
     width: double.infinity,

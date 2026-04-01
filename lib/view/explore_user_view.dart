@@ -59,13 +59,17 @@ class _ExploreUserViewState extends State<ExploreUserView>  with SingleTickerPro
   }
 
   @override
-  void dispose() {
-    _tabSubscription.cancel(); // ✅ تنظيف الذاكرة
-    _tabController.dispose();
-    _searchController.dispose();
-    _cityController.dispose();
-    super.dispose();
-  }
+void dispose() {
+  // ✅ تصفير البحث في الـ ViewModel عند مغادرة الصفحة
+  // نستخدم listen: false لأننا داخل dispose
+  Provider.of<OrgHackathonsViewModel>(context, listen: false).updateSearchQuery("");
+  
+  _tabSubscription.cancel();
+  _tabController.dispose();
+  _searchController.dispose();
+  _cityController.dispose();
+  super.dispose();
+}
 
   String _format(DateTime d) => DateFormat('MMM dd, yyyy').format(d);
 
@@ -161,9 +165,7 @@ class _ExploreUserViewState extends State<ExploreUserView>  with SingleTickerPro
     );
   }
 
-  Widget _buildHackathonList() {
-    final vm = context.watch<OrgHackathonsViewModel>();
-
+ Widget _buildHackathonList() {
     return RefreshIndicator(
       color: _purple,
       onRefresh: () async {
@@ -172,19 +174,28 @@ class _ExploreUserViewState extends State<ExploreUserView>  with SingleTickerPro
       },
       child: Column(
         children: [
-          // ✅ تم حذف الجزء القديم الخاص بـ "Clear All" من هنا لأنه صار فوق ثابت
           Expanded(
-            child: StreamBuilder<List<Hackathon>>(
-              stream: vm.filteredHackathonsStream,
+            child: StreamBuilder<QuerySnapshot>(
+              // ✅ الاتصال المباشر بالفايربيس يجعل التحميل فورياً بفضل الكاش
+              stream: FirebaseFirestore.instance.collection('hackathons').snapshots(),
               builder: (context, snapshot) {
-                if (snapshot.connectionState == ConnectionState.waiting) {
+                // نعرض دائرة التحميل فقط في المرة الأولى إذا لم تكن هناك بيانات كاش
+                if (snapshot.connectionState == ConnectionState.waiting && !snapshot.hasData) {
                   return const Center(child: CircularProgressIndicator(color: _purple));
                 }
 
-                var list = snapshot.data ?? [];
+                // تحويل الـ Docs إلى Objects
+                final allHackathons = snapshot.data?.docs.map((doc) => Hackathon.fromFirestore(doc)).toList() ?? [];
                 final now = DateTime.now();
 
-                list = list.where((h) {
+                // ✅ تطبيق الفلترة (نفس منطقك السابق تماماً)
+                final filteredList = allHackathons.where((h) {
+                  // فلتر البحث (الاسم، الجهة، أو المجال)
+                  bool mSearch = _searchController.text.isEmpty ||
+                      h.name.toLowerCase().contains(_searchController.text.toLowerCase()) ||
+                      (h.organizationName ?? "").toLowerCase().contains(_searchController.text.toLowerCase()) ||
+                      h.domain.toLowerCase().contains(_searchController.text.toLowerCase());
+
                   bool mCity = _cityController.text.isEmpty ||
                       h.city.toLowerCase().contains(_cityController.text.toLowerCase());
 
@@ -194,24 +205,28 @@ class _ExploreUserViewState extends State<ExploreUserView>  with SingleTickerPro
                       (h.educationCriteria ?? "Any") == selectedEducation;
 
                   bool mStatus = true;
-                  if (selectedStatus != null) {
-                    if (selectedStatus == "Registration Upcoming Soon") {
-                      mStatus = now.isBefore(h.applicationOpenDate);
-                    } else if (selectedStatus == "Registration Open") {
-                      mStatus = now.isAfter(h.applicationOpenDate) && now.isBefore(h.applicationDeadline);
-                    } else if (selectedStatus == "Registration Closed") {
-                      mStatus = now.isAfter(h.applicationDeadline);
-                    }
-                  }
+if (selectedStatus != null) {
+  if (selectedStatus == "Registration Upcoming Soon") {
+    mStatus = now.isBefore(h.applicationOpenDate);
+  } else if (selectedStatus == "Registration Open") {
+    // يبقى مفتوحاً إذا كان الوقت الحالي قبل "بداية اليوم التالي" للموعد النهائي
+    final endOfDeadline = DateTime(h.applicationDeadline.year, h.applicationDeadline.month, h.applicationDeadline.day, 23, 59, 59);
+    mStatus = now.isAfter(h.applicationOpenDate) && now.isBefore(endOfDeadline);
+  } else if (selectedStatus == "Registration Closed") {
+    // يغلق فقط إذا تجاوزنا نهاية يوم الموعد النهائي
+    final endOfDeadline = DateTime(h.applicationDeadline.year, h.applicationDeadline.month, h.applicationDeadline.day, 23, 59, 59);
+    mStatus = now.isAfter(endOfDeadline);
+  }
+}
 
                   bool mEvStart = selectedStartEventDate == null || isSameDay(h.startDate, selectedStartEventDate!);
                   bool mEvEnd = selectedEndEventDate == null || isSameDay(h.endDate, selectedEndEventDate!);
                   bool mDeadline = selectedEndRegDate == null || isSameDay(h.applicationDeadline, selectedEndRegDate!);
 
-                  return mCity && mMode && mStatus && mEdu && mEvStart && mEvEnd && mDeadline;
+                  return mSearch && mCity && mMode && mStatus && mEdu && mEvStart && mEvEnd && mDeadline;
                 }).toList();
 
-                if (list.isEmpty) {
+                if (filteredList.isEmpty) {
                   return const Center(child: Padding(
                     padding: EdgeInsets.only(top: 40),
                     child: Text("No results found."),
@@ -219,9 +234,9 @@ class _ExploreUserViewState extends State<ExploreUserView>  with SingleTickerPro
                 }
 
                 return ListView.builder(
-                  padding: const EdgeInsets.fromLTRB(16, 16, 16, 16),
-                  itemCount: list.length,
-                  itemBuilder: (context, index) => _buildPremiumHackathonCard(list[index]),
+                  padding: const EdgeInsets.all(16),
+                  itemCount: filteredList.length,
+                  itemBuilder: (context, index) => _buildPremiumHackathonCard(filteredList[index]),
                 );
               },
             ),
@@ -450,15 +465,18 @@ class _ExploreUserViewState extends State<ExploreUserView>  with SingleTickerPro
         hintStyle: TextStyle(color: Colors.grey.shade400, fontSize: 13),
         prefixIcon: const Icon(Icons.search, color: _purple, size: 20),
         suffixIcon: _searchController.text.isNotEmpty
-            ? IconButton(
-                icon: const Icon(Icons.cancel, color: Colors.grey, size: 16),
-                onPressed: () {
-                  vm.updateSearchQuery("");
-                  _searchController.clear();
-                  setState(() {});
-                },
-              )
-            : null,
+    ? IconButton(
+        icon: const Icon(Icons.cancel, color: Colors.grey, size: 16),
+        onPressed: () {
+          // ✅ 1. تحديث الـ ViewModel بقيمة فارغة فوراً
+          vm.updateSearchQuery(""); 
+          // ✅ 2. مسح النص من الكنترولر
+          _searchController.clear(); 
+          // ✅ 3. تحديث الواجهة
+          setState(() {}); 
+        },
+      )
+    : null,
         filled: true,
         fillColor: Colors.white,
         contentPadding: EdgeInsets.zero,
@@ -571,11 +589,24 @@ class _ExploreUserViewState extends State<ExploreUserView>  with SingleTickerPro
   }
 
   // --- Premium Card (بدون تغيير في المحتوى) ---
+ // ... الاحتفاظ بنفس الـ imports والـ Variables العامة
+
+// داخل كلاس _ExploreUserViewState وتحديداً دالة _buildPremiumHackathonCard
+
   Widget _buildPremiumHackathonCard(Hackathon h) {
     final DateTime now = DateTime.now();
     final bool regNotStarted = now.isBefore(h.applicationOpenDate);
-    final bool regClosed = now.isAfter(h.applicationDeadline);
+    
+    // ✅ توحيد منطق نهاية اليوم لضمان الدقة
+    final endOfDeadline = DateTime(h.applicationDeadline.year, h.applicationDeadline.month, h.applicationDeadline.day, 23, 59, 59);
+    final bool regClosed = now.isAfter(endOfDeadline);
+    
     final String? currentUid = FirebaseAuth.instance.currentUser?.uid;
+
+    // ✅ التأكد من جلب اسم المنظمة من الموديل
+    final String displayOrgName = (h.organizationName != null && h.organizationName!.isNotEmpty) 
+        ? h.organizationName! 
+        : "Organizer";
 
     return Container(
       margin: const EdgeInsets.only(bottom: 20),
@@ -590,18 +621,42 @@ class _ExploreUserViewState extends State<ExploreUserView>  with SingleTickerPro
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Row(
+              crossAxisAlignment: CrossAxisAlignment.start, // يضمن بقاء البادج في الأعلى حتى لو طال الاسم
               children: [
                 Expanded(
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Text("By ${h.organizationName ?? "Organizer"}", style: TextStyle(fontWeight: FontWeight.w600, color: _purple.withOpacity(0.7), fontSize: 11)),
+                      // ✅ اسم المنظمة مع دعم الـ Wrap (النزول لسطر جديد)
+                      Text(
+                        "By $displayOrgName", 
+                        style: TextStyle(
+                          fontWeight: FontWeight.w600, 
+                          color: _purple.withOpacity(0.7), 
+                          fontSize: 11
+                        ),
+                        softWrap: true,
+                        maxLines: 2,
+                        overflow: TextOverflow.ellipsis,
+                      ),
                       const SizedBox(height: 4),
-                      Text(h.name, style: const TextStyle(fontSize: 17, fontWeight: FontWeight.bold)),
+                      // ✅ اسم الهاكاثون مع دعم الـ Wrap
+                      Text(
+                        h.name, 
+                        style: const TextStyle(
+                          fontSize: 17, 
+                          fontWeight: FontWeight.bold,
+                          height: 1.2
+                        ),
+                        softWrap: true,
+                        maxLines: 2,
+                        overflow: TextOverflow.ellipsis,
+                      ),
                     ],
                   ),
                 ),
-                _statusBadge(regNotStarted, regClosed),
+                const SizedBox(width: 10),
+                _statusBadge(regNotStarted, h.applicationDeadline), 
               ],
             ),
             const Divider(height: 25),
@@ -695,16 +750,35 @@ class _ExploreUserViewState extends State<ExploreUserView>  with SingleTickerPro
     );
   }
 
-  Widget _statusBadge(bool ns, bool cl) {
-    String label = "Registration Open"; Color color = Colors.green;
-    if (ns) { label = "Registration Upcoming Soon"; color = Colors.orange; }
-    else if (cl) { label = "Registration Closed"; color = Colors.red; }
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-      decoration: BoxDecoration(color: color.withOpacity(0.1), borderRadius: BorderRadius.circular(8)),
-      child: Text(label.toUpperCase(), style: TextStyle(color: color, fontSize: 8, fontWeight: FontWeight.bold)),
-    );
+  Widget _statusBadge(bool ns, DateTime deadline) {
+  final now = DateTime.now();
+  // تحديد نهاية يوم الموعد النهائي (الساعة 23:59:59)
+  final endOfDeadline = DateTime(deadline.year, deadline.month, deadline.day, 23, 59, 59);
+  final bool cl = now.isAfter(endOfDeadline);
+
+  String label = "Registration Open"; 
+  Color color = Colors.green;
+
+  if (ns) { 
+    label = "Registration Upcoming Soon"; 
+    color = Colors.orange; 
+  } else if (cl) { 
+    label = "Registration Closed"; 
+    color = Colors.red; 
   }
+
+  return Container(
+    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+    decoration: BoxDecoration(
+      color: color.withOpacity(0.1), 
+      borderRadius: BorderRadius.circular(8)
+    ),
+    child: Text(
+      label.toUpperCase(), 
+      style: TextStyle(color: color, fontSize: 8, fontWeight: FontWeight.bold)
+    ),
+  );
+}
 
   Widget _buildInfoRow(IconData icon, String label, String value) {
     return Row(children: [
