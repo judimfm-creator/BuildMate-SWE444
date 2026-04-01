@@ -60,6 +60,7 @@ class InstitutionTeamPostDetailsView extends StatelessWidget {
 
           final String status = (data['status'] ?? 'pending').toString();
           final String hackathonId = (data['hackathonId'] ?? '').toString();
+          final String leaderId = (data['createdBy'] ?? '').toString();
 
           return FutureBuilder<DocumentSnapshot<Map<String, dynamic>>>(
             future: FirebaseFirestore.instance
@@ -132,7 +133,7 @@ class InstitutionTeamPostDetailsView extends StatelessWidget {
                       )
                     else
                       ...memberIds.map(
-                        (uid) => _buildMemberCard(context, uid),
+                        (uid) => _buildMemberCard(context, uid, leaderId),
                       ),
 
                     const SizedBox(height: 24),
@@ -154,7 +155,7 @@ class InstitutionTeamPostDetailsView extends StatelessWidget {
     );
   }
 
-  Widget _buildMemberCard(BuildContext context, String uid) {
+  Widget _buildMemberCard(BuildContext context, String uid, String leaderId) {
     return FutureBuilder<DocumentSnapshot<Map<String, dynamic>>>(
       future: FirebaseFirestore.instance.collection('users').doc(uid).get(),
       builder: (context, userSnap) {
@@ -195,6 +196,7 @@ class InstitutionTeamPostDetailsView extends StatelessWidget {
           skillsText = skills.toString();
         }
 
+        final bool isLeader = uid == leaderId;
         final ImageProvider? profileImage = _resolveProfileImage(u);
 
         return Container(
@@ -242,13 +244,39 @@ class InstitutionTeamPostDetailsView extends StatelessWidget {
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          Text(
-                            fullName,
-                            style: const TextStyle(
-                              fontWeight: FontWeight.w700,
-                              fontSize: 16,
-                              color: Colors.black87,
-                            ),
+                          Wrap(
+                            crossAxisAlignment: WrapCrossAlignment.center,
+                            spacing: 6,
+                            runSpacing: 6,
+                            children: [
+                              Text(
+                                fullName,
+                                style: const TextStyle(
+                                  fontWeight: FontWeight.w700,
+                                  fontSize: 16,
+                                  color: Colors.black87,
+                                ),
+                              ),
+                              if (isLeader)
+                                Container(
+                                  padding: const EdgeInsets.symmetric(
+                                    horizontal: 8,
+                                    vertical: 3,
+                                  ),
+                                  decoration: BoxDecoration(
+                                    color: _purple,
+                                    borderRadius: BorderRadius.circular(8),
+                                  ),
+                                  child: const Text(
+                                    'Leader',
+                                    style: TextStyle(
+                                      color: Colors.white,
+                                      fontSize: 10,
+                                      fontWeight: FontWeight.bold,
+                                    ),
+                                  ),
+                                ),
+                            ],
                           ),
                           const SizedBox(height: 4),
                           Text(
@@ -268,7 +296,6 @@ class InstitutionTeamPostDetailsView extends StatelessWidget {
               const SizedBox(height: 14),
               Divider(color: Colors.grey.shade300, height: 1),
               const SizedBox(height: 14),
-
               _infoRow(
                 context,
                 Icons.email_outlined,
@@ -519,8 +546,8 @@ class InstitutionTeamPostDetailsView extends StatelessWidget {
           borderRadius: BorderRadius.circular(12),
           border: Border.all(color: Colors.orange.withOpacity(0.30)),
         ),
-        child: Row(
-          children: const [
+        child: const Row(
+          children: [
             Icon(
               Icons.visibility_outlined,
               color: Colors.orange,
