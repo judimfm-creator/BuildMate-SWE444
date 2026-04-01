@@ -14,7 +14,7 @@ import 'team_post_details_view.dart';
 import 'dart:async'; // ✅ إضافة مهمة جداً
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'request_to_join_view.dart';
-
+import '../../home_screen.dart'; // تأكدي أن المسار يوصل لملف HomeScreen عندك
 // 1. المتغيرات العامة (تكون برا الكلاسات تماماً - فوق class ExploreUserView)
 int targetExploreTab = 0;
 final StreamController<int> exploreTabStream = StreamController<int>.broadcast();
@@ -43,7 +43,7 @@ class _ExploreUserViewState extends State<ExploreUserView>  with SingleTickerPro
   String? selectedStatus;
   String? selectedEducation;
   DateTime? selectedEndRegDate;
-  DateTime? selectedStartEventDate; 
+  DateTime? selectedStartEventDate;
   DateTime? selectedEndEventDate;
 
   @override
@@ -59,17 +59,13 @@ class _ExploreUserViewState extends State<ExploreUserView>  with SingleTickerPro
   }
 
   @override
-void dispose() {
-  // ✅ تصفير البحث في الـ ViewModel عند مغادرة الصفحة
-  // نستخدم listen: false لأننا داخل dispose
-  Provider.of<OrgHackathonsViewModel>(context, listen: false).updateSearchQuery("");
-  
-  _tabSubscription.cancel();
-  _tabController.dispose();
-  _searchController.dispose();
-  _cityController.dispose();
-  super.dispose();
-}
+  void dispose() {
+    _tabSubscription.cancel(); // ✅ تنظيف الذاكرة
+    _tabController.dispose();
+    _searchController.dispose();
+    _cityController.dispose();
+    super.dispose();
+  }
 
   String _format(DateTime d) => DateFormat('MMM dd, yyyy').format(d);
 
@@ -165,7 +161,9 @@ void dispose() {
     );
   }
 
- Widget _buildHackathonList() {
+  Widget _buildHackathonList() {
+    final vm = context.watch<OrgHackathonsViewModel>();
+
     return RefreshIndicator(
       color: _purple,
       onRefresh: () async {
@@ -174,28 +172,19 @@ void dispose() {
       },
       child: Column(
         children: [
+          // ✅ تم حذف الجزء القديم الخاص بـ "Clear All" من هنا لأنه صار فوق ثابت
           Expanded(
-            child: StreamBuilder<QuerySnapshot>(
-              // ✅ الاتصال المباشر بالفايربيس يجعل التحميل فورياً بفضل الكاش
-              stream: FirebaseFirestore.instance.collection('hackathons').snapshots(),
+            child: StreamBuilder<List<Hackathon>>(
+              stream: vm.filteredHackathonsStream,
               builder: (context, snapshot) {
-                // نعرض دائرة التحميل فقط في المرة الأولى إذا لم تكن هناك بيانات كاش
-                if (snapshot.connectionState == ConnectionState.waiting && !snapshot.hasData) {
+                if (snapshot.connectionState == ConnectionState.waiting) {
                   return const Center(child: CircularProgressIndicator(color: _purple));
                 }
 
-                // تحويل الـ Docs إلى Objects
-                final allHackathons = snapshot.data?.docs.map((doc) => Hackathon.fromFirestore(doc)).toList() ?? [];
+                var list = snapshot.data ?? [];
                 final now = DateTime.now();
 
-                // ✅ تطبيق الفلترة (نفس منطقك السابق تماماً)
-                final filteredList = allHackathons.where((h) {
-                  // فلتر البحث (الاسم، الجهة، أو المجال)
-                  bool mSearch = _searchController.text.isEmpty ||
-                      h.name.toLowerCase().contains(_searchController.text.toLowerCase()) ||
-                      (h.organizationName ?? "").toLowerCase().contains(_searchController.text.toLowerCase()) ||
-                      h.domain.toLowerCase().contains(_searchController.text.toLowerCase());
-
+                list = list.where((h) {
                   bool mCity = _cityController.text.isEmpty ||
                       h.city.toLowerCase().contains(_cityController.text.toLowerCase());
 
@@ -204,18 +193,17 @@ void dispose() {
                   bool mEdu = selectedEducation == null ||
                       (h.educationCriteria ?? "Any") == selectedEducation;
 
-                  bool mStatus = true;
+// Update this section to match your new logic:
+bool mStatus = true;
 if (selectedStatus != null) {
+  final hEndOfDeadline = DateTime(h.applicationDeadline.year, h.applicationDeadline.month, h.applicationDeadline.day, 23, 59, 59);
+
   if (selectedStatus == "Registration Upcoming Soon") {
     mStatus = now.isBefore(h.applicationOpenDate);
   } else if (selectedStatus == "Registration Open") {
-    // يبقى مفتوحاً إذا كان الوقت الحالي قبل "بداية اليوم التالي" للموعد النهائي
-    final endOfDeadline = DateTime(h.applicationDeadline.year, h.applicationDeadline.month, h.applicationDeadline.day, 23, 59, 59);
-    mStatus = now.isAfter(h.applicationOpenDate) && now.isBefore(endOfDeadline);
+    mStatus = now.isAfter(h.applicationOpenDate) && now.isBefore(hEndOfDeadline); // ✅ Use hEndOfDeadline
   } else if (selectedStatus == "Registration Closed") {
-    // يغلق فقط إذا تجاوزنا نهاية يوم الموعد النهائي
-    final endOfDeadline = DateTime(h.applicationDeadline.year, h.applicationDeadline.month, h.applicationDeadline.day, 23, 59, 59);
-    mStatus = now.isAfter(endOfDeadline);
+    mStatus = now.isAfter(hEndOfDeadline); // ✅ Use hEndOfDeadline
   }
 }
 
@@ -223,10 +211,10 @@ if (selectedStatus != null) {
                   bool mEvEnd = selectedEndEventDate == null || isSameDay(h.endDate, selectedEndEventDate!);
                   bool mDeadline = selectedEndRegDate == null || isSameDay(h.applicationDeadline, selectedEndRegDate!);
 
-                  return mSearch && mCity && mMode && mStatus && mEdu && mEvStart && mEvEnd && mDeadline;
+                  return mCity && mMode && mStatus && mEdu && mEvStart && mEvEnd && mDeadline;
                 }).toList();
 
-                if (filteredList.isEmpty) {
+                if (list.isEmpty) {
                   return const Center(child: Padding(
                     padding: EdgeInsets.only(top: 40),
                     child: Text("No results found."),
@@ -234,9 +222,9 @@ if (selectedStatus != null) {
                 }
 
                 return ListView.builder(
-                  padding: const EdgeInsets.all(16),
-                  itemCount: filteredList.length,
-                  itemBuilder: (context, index) => _buildPremiumHackathonCard(filteredList[index]),
+                  padding: const EdgeInsets.fromLTRB(16, 16, 16, 16),
+                  itemCount: list.length,
+                  itemBuilder: (context, index) => _buildPremiumHackathonCard(list[index]),
                 );
               },
             ),
@@ -288,7 +276,13 @@ if (selectedStatus != null) {
           if (team.members.length >= hackathon.teamSize) return null;
 
           // 🚫 استبعاد إذا انتهى وقت التسجيل في الهاكاثون
-          if (DateTime.now().isAfter(hackathon.applicationDeadline)) return null;
+          final teamEndOfDeadline = DateTime(
+    hackathon.applicationDeadline.year, 
+    hackathon.applicationDeadline.month, 
+    hackathon.applicationDeadline.day, 
+    23, 59, 59
+);
+if (DateTime.now().isAfter(teamEndOfDeadline)) return null;
 
           return {
             'team': team,
@@ -465,18 +459,15 @@ if (selectedStatus != null) {
         hintStyle: TextStyle(color: Colors.grey.shade400, fontSize: 13),
         prefixIcon: const Icon(Icons.search, color: _purple, size: 20),
         suffixIcon: _searchController.text.isNotEmpty
-    ? IconButton(
-        icon: const Icon(Icons.cancel, color: Colors.grey, size: 16),
-        onPressed: () {
-          // ✅ 1. تحديث الـ ViewModel بقيمة فارغة فوراً
-          vm.updateSearchQuery(""); 
-          // ✅ 2. مسح النص من الكنترولر
-          _searchController.clear(); 
-          // ✅ 3. تحديث الواجهة
-          setState(() {}); 
-        },
-      )
-    : null,
+            ? IconButton(
+                icon: const Icon(Icons.cancel, color: Colors.grey, size: 16),
+                onPressed: () {
+                  vm.updateSearchQuery("");
+                  _searchController.clear();
+                  setState(() {});
+                },
+              )
+            : null,
         filled: true,
         fillColor: Colors.white,
         contentPadding: EdgeInsets.zero,
@@ -586,27 +577,14 @@ if (selectedStatus != null) {
         if (d != null) onPicked(d);
       },
     );
-  }
-
-  // --- Premium Card (بدون تغيير في المحتوى) ---
- // ... الاحتفاظ بنفس الـ imports والـ Variables العامة
-
-// داخل كلاس _ExploreUserViewState وتحديداً دالة _buildPremiumHackathonCard
-
+  }// --- Premium Card (بدون تغيير في المحتوى) ---
   Widget _buildPremiumHackathonCard(Hackathon h) {
     final DateTime now = DateTime.now();
     final bool regNotStarted = now.isBefore(h.applicationOpenDate);
-    
-    // ✅ توحيد منطق نهاية اليوم لضمان الدقة
     final endOfDeadline = DateTime(h.applicationDeadline.year, h.applicationDeadline.month, h.applicationDeadline.day, 23, 59, 59);
+    // ✅ This triggers only AFTER the day is completely over
     final bool regClosed = now.isAfter(endOfDeadline);
-    
     final String? currentUid = FirebaseAuth.instance.currentUser?.uid;
-
-    // ✅ التأكد من جلب اسم المنظمة من الموديل
-    final String displayOrgName = (h.organizationName != null && h.organizationName!.isNotEmpty) 
-        ? h.organizationName! 
-        : "Organizer";
 
     return Container(
       margin: const EdgeInsets.only(bottom: 20),
@@ -621,42 +599,18 @@ if (selectedStatus != null) {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Row(
-              crossAxisAlignment: CrossAxisAlignment.start, // يضمن بقاء البادج في الأعلى حتى لو طال الاسم
               children: [
                 Expanded(
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      // ✅ اسم المنظمة مع دعم الـ Wrap (النزول لسطر جديد)
-                      Text(
-                        "By $displayOrgName", 
-                        style: TextStyle(
-                          fontWeight: FontWeight.w600, 
-                          color: _purple.withOpacity(0.7), 
-                          fontSize: 11
-                        ),
-                        softWrap: true,
-                        maxLines: 2,
-                        overflow: TextOverflow.ellipsis,
-                      ),
+                      Text("By ${h.organizationName ?? "Organizer"}", style: TextStyle(fontWeight: FontWeight.w600, color: _purple.withOpacity(0.7), fontSize: 11)),
                       const SizedBox(height: 4),
-                      // ✅ اسم الهاكاثون مع دعم الـ Wrap
-                      Text(
-                        h.name, 
-                        style: const TextStyle(
-                          fontSize: 17, 
-                          fontWeight: FontWeight.bold,
-                          height: 1.2
-                        ),
-                        softWrap: true,
-                        maxLines: 2,
-                        overflow: TextOverflow.ellipsis,
-                      ),
+                      Text(h.name, style: const TextStyle(fontSize: 17, fontWeight: FontWeight.bold)),
                     ],
                   ),
                 ),
-                const SizedBox(width: 10),
-                _statusBadge(regNotStarted, h.applicationDeadline), 
+                _statusBadge(regNotStarted, h.applicationDeadline),
               ],
             ),
             const Divider(height: 25),
@@ -693,7 +647,9 @@ if (selectedStatus != null) {
                       Navigator.push(context, MaterialPageRoute(builder: (context) => MyTeamPostView(
                         teamPostId: teamSnap.data!.id,
                         hackathonId: h.id ?? "",
-                        hackathonTeamSize: h.teamSize))).then((_) => setState(() {}));
+                        hackathonTeamSize: h.teamSize))).then((_) {
+                          if (mounted) setState(() {});
+                        });
                     });
                   }
                   return Row(
@@ -703,12 +659,40 @@ if (selectedStatus != null) {
                       else if (regNotStarted)
                         Expanded(child: _outlinedBtn("Upcoming", Colors.grey, null))
                       else ...[
+                        // زر Create Team المعدل
                         Expanded(child: _outlinedBtn("Create Team", _purple, () {
-                          Navigator.push(context, MaterialPageRoute(builder: (context) => CreateTeamPostScreen(hackathonId: h.id ?? "", hackathonTeamSize: h.teamSize))).then((_) { if (mounted) setState(() {}); });
+                          Navigator.push(context, MaterialPageRoute(
+                            builder: (context) => CreateTeamPostScreen(
+                              hackathonId: h.id ?? "", 
+                              hackathonTeamSize: h.teamSize
+                            )
+                          )).then((dynamic result) async {
+  if (result == true && mounted) {
+    // 1. ننتظر نص ثانية عشان الداتابيز تتحدث
+    await Future.delayed(const Duration(milliseconds: 500));
+    
+    if (mounted) {
+      setState(() {}); // تحديث صفحة الاكسبلور
+      // 2. الانتقال لصفحة الهوم (Tab 0)
+      homeScreenState?.changeTab(0);
+    }
+  }
+}); // تأكدي من وجود القوس مع الفاصلة المنقوطة هنا
                         })),
                         const SizedBox(width: 8),
+                        // زر Join Team المعدل
                         Expanded(child: _outlinedBtn("Join Team", _purple, () {
-                          Navigator.push(context, MaterialPageRoute(builder: (context) => teams_view.ExploreTeamsView(hackathonId: h.id ?? "", hackathonTeamSize: h.teamSize))).then((_) { if (mounted) setState(() {}); });
+                          Navigator.push(context, MaterialPageRoute(
+                            builder: (context) => teams_view.ExploreTeamsView(
+                              hackathonId: h.id ?? "", 
+                              hackathonTeamSize: h.teamSize
+                            )
+                          )).then((dynamic result) { 
+                            if (mounted) {
+                              setState(() {}); 
+                              if (result == true) homeScreenState?.changeTab(0);
+                            }
+                          });
                         })),
                       ]
                     ],
@@ -750,33 +734,26 @@ if (selectedStatus != null) {
     );
   }
 
-  Widget _statusBadge(bool ns, DateTime deadline) {
+ Widget _statusBadge(bool ns, DateTime deadline) {
   final now = DateTime.now();
-  // تحديد نهاية يوم الموعد النهائي (الساعة 23:59:59)
   final endOfDeadline = DateTime(deadline.year, deadline.month, deadline.day, 23, 59, 59);
   final bool cl = now.isAfter(endOfDeadline);
 
-  String label = "Registration Open"; 
+  String label = "Registration Open";
   Color color = Colors.green;
 
-  if (ns) { 
-    label = "Registration Upcoming Soon"; 
-    color = Colors.orange; 
-  } else if (cl) { 
-    label = "Registration Closed"; 
-    color = Colors.red; 
+  if (ns) {
+    label = "Registration Upcoming Soon";
+    color = Colors.orange;
+  } else if (cl) {
+    label = "Registration Closed";
+    color = Colors.red;
   }
 
   return Container(
     padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-    decoration: BoxDecoration(
-      color: color.withOpacity(0.1), 
-      borderRadius: BorderRadius.circular(8)
-    ),
-    child: Text(
-      label.toUpperCase(), 
-      style: TextStyle(color: color, fontSize: 8, fontWeight: FontWeight.bold)
-    ),
+    decoration: BoxDecoration(color: color.withOpacity(0.1), borderRadius: BorderRadius.circular(8)),
+    child: Text(label.toUpperCase(), style: TextStyle(color: color, fontSize: 8, fontWeight: FontWeight.bold)),
   );
 }
 

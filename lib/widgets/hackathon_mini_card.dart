@@ -17,6 +17,14 @@ class HackathonMiniCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    // ✅ حساب الموعد النهائي بدقة (حتى 11:59 مساءً)
+    final endOfDeadline = DateTime(
+      hackathon.applicationDeadline.year,
+      hackathon.applicationDeadline.month,
+      hackathon.applicationDeadline.day,
+      23, 59, 59,
+    );
+
     return Container(
       width: 300, 
       margin: const EdgeInsets.only(right: 16),
@@ -25,11 +33,7 @@ class HackathonMiniCard extends StatelessWidget {
         borderRadius: BorderRadius.circular(20),
         border: Border.all(color: Colors.grey.shade200),
         boxShadow: [
-          BoxShadow(
-            color: Colors.black.withOpacity(0.04),
-            blurRadius: 10,
-            offset: const Offset(0, 4),
-          ),
+          BoxShadow(color: Colors.black.withOpacity(0.04), blurRadius: 10, offset: const Offset(0, 4)),
         ],
       ),
       child: Padding(
@@ -39,6 +43,7 @@ class HackathonMiniCard extends StatelessWidget {
           mainAxisSize: MainAxisSize.min,
           children: [
             Row(
+              crossAxisAlignment: CrossAxisAlignment.start, // ✅ لضمان محاذاة النص والبادج
               children: [
                 Expanded(
                   child: Text(
@@ -46,12 +51,16 @@ class HackathonMiniCard extends StatelessWidget {
                     style: const TextStyle(
                       fontSize: 15,
                       fontWeight: FontWeight.bold,
+                      height: 1.2, // مسافة بين الأسطر
                     ),
-                    maxLines: 1,
+                    // ✅ حل مشكلة الـ Wrap:
+                    softWrap: true,
+                    maxLines: 2, 
                     overflow: TextOverflow.ellipsis,
                   ),
                 ),
-                _statusBadge(),
+                const SizedBox(width: 8),
+                _statusBadge(endOfDeadline), // مررنا الوقت الدقيق هنا
               ],
             ),
             const Divider(height: 20),
@@ -62,32 +71,19 @@ class HackathonMiniCard extends StatelessWidget {
             _infoRow(Icons.groups_outlined, hackathon.teamSize > 2 ? "2 - ${hackathon.teamSize} members" : "2 members"),
             const SizedBox(height: 16),
             
-            // زر التفاصيل (البنفسجي دائماً)
             SizedBox(
               width: double.infinity,
               height: 42,
               child: ElevatedButton(
                 style: ElevatedButton.styleFrom(
-                  backgroundColor: _purple, // ✅ تم توحيد اللون للبنفسجي دائماً
+                  backgroundColor: _purple,
                   shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
                   elevation: 0,
                 ),
                 onPressed: () {
-                  Navigator.push(
-                    context,
-                    MaterialPageRoute(
-                      builder: (_) => HackathonDetailsView(hackathon: hackathon),
-                    ),
-                  );
+                  Navigator.push(context, MaterialPageRoute(builder: (_) => HackathonDetailsView(hackathon: hackathon)));
                 },
-                child: Text(
-                  isPast ? "View Details" : "View Details",
-                  style: const TextStyle(
-                    color: Colors.white,
-                    fontSize: 13,
-                    fontWeight: FontWeight.bold,
-                  ),
-                ),
+                child: const Text("View Details", style: TextStyle(color: Colors.white, fontSize: 13, fontWeight: FontWeight.bold)),
               ),
             ),
 
@@ -102,20 +98,8 @@ class HackathonMiniCard extends StatelessWidget {
                     side: const BorderSide(color: _purple, width: 1.2),
                     shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
                   ),
-                  onPressed: () => Navigator.push(
-                    context,
-                    MaterialPageRoute(
-                      builder: (_) => CreateHackathonView(hackathonToEdit: hackathon),
-                    ),
-                  ),
-                  child: const Text(
-                    "Edit",
-                    style: TextStyle(
-                      color: _purple,
-                      fontSize: 13,
-                      fontWeight: FontWeight.bold,
-                    ),
-                  ),
+                  onPressed: () => Navigator.push(context, MaterialPageRoute(builder: (_) => CreateHackathonView(hackathonToEdit: hackathon))),
+                  child: const Text("Edit", style: TextStyle(color: _purple, fontSize: 13, fontWeight: FontWeight.bold)),
                 ),
               ),
             ],
@@ -125,41 +109,35 @@ class HackathonMiniCard extends StatelessWidget {
     );
   }
 
-  Widget _statusBadge() {
+  // ✅ ميثود البادج المعدلة لحل مشكلة Closed
+  Widget _statusBadge(DateTime endOfDeadline) {
     final DateTime now = DateTime.now();
     
-    // شروط الحالات بدقة
     final bool regNotStarted = now.isBefore(hackathon.applicationOpenDate);
-    final bool regClosed = now.isAfter(hackathon.applicationDeadline);
+    // ✅ نستخدم الموعد النهائي الدقيق بالثواني لضمان بقائه Open
+    final bool regClosed = now.isAfter(endOfDeadline); 
     final bool isEventEnded = now.isAfter(hackathon.endDate);
 
     String text = "Registration Open";
     Color color = Colors.green;
 
     if (isEventEnded) {
-      text = "Hackathon Ended"; // ✅ الهاكاثون انتهى بالكامل
-      color = Colors.green;
+      text = "Hackathon Ended";
+      color = Colors.blueGrey;
     } else if (regClosed) {
-      text = "Registration Closed"; // ✅ التسجيل قفل لكن الحدث لسه شغال
+      text = "Registration Closed";
       color = Colors.red;
     } else if (regNotStarted) {
-      text = "Registration Upcoming Soon"; // ✅ لسه ما بدأ التسجيل
+      text = "Registration Upcoming Soon";
       color = Colors.orange;
     }
 
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 3),
-      decoration: BoxDecoration(
-        color: color.withOpacity(0.1),
-        borderRadius: BorderRadius.circular(6),
-      ),
+      decoration: BoxDecoration(color: color.withOpacity(0.1), borderRadius: BorderRadius.circular(6)),
       child: Text(
         text.toUpperCase(),
-        style: TextStyle(
-          color: color,
-          fontSize: 8, // صغرنا الخط قليلاً ليتناسب مع الجمل الطويلة
-          fontWeight: FontWeight.bold,
-        ),
+        style: TextStyle(color: color, fontSize: 8, fontWeight: FontWeight.bold),
       ),
     );
   }
@@ -169,14 +147,7 @@ class HackathonMiniCard extends StatelessWidget {
       children: [
         Icon(icon, size: 14, color: _purple),
         const SizedBox(width: 8),
-        Expanded(
-          child: Text(
-            text,
-            style: const TextStyle(fontSize: 12, color: Colors.black87),
-            maxLines: 1,
-            overflow: TextOverflow.ellipsis,
-          ),
-        ),
+        Expanded(child: Text(text, style: const TextStyle(fontSize: 12, color: Colors.black87), maxLines: 1, overflow: TextOverflow.ellipsis)),
       ],
     );
   }

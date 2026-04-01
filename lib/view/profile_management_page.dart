@@ -342,8 +342,8 @@ class _ProfileManagementPageState extends State<ProfileManagementPage> {
     if (canEdit) {
       if (label == "Full Name") helperText = "Enter your first, middle, last name(Letters only)";
       else if (label == "Username") helperText = "minimum 3 characters , spaces are not allowed";
-      else if (label == "LinkedIn") helperText = "Must contain linkedin.com/";
-      else if (label == "GitHub") helperText = "Must contain github.com/";
+      else if (label == "LinkedIn") helperText = "https://linkedin.com/in/Sara-Mohammed";
+      else if (label == "GitHub") helperText = "https://github.com/Sara-Mohammed";
     }
 
     return Container(

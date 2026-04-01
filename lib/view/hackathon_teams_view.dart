@@ -474,36 +474,39 @@ class ExploreTeamsView extends StatelessWidget {
               if (selected != null) {
                 final navigator = Navigator.of(context);
                 final messenger = ScaffoldMessenger.of(context);
-                final String uid = FirebaseAuth.instance.currentUser!.uid;
+               final String uid = FirebaseAuth.instance.currentUser!.uid;
 
-                try {
-                  await FirebaseFirestore.instance
-                      .collection('team_posts')
-                      .doc(teamId)
-                      .update({
-                    'members': FieldValue.arrayUnion([uid]),
-                    'memberRoles.$uid': selected,
-                    'neededRoles': FieldValue.arrayRemove([selected]),
-                  });
+        try {
+          await FirebaseFirestore.instance
+              .collection('team_posts')
+              .doc(teamId)
+              .update({
+            'members': FieldValue.arrayUnion([uid]),
+            'memberRoles.$uid': selected,
+            'neededRoles': FieldValue.arrayRemove([selected]),
+          });
 
-                  if (ctx.mounted) {
-                    Navigator.pop(ctx);
-                  }
+          if (ctx.mounted) {
+            // ✅ التعديل الأول: نمرر true عشان صفحة الـ Explore تحس بالنجاح
+            Navigator.pop(ctx, true); 
+          }
 
-                  navigator.pushReplacement(
-                    MaterialPageRoute(
-                      builder: (c) => MyTeamPostView(
-                        teamPostId: teamId,
-                        hackathonId: hackathonId,
-                        hackathonTeamSize: hackathonTeamSize,
-                      ),
-                    ),
-                  );
-                } catch (e) {
-                  messenger.showSnackBar(
-                    SnackBar(content: Text("Error joining: $e")),
-                  );
-                }
+          // ✅ التعديل الثاني: نفتح صفحة MyTeamPostView 
+          // لكن التأكد من أن الهوم سيتحدث صار مسؤولية الـ Navigator.pop اللي فوق
+          navigator.pushReplacement(
+            MaterialPageRoute(
+              builder: (c) => MyTeamPostView(
+                teamPostId: teamId,
+                hackathonId: hackathonId,
+                hackathonTeamSize: hackathonTeamSize,
+              ),
+            ),
+          );
+        } catch (e) {
+          messenger.showSnackBar(
+            SnackBar(content: Text("Error joining: $e")),
+          );
+        }
               }
             },
             child: const Text(

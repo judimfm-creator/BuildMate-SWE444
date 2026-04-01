@@ -40,11 +40,18 @@ class _HackathonDetailsViewState extends State<HackathonDetailsView> {
 
   @override
   Widget build(BuildContext context) {
+    // ✅ ضبط الموعد النهائي الدقيق (نهاية اليوم 23:59:59) لضمان التزامن مع الكروت
     final DateTime now = DateTime.now();
+    final DateTime deadlineDateTime = DateTime(
+      widget.hackathon.applicationDeadline.year,
+      widget.hackathon.applicationDeadline.month,
+      widget.hackathon.applicationDeadline.day,
+      23, 59, 59,
+    );
+
     final bool isEventEnded = widget.hackathon.endDate.isBefore(now);
     final bool regNotStarted = now.isBefore(widget.hackathon.applicationOpenDate);
-    final bool regClosed = now.isAfter(widget.hackathon.applicationDeadline);
-    final bool canUserAct = !regNotStarted && !regClosed && !isEventEnded;
+    final bool regClosed = now.isAfter(deadlineDateTime); // يستخدم التوقيت الجديد
     final String? currentUid = FirebaseAuth.instance.currentUser?.uid;
 
     return Scaffold(
@@ -70,10 +77,10 @@ class _HackathonDetailsViewState extends State<HackathonDetailsView> {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      _buildSimpleStatusBadge(regNotStarted, regClosed),
+                      // ✅ تم استدعاء البادج المحدث
+                      _buildSimpleStatusBadge(regNotStarted, regClosed, isEventEnded),
                       const SizedBox(height: 12),
                       
-                      // ✅ تم إخفاء اسم المنظم للمؤسسات فقط
                       if (!isInstitution) ...[
                         Text(
                           "By ${widget.hackathon.organizationName ?? 'Organizer'}", 
@@ -104,7 +111,6 @@ class _HackathonDetailsViewState extends State<HackathonDetailsView> {
                       ]),
 
                       const SizedBox(height: 16),
-                      // ملاحظة الـ 2 members تظهر فقط للطلاب
                       if (!isInstitution) _buildRequirementNote(),
 
                       const SizedBox(height: 16),
@@ -123,7 +129,8 @@ class _HackathonDetailsViewState extends State<HackathonDetailsView> {
                       ],
                       
                       const SizedBox(height: 30),
-                      _buildActionButtons(context, isInstitution, currentUid, canUserAct, regNotStarted, regClosed),
+                      // ✅ تم تمرير الحالة المحدثة للأزرار لضمان عملها حتى 11:59م
+                      _buildActionButtons(context, isInstitution, currentUid, regNotStarted, regClosed),
                       const SizedBox(height: 40),
                     ],
                   ),
@@ -135,14 +142,29 @@ class _HackathonDetailsViewState extends State<HackathonDetailsView> {
 
   // --- UI Helpers ---
 
-  Widget _buildSimpleStatusBadge(bool ns, bool cl) {
+  // ✅ تحديث البادج ليدعم الحالات الثلاث بدقة الوقت الجديدة
+  Widget _buildSimpleStatusBadge(bool ns, bool cl, bool ended) {
     String label = "Registration Open";
     Color color = Colors.green;
-    if (ns) { label = "Upcoming"; color = Colors.orange; }
-    else if (cl) { label = "Registration Closed"; color = Colors.red; }
+    IconData icon = Icons.check_circle_outline;
+
+    if (ended) {
+      label = "Hackathon Ended";
+      color = Colors.blueGrey;
+      icon = Icons.event_available;
+    } else if (cl) {
+      label = "Registration Closed";
+      color = Colors.red;
+      icon = Icons.lock_outline;
+    } else if (ns) {
+      label = "Registration Upcoming Soon";
+      color = Colors.orange;
+      icon = Icons.timer_outlined;
+    }
+
     return Row(
       children: [
-        Icon(cl ? Icons.lock_outline : Icons.check_circle_outline, color: color, size: 16),
+        Icon(icon, color: color, size: 16),
         const SizedBox(width: 6),
         Text(label, style: TextStyle(color: color, fontWeight: FontWeight.bold, fontSize: 13)),
       ],
@@ -165,7 +187,7 @@ class _HackathonDetailsViewState extends State<HackathonDetailsView> {
     ]);
   }
 
-  Widget _buildActionButtons(BuildContext context, bool isInst, String uid, bool canAct, bool notStarted, bool closed) {
+  Widget _buildActionButtons(BuildContext context, bool isInst, String uid, bool notStarted, bool closed) {
     final String hid = widget.hackathon.id ?? "";
     if (isInst) {
       return _btn(
@@ -192,52 +214,35 @@ class _HackathonDetailsViewState extends State<HackathonDetailsView> {
           });
         }
         return Column(
-  children: [
-    // الحالة الأولى: إذا كان التسجيل مغلقاً (Closed) - نعرض زر واحد فقط
-    if (closed) 
-      _btn(
-        "Registration Closed", 
-        Colors.grey, 
-        null // الزر معطل
-      )
-    
-    // الحالة الثانية: إذا كان التسجيل لم يبدأ بعد (Not Started)
-    else if (notStarted) ...[
-      _btn(
-        "Create Team Post (Opening Soon)", 
-        Colors.grey, 
-        null
-      ),
-      const SizedBox(height: 12),
-      _outlinedBtn(
-        "Join Existing Team (Opening Soon)", 
-        Colors.grey, 
-        null
-      ),
-    ]
-
-    // الحالة الثالثة: التسجيل مفتوح حالياً (Open)
-    else ...[
-      _btn(
-        "Create Team Post", 
-        _purple, 
-        () => Navigator.push(
-          context, 
-          MaterialPageRoute(builder: (context) => CreateTeamPostScreen(hackathonId: hid, hackathonTeamSize: widget.hackathon.teamSize))
-        ).then((_) => setState(() {}))
-      ),
-      const SizedBox(height: 12),
-      _outlinedBtn(
-        "Join Existing Team", 
-        _purple, 
-        () => Navigator.push(
-          context, 
-          MaterialPageRoute(builder: (context) => teams_view.ExploreTeamsView(hackathonId: hid, hackathonTeamSize: widget.hackathon.teamSize))
-        ).then((_) => setState(() {}))
-      ),
-    ],
-  ],
-);
+          children: [
+            if (closed) 
+              _btn("Registration Closed", Colors.grey, null)
+            else if (notStarted) ...[
+              _btn("Create Team Post (Opening Soon)", Colors.grey, null),
+              const SizedBox(height: 12),
+              _outlinedBtn("Join Existing Team (Opening Soon)", Colors.grey, null),
+            ]
+            else ...[
+              _btn(
+                "Create Team Post", 
+                _purple, 
+                () => Navigator.push(
+                  context, 
+                  MaterialPageRoute(builder: (context) => CreateTeamPostScreen(hackathonId: hid, hackathonTeamSize: widget.hackathon.teamSize))
+                ).then((_) => setState(() {}))
+              ),
+              const SizedBox(height: 12),
+              _outlinedBtn(
+                "Join Existing Team", 
+                _purple, 
+                () => Navigator.push(
+                  context, 
+                  MaterialPageRoute(builder: (context) => teams_view.ExploreTeamsView(hackathonId: hid, hackathonTeamSize: widget.hackathon.teamSize))
+                ).then((_) => setState(() {}))
+              ),
+            ],
+          ],
+        );
       },
     );
   }

@@ -393,29 +393,33 @@ Widget _buildPassField(
     ),
   );
 }
-  void _submit() {
-    if (_formKey.currentState!.validate()) {
-      // ✅ إنشاء الموديل بناءً على تعريف الكلاس الخاص بكِ بدقة
-      final user = UserModel(
-        uid: "", // يتم توليده تلقائياً في الـ ViewModel بعد التسجيل في فايربيز
-        fullName: _fullNameController.text.trim(),
-        username: _usernameController.text.trim(),
-        email: _emailController.text.trim(),
-        phoneNumber: _phoneController.text.trim(),
-        // الحقول التالية اختيارية نتركها فارغة في البداية
-        profilePhotoPath: null,
-        bio: "",
-        city: "",
-        gender: "Not Specified",
-        skills: [], // مصفوفة فارغة في البداية
-        linkedin: "",
-        github: "",
-      );
+  void _submit() async { // Added async
+  if (_formKey.currentState!.validate()) {
+    final vm = context.read<RegisterViewModel>();
+    final username = _usernameController.text.trim();
 
-      // إرسال البيانات للـ ViewModel
-      context
-          .read<RegisterViewModel>()
-          .registerUser(user, _passwordController.text, context);
+    // 🔥 Check uniqueness
+    bool taken = await vm.isUsernameAlreadyExists(username); // ✅ Correct name
+    if (taken) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text("Username is already taken!"), backgroundColor: Colors.red),
+        );
+      }
+      return; // Stop registration
     }
+
+    // If unique, continue...
+    final user = UserModel(
+      uid: "", 
+      fullName: _fullNameController.text.trim(),
+      username: username,
+      email: _emailController.text.trim(),
+      phoneNumber: _phoneController.text.trim(),
+      // ... rest of your model fields
+    );
+
+    vm.registerUser(user, _passwordController.text, context);
   }
+}
 }

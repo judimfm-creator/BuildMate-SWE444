@@ -17,7 +17,8 @@ class OrgAnnouncedPage extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final vm = context.read<OrgHackathonsViewModel>();
+    // استخدمنا watch هنا للتأكد من تحديث القائمة فور حدوث أي تغيير
+    final vm = context.watch<OrgHackathonsViewModel>();
 
     return Scaffold(
       backgroundColor: Colors.white,
@@ -54,17 +55,11 @@ class OrgAnnouncedPage extends StatelessWidget {
             itemCount: list.length,
             itemBuilder: (_, i) {
               final h = list[i];
+              // الكرت هنا سيقوم داخلياً بحساب الحالة (Open/Closed/Upcoming)
+              // وسيدعم الـ Wrap للاسماء الطويلة تلقائياً
               return HackathonCard(
                 hackathon: h,
                 isPast: false,
-                onEdit: () {
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    SnackBar(
-                      content: Text('Edit "${h.name}" — coming soon'),
-                      backgroundColor: _purple,
-                    ),
-                  );
-                },
               );
             },
           );

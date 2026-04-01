@@ -12,7 +12,7 @@ class OrgMyHackathonsPage extends StatelessWidget {
   static const Color _titleColor = Color(0xFF1E293B);
   static const Color _statusGreen = Color(0xFF22C55E);
   static const Color _statusRed = Color(0xFFEF4444);
-  static const Color _statusOrange = Color(0xFFF59E0B); // لون للحالة القادمة
+  static const Color _statusOrange = Color(0xFFF59E0B); 
   static const Color _blue = Color(0xFF3B82F6);
 
   String _formatDate(DateTime date) {
@@ -37,7 +37,24 @@ class OrgMyHackathonsPage extends StatelessWidget {
           }
 
           final docs = snapshot.data?.docs ?? [];
-          final int totalHackathons = docs.length;
+          
+          // ✅ تحويل البيانات لقائمة مرتبة (المنتهي آخر شي)
+          List<Hackathon> hackathons = docs.map((d) => Hackathon.fromFirestore(d)).toList();
+          
+          hackathons.sort((a, b) {
+            final now = DateTime.now();
+            final aEnd = DateTime(a.endDate.year, a.endDate.month, a.endDate.day, 23, 59, 59);
+            final bEnd = DateTime(b.endDate.year, b.endDate.month, b.endDate.day, 23, 59, 59);
+
+            bool aFinished = now.isAfter(aEnd);
+            bool bFinished = now.isAfter(bEnd);
+
+            if (aFinished && !bFinished) return 1;
+            if (!aFinished && bFinished) return -1;
+            return a.applicationDeadline.compareTo(b.applicationDeadline);
+          });
+
+          final int totalHackathons = hackathons.length;
 
           return Column(
             crossAxisAlignment: CrossAxisAlignment.start,
@@ -89,14 +106,13 @@ class OrgMyHackathonsPage extends StatelessWidget {
 
               // --- LIST ---
               Expanded(
-                child: docs.isEmpty
+                child: hackathons.isEmpty
                     ? const Center(child: Text("No hackathons found."))
                     : ListView.builder(
                         padding: const EdgeInsets.symmetric(horizontal: 16),
-                        itemCount: docs.length,
+                        itemCount: hackathons.length,
                         itemBuilder: (context, index) {
-                          final hackathon = Hackathon.fromFirestore(docs[index]);
-                          return _buildHackathonCard(context, hackathon);
+                          return _buildHackathonCard(context, hackathons[index]);
                         },
                       ),
               ),
@@ -110,14 +126,30 @@ class OrgMyHackathonsPage extends StatelessWidget {
   Widget _buildHackathonCard(BuildContext context, Hackathon hackathon) {
     final now = DateTime.now();
     
-    // --- تحديث منطق الحالة ---
+    final deadlineDateTime = DateTime(
+      hackathon.applicationDeadline.year,
+      hackathon.applicationDeadline.month,
+      hackathon.applicationDeadline.day,
+      23, 59, 59,
+    );
+
+    final eventEndDateTime = DateTime(
+      hackathon.endDate.year,
+      hackathon.endDate.month,
+      hackathon.endDate.day,
+      23, 59, 59,
+    );
+
     String statusText;
     Color statusColor;
 
-    if (now.isBefore(hackathon.applicationOpenDate)) {
+    if (now.isAfter(eventEndDateTime)) {
+      statusText = "Event Ended"; 
+      statusColor = Colors.blueGrey; 
+    } else if (now.isBefore(hackathon.applicationOpenDate)) {
       statusText = "Registration Upcoming Soon";
       statusColor = _statusOrange;
-    } else if (now.isAfter(hackathon.applicationDeadline)) {
+    } else if (now.isAfter(deadlineDateTime)) {
       statusText = "Registration Closed";
       statusColor = _statusRed;
     } else {
@@ -140,18 +172,27 @@ class OrgMyHackathonsPage extends StatelessWidget {
               backgroundColor: _purple.withOpacity(0.1),
               child: const Icon(Icons.emoji_events_rounded, color: _purple),
             ),
-            title: Text(hackathon.name, style: const TextStyle(fontWeight: FontWeight.w800, color: _titleColor)),
-            subtitle: Row(
-              children: [
-                Icon(Icons.circle, size: 8, color: statusColor),
-                const SizedBox(width: 6),
-                Expanded(
-                  child: Text(
-                    statusText, 
-                    style: TextStyle(color: statusColor, fontSize: 11, fontWeight: FontWeight.bold),
+            title: Text(
+              hackathon.name, 
+              style: const TextStyle(fontWeight: FontWeight.w800, color: _titleColor, height: 1.2),
+              softWrap: true,
+              maxLines: 2,
+              overflow: TextOverflow.ellipsis,
+            ),
+            subtitle: Padding(
+              padding: const EdgeInsets.only(top: 4.0),
+              child: Row(
+                children: [
+                  Icon(Icons.circle, size: 8, color: statusColor),
+                  const SizedBox(width: 6),
+                  Expanded(
+                    child: Text(
+                      statusText, 
+                      style: TextStyle(color: statusColor, fontSize: 11, fontWeight: FontWeight.bold),
+                    ),
                   ),
-                ),
-              ],
+                ],
+              ),
             ),
           ),
 
@@ -216,7 +257,10 @@ class OrgMyHackathonsPage extends StatelessWidget {
                     elevation: 0,
                     shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
                   ),
-                  child: const Text("Manage Teams", style: TextStyle(fontWeight: FontWeight.bold, fontSize: 10)),
+                  child: const Text(
+                    "Manage Teams", 
+                    style: TextStyle(fontWeight: FontWeight.bold, fontSize: 10)
+                  ),
                 ),
               ],
             ),
@@ -240,7 +284,14 @@ class OrgMyHackathonsPage extends StatelessWidget {
       children: [
         Icon(icon, size: 12, color: Colors.black38),
         const SizedBox(width: 5),
-        Text(text, style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w500, color: Colors.black87)),
+        Expanded(
+          child: Text(
+            text, 
+            style: const TextStyle(fontSize: 10, fontWeight: FontWeight.w500, color: Colors.black87),
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+          )
+        ),
       ],
     );
   }

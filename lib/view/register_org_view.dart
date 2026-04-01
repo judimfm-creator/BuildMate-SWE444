@@ -441,20 +441,33 @@ counterText: "",
             ])));
   }
 
-  void _submit() {
-    if (_formKey.currentState!.validate()) {
-      final org = OrgModel(
-        orgName: _orgNameController.text.trim(),
-        username: _usernameController.text.trim(),
-        email: _emailController.text.trim(),
-        phoneNumber: _phoneController.text.trim(),
-        location: _locationController.text.trim(),
-        biography: _bioController.text.trim(),
-        profilePhotoPath: context.read<RegisterViewModel>().pickedImage?.path,
-      );
-      context
-          .read<RegisterViewModel>()
-          .registerOrg(org, _passwordController.text, context);
+  void _submit() async { // Added async
+  if (_formKey.currentState!.validate()) {
+    final vm = context.read<RegisterViewModel>();
+    final username = _usernameController.text.trim();
+
+    // 🔥 Check uniqueness
+    bool taken = await vm.isUsernameAlreadyExists(username); // ✅ Correct name
+    if (taken) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text("This Organization username is already taken!"), backgroundColor: Colors.red),
+        );
+      }
+      return; // Stop registration
     }
+
+    final org = OrgModel(
+      orgName: _orgNameController.text.trim(),
+      username: username,
+      email: _emailController.text.trim(),
+      phoneNumber: _phoneController.text.trim(),
+      location: _locationController.text.trim(),
+      biography: _bioController.text.trim(),
+      profilePhotoPath: vm.pickedImage?.path,
+    );
+    
+    vm.registerOrg(org, _passwordController.text, context);
   }
+}
 }

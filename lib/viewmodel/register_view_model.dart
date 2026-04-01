@@ -67,17 +67,26 @@ class RegisterViewModel extends ChangeNotifier {
     }
   }
 
-  // تسجيل المستخدم (المتسابق)
+ // تسجيل المستخدم (المتسابق)
   Future<void> registerUser(UserModel user, String password, BuildContext context) async {
     _setLoading(true);
     try {
-      bool exists = await _isPhoneNumberAlreadyExists(user.phoneNumber);
-    
-    if (exists) {
-      _showSnackBar(context, "This phone number is already registered ", Colors.red);
-      _setLoading(false);
-      return; // نخرج من الدالة ولا ننشئ الحساب
-    }
+      // 1. Check if Phone Number exists
+      bool phoneExists = await _isPhoneNumberAlreadyExists(user.phoneNumber);
+      if (phoneExists) {
+        _showSnackBar(context, "This phone number is already registered", Colors.red);
+        _setLoading(false);
+        return; 
+      }
+
+      // 2. 🔥 NEW: Check if Username exists
+bool usernameExists = await isUsernameAlreadyExists(user.username);      if (usernameExists) {
+        _showSnackBar(context, "Username is already taken, try another one", Colors.red);
+        _setLoading(false);
+        return; 
+      }
+
+      // 3. If everything is unique, create the account
       UserCredential cred = await FirebaseAuth.instance.createUserWithEmailAndPassword(
           email: user.email.trim(),
           password: password.trim()
@@ -89,7 +98,7 @@ class RegisterViewModel extends ChangeNotifier {
         'uid': cred.user!.uid,
         'email': user.email.trim(),
         'fullName': user.fullName.trim(),
-        'username': user.username.trim(),
+        'username': user.username.trim(), // Stored here
         'phoneNumber': user.phoneNumber.trim(),
         'role': 'user',
         'bio': '',
@@ -268,5 +277,24 @@ Future<void> updateProfile({
       .get();
   return orgQuery.docs.isNotEmpty;
 }
+// Check if username exists in either collection
+// Change _isUsernameAlreadyExists to isUsernameAlreadyExists (Remove the _)
+// This is the function that was missing!
+  Future<bool> isUsernameAlreadyExists(String username) async {
+    // 1. Check in 'users' collection
+    final userQuery = await FirebaseFirestore.instance
+        .collection('users')
+        .where('username', isEqualTo: username.trim())
+        .get();
+    
+    if (userQuery.docs.isNotEmpty) return true;
 
+    // 2. Check in 'organizations' collection (so usernames are unique globally)
+    final orgQuery = await FirebaseFirestore.instance
+        .collection('organizations')
+        .where('username', isEqualTo: username.trim())
+        .get();
+        
+    return orgQuery.docs.isNotEmpty;
+  }
 }

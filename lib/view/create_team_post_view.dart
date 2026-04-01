@@ -49,7 +49,8 @@ class _CreateTeamPostScreenState extends State<CreateTeamPostScreen> {
         if (roles != null) {
           setState(() {
             _availableRoles = roles.map((e) => e.toString()).toList();
-            _allowCustomRole = _availableRoles.any((r) => r.toLowerCase() == 'any');
+            _allowCustomRole =
+                _availableRoles.any((r) => r.toLowerCase() == 'any');
           });
         }
       }
@@ -67,13 +68,13 @@ class _CreateTeamPostScreenState extends State<CreateTeamPostScreen> {
   }
 
   InputDecoration _fieldDecoration({
-    required String label, 
-    required IconData icon, 
+    required String label,
+    required IconData icon,
     required String helper,
   }) {
     return InputDecoration(
       labelText: label,
-      helperText: helper, 
+      helperText: helper,
       helperStyle: const TextStyle(color: Colors.grey, fontSize: 12),
       errorMaxLines: 2,
       prefixIcon: Icon(icon, color: purple),
@@ -95,13 +96,14 @@ class _CreateTeamPostScreenState extends State<CreateTeamPostScreen> {
     return Scaffold(
       backgroundColor: Colors.white,
       appBar: AppBar(
-        title: const Text('Create Team Post', style: TextStyle(fontWeight: FontWeight.w600)),
+        title: const Text('Create Team Post',
+            style: TextStyle(fontWeight: FontWeight.w600)),
         centerTitle: true,
         backgroundColor: purple,
         foregroundColor: Colors.white,
         elevation: 0,
       ),
-      body: _isFetchingRoles 
+      body: _isFetchingRoles
           ? const Center(child: CircularProgressIndicator(color: purple))
           : SafeArea(
               child: SingleChildScrollView(
@@ -111,7 +113,7 @@ class _CreateTeamPostScreenState extends State<CreateTeamPostScreen> {
                   child: Column(
                     children: [
                       const SizedBox(height: 8),
-                      
+
                       // 1. TEAM NAME
                       Padding(
                         padding: const EdgeInsets.only(bottom: 12),
@@ -119,13 +121,15 @@ class _CreateTeamPostScreenState extends State<CreateTeamPostScreen> {
                           controller: _teamNameController,
                           maxLength: 25,
                           decoration: _fieldDecoration(
-                            label: 'Team Name', 
-                            icon: Icons.groups_rounded, 
+                            label: 'Team Name',
+                            icon: Icons.groups_rounded,
                             helper: 'Letters & numbers only',
                           ),
                           validator: (v) {
-                            if (v == null || v.isEmpty) return 'Letters & numbers only';
-                            if (!RegExp(r'^[a-zA-Z0-9 ]+$').hasMatch(v)) return 'Letters & numbers only';
+                            if (v == null || v.isEmpty)
+                              return 'Letters & numbers only';
+                            if (!RegExp(r'^[a-zA-Z0-9 ]+$').hasMatch(v))
+                              return 'Letters & numbers only';
                             return null;
                           },
                         ),
@@ -137,13 +141,17 @@ class _CreateTeamPostScreenState extends State<CreateTeamPostScreen> {
                         child: DropdownButtonFormField<String>(
                           value: _selectedGender,
                           decoration: _fieldDecoration(
-                            label: 'Gender Preference', 
+                            label: 'Gender Preference',
                             icon: Icons.wc_rounded,
                             helper: 'Select Preference',
                           ),
-                          items: ['Male', 'Female', 'Any'].map((s) => DropdownMenuItem(value: s, child: Text(s))).toList(),
+                          items: ['Male', 'Female', 'Any']
+                              .map((s) =>
+                                  DropdownMenuItem(value: s, child: Text(s)))
+                              .toList(),
                           onChanged: (v) => setState(() => _selectedGender = v),
-                          validator: (v) => v == null ? 'Select Preference' : null,
+                          validator: (v) =>
+                              v == null ? 'Select Preference' : null,
                         ),
                       ),
 
@@ -154,13 +162,17 @@ class _CreateTeamPostScreenState extends State<CreateTeamPostScreen> {
                           value: _selectedRole,
                           isExpanded: true,
                           decoration: _fieldDecoration(
-                            label: 'My role in the team', 
+                            label: 'My role in the team',
                             icon: Icons.person_search_rounded,
                             helper: 'Specify Your Role',
                           ),
-                          items: _availableRoles.map((r) => DropdownMenuItem(value: r, child: Text(r))).toList(),
+                          items: _availableRoles
+                              .map((r) =>
+                                  DropdownMenuItem(value: r, child: Text(r)))
+                              .toList(),
                           onChanged: (v) => setState(() => _selectedRole = v),
-                          validator: (v) => v == null ? 'Specify Your Role' : null,
+                          validator: (v) =>
+                              v == null ? 'Specify Your Role' : null,
                         ),
                       ),
 
@@ -171,11 +183,13 @@ class _CreateTeamPostScreenState extends State<CreateTeamPostScreen> {
                           child: TextFormField(
                             controller: _customRoleController,
                             decoration: _fieldDecoration(
-                              label: 'Specify Your Role', 
+                              label: 'Specify Your Role',
                               icon: Icons.edit_note_rounded,
                               helper: 'Specify Your Role',
                             ),
-                            validator: (v) => (v == null || v.isEmpty) ? 'Specify Your Role' : null,
+                            validator: (v) => (v == null || v.isEmpty)
+                                ? 'Specify Your Role'
+                                : null,
                           ),
                         ),
                       ],
@@ -188,8 +202,8 @@ class _CreateTeamPostScreenState extends State<CreateTeamPostScreen> {
                           maxLength: 100,
                           maxLines: 3,
                           decoration: _fieldDecoration(
-                            label: 'Project Idea (Optional)', 
-                            icon: Icons.lightbulb_outline, 
+                            label: 'Project Idea (Optional)',
+                            icon: Icons.lightbulb_outline,
                             helper: 'Briefly describe your idea',
                           ),
                         ),
@@ -205,15 +219,22 @@ class _CreateTeamPostScreenState extends State<CreateTeamPostScreen> {
                           style: ElevatedButton.styleFrom(
                             backgroundColor: purple,
                             foregroundColor: Colors.white,
-                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                            shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(12)),
                             elevation: 0,
                           ),
                           onPressed: _isLoading ? null : _submit,
-                          icon: _isLoading 
-                            ? const SizedBox(width: 18, height: 18, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
-                            : const Icon(Icons.check_circle_outline),
-                          label: Text(_isLoading ? 'Saving...' : 'Create Team Post', 
-                            style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+                          icon: _isLoading
+                              ? const SizedBox(
+                                  width: 18,
+                                  height: 18,
+                                  child: CircularProgressIndicator(
+                                      strokeWidth: 2, color: Colors.white))
+                              : const Icon(Icons.check_circle_outline),
+                          label: Text(
+                              _isLoading ? 'Saving...' : 'Create Team Post',
+                              style: const TextStyle(
+                                  fontSize: 16, fontWeight: FontWeight.bold)),
                         ),
                       ),
                     ],
@@ -224,51 +245,57 @@ class _CreateTeamPostScreenState extends State<CreateTeamPostScreen> {
     );
   }
 
- Future<void> _submit() async {
-  if (!_formKey.currentState!.validate()) return;
-  setState(() => _isLoading = true);
+  Future<void> _submit() async {
+    if (!_formKey.currentState!.validate()) return;
+    setState(() => _isLoading = true);
 
-  try {
-    final user = FirebaseAuth.instance.currentUser;
-    if (user == null) return;
+    try {
+      final user = FirebaseAuth.instance.currentUser;
+      if (user == null) return;
 
-    // We fetch the leader's name to show it in the list later
-    final userDoc = await FirebaseFirestore.instance.collection('students').doc(user.uid).get();
-    final leaderName = userDoc.data()?['fullName'] ?? 'Unknown Leader';
+      // We fetch the leader's name to show it in the list later
+      // ✅ Fixed:
+      final userDoc = await FirebaseFirestore.instance
+          .collection('users')
+          .doc(user.uid)
+          .get();
+      final leaderName = userDoc.data()?['fullName'] ?? 'Unknown Leader';
 
-    final finalRole = (_allowCustomRole && _selectedRole == 'Any') 
-        ? _customRoleController.text.trim() 
-        : _selectedRole;
+      final finalRole = (_allowCustomRole && _selectedRole == 'Any')
+          ? _customRoleController.text.trim()
+          : _selectedRole;
 
-    // --- LOGIC FIX: CALCULATE NEEDED ROLES ---
-    // We take the hackathon roles and remove the one the leader took
-    List<String> needed = List<String>.from(_availableRoles);
-    needed.remove(finalRole);
+      // --- LOGIC FIX: CALCULATE NEEDED ROLES ---
+      // We take the hackathon roles and remove the one the leader took
+      List<String> needed = List<String>.from(_availableRoles);
+      needed.remove(finalRole);
 
-    await FirebaseFirestore.instance.collection('team_posts').add({
-      'hackathonId': widget.hackathonId,
-      'createdBy': user.uid,
-      'leaderId': user.uid, // Important for filtering
-      'leaderName': leaderName, // Save name so we don't have to fetch it every time
-      'teamName': _teamNameController.text.trim(),
-      'myRole': finalRole,
-      'neededRoles': needed, // THIS WAS MISSING!
-      'genderPreference': _selectedGender,
-      'projectIdea': _ideaController.text.trim(), // We use this key
-      'currentMembers': 1,
-      'maxMembers': widget.hackathonTeamSize,
-      'createdAt': FieldValue.serverTimestamp(),
-      'status': 'open',
-      'members': [user.uid],
-      'submittedToInstitution': false,
-    });
+      await FirebaseFirestore.instance.collection('team_posts').add({
+        'hackathonId': widget.hackathonId,
+        'createdBy': user.uid,
+        'leaderId': user.uid, // Important for filtering
+        'leaderName':
+            leaderName, // Save name so we don't have to fetch it every time
+        'teamName': _teamNameController.text.trim(),
+        'myRole': finalRole,
+        'neededRoles': needed, // THIS WAS MISSING!
+        'genderPreference': _selectedGender,
+        'projectIdea': _ideaController.text.trim(), // We use this key
+        'currentMembers': 1,
+        'maxMembers': widget.hackathonTeamSize,
+        'createdAt': FieldValue.serverTimestamp(),
+        'status': 'open',
+        'members': [user.uid],
+        'submittedToInstitution': false,
+      });
 
-    if (!mounted) return;
-    Navigator.pop(context);
-  } catch (e) {
-    ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Error: $e')));
-  } finally {
-    if (mounted) setState(() => _isLoading = false);
+      if (!mounted) return;
+      Navigator.pop(context,true);
+    } catch (e) {
+      ScaffoldMessenger.of(context)
+          .showSnackBar(SnackBar(content: Text('Error: $e')));
+    } finally {
+      if (mounted) setState(() => _isLoading = false);
+    }
   }
-}
 }

@@ -23,6 +23,14 @@ class HackathonCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    // ✅ تحديد الموعد النهائي الدقيق (نهاية اليوم 23:59:59)
+    final deadlineDateTime = DateTime(
+      hackathon.applicationDeadline.year,
+      hackathon.applicationDeadline.month,
+      hackathon.applicationDeadline.day,
+      23, 59, 59,
+    );
+
     return Container(
       width: double.infinity,
       margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
@@ -45,6 +53,7 @@ class HackathonCard extends StatelessWidget {
           mainAxisSize: MainAxisSize.min,
           children: [
             Row(
+              crossAxisAlignment: CrossAxisAlignment.start, // ✅ لضمان محاذاة البادج مع أول سطر
               children: [
                 Expanded(
                   child: Text(
@@ -52,12 +61,16 @@ class HackathonCard extends StatelessWidget {
                     style: const TextStyle(
                       fontSize: 15,
                       fontWeight: FontWeight.bold,
+                      height: 1.2,
                     ),
-                    maxLines: 1,
+                    // ✅ حل مشكلة الـ Wrap لاسم الهاكاثون
+                    softWrap: true,
+                    maxLines: 2, 
                     overflow: TextOverflow.ellipsis,
                   ),
                 ),
-                _statusBadge(),
+                const SizedBox(width: 8),
+                _statusBadge(deadlineDateTime), // نمرر التوقيت الدقيق هنا
               ],
             ),
             const Divider(height: 20),
@@ -69,7 +82,7 @@ class HackathonCard extends StatelessWidget {
             
             const SizedBox(height: 15),
             
-            // ✅ تم إرجاع قسم التواريخ هنا
+            // قسم التواريخ
             Container(
               padding: const EdgeInsets.all(12),
               decoration: BoxDecoration(
@@ -87,7 +100,7 @@ class HackathonCard extends StatelessWidget {
 
             const SizedBox(height: 15),
             
-            // زر التفاصيل (بنفسجي سادة)
+            // زر التفاصيل
             SizedBox(
               width: double.infinity,
               height: 42,
@@ -106,7 +119,7 @@ class HackathonCard extends StatelessWidget {
                   );
                 },
                 child: Text(
-                  isPast ? "View Details" : "View Details & Teams Submission",
+                  isPast ? "View Details" : "View Details & Teams",
                   style: const TextStyle(
                     color: Colors.white,
                     fontSize: 13,
@@ -116,7 +129,6 @@ class HackathonCard extends StatelessWidget {
               ),
             ),
 
-            // زر التعديل (أبيض وحوافه بنفسجية)
             if (!isPast) ...[
               const SizedBox(height: 8),
               SizedBox(
@@ -151,26 +163,25 @@ class HackathonCard extends StatelessWidget {
     );
   }
 
- Widget _statusBadge() {
+ Widget _statusBadge(DateTime deadlineDateTime) {
   final DateTime now = DateTime.now();
   
-  // تواريخ الهاكاثون
+  // ✅ فحص دقيق للحالات بناءً على الوقت الحالي
   final bool regNotStarted = now.isBefore(hackathon.applicationOpenDate);
-  final bool regClosed = now.isAfter(hackathon.applicationDeadline);
-  final bool eventInProgress = now.isAfter(hackathon.applicationDeadline) && now.isBefore(hackathon.endDate);
+  final bool regClosed = now.isAfter(deadlineDateTime); // يستخدم 23:59:59
   final bool isEventEnded = now.isAfter(hackathon.endDate);
 
   String text = "Registration Open";
   Color color = Colors.green;
 
   if (isEventEnded) {
-    text = "Hackathon Ended"; // الهاكاثون انتهى بالكامل
-    color = Colors.green;
-  } else if (eventInProgress || regClosed) {
-    text = "Registration Closed"; // التسجيل قفل بس الهاكاثون شغال أو لسه ما بدأ
+    text = "Hackathon Ended";
+    color = Colors.blueGrey; // لون هادئ للانتهاء
+  } else if (regClosed) {
+    text = "Registration Closed";
     color = Colors.red;
   } else if (regNotStarted) {
-    text = "Registration Upcoming Soon"; // لسه ما بدأ شي
+    text = "Registration Upcoming Soon";
     color = Colors.orange;
   }
 
@@ -184,7 +195,7 @@ class HackathonCard extends StatelessWidget {
       text.toUpperCase(),
       style: TextStyle(
         color: color, 
-        fontSize: 8.5, // صغرنا الخط شوي عشان الجمل الطويلة تكفي
+        fontSize: 8, 
         fontWeight: FontWeight.bold
       ),
     ),
