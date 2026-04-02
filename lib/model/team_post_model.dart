@@ -44,8 +44,7 @@ class TeamPostModel {
       teamName: map['teamName'] ?? '',
       genderPreference: map['genderPreference'] ?? '',
       myRole: map['myRole'] ?? '',
-      idea: map['idea'] ?? '', // ✅ إذا مافيه فكرة يرجع نص فارغ
-      members: List<String>.from(map['members'] ?? []), // ✅ تحويل آمن لقائمة الأعضاء
+      idea: map['idea'] ?? map['projectIdea'] ?? '',      members: List<String>.from(map['members'] ?? []), // ✅ تحويل آمن لقائمة الأعضاء
       createdAt: map['createdAt'] != null
           ? (map['createdAt'] as Timestamp).toDate()
           : DateTime.now(), // fallback

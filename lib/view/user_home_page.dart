@@ -165,72 +165,72 @@ class _UserHomePageState extends State<UserHomePage> {
     final currentUid = FirebaseAuth.instance.currentUser?.uid;
     if (currentUid == null) return _buildEmptyTeamsState();
 
-    return StreamBuilder<List<Map<String, dynamic>>>(
-      key: UniqueKey(),
-      stream: FirebaseFirestore.instance
-          .collection('team_posts')
-          .where('members', arrayContains: currentUid)
-          .snapshots()
-          .asyncMap((snapshot) async {
-        final futures = snapshot.docs.map((doc) async {
-          final data = doc.data() as Map<String, dynamic>;
-          final team = TeamPostModel.fromMap(doc.id, data);
-          final hackathonDoc = await FirebaseFirestore.instance.collection('hackathons').doc(team.hackathonId).get();
-          
-          Hackathon? hackathon;
-          if (hackathonDoc.exists) {
-            hackathon = Hackathon.fromFirestore(hackathonDoc);
-          }
-          final bool isSubmitted = data['submittedToInstitution'] == true;
-          return {'team': team, 'hackathon': hackathon, 'isSubmitted': isSubmitted};
-        });
-
-        var results = await Future.wait(futures);
-        results.sort((a, b) {
-          final tA = a['team'] as TeamPostModel;
-          final tB = b['team'] as TeamPostModel;
-          return tB.createdAt.compareTo(tA.createdAt);
-        });
-        return results;
-      }),
+    return StreamBuilder<QuerySnapshot>(
+      // تنصت مباشر لكل بوستات الفرق بدون فلاتر فايربيز معقدة
+      stream: FirebaseFirestore.instance.collection('team_posts').snapshots(),
       builder: (context, snapshot) {
         if (snapshot.connectionState == ConnectionState.waiting) {
           return const SizedBox(height: 250, child: Center(child: CircularProgressIndicator(color: _purple)));
         }
-        if (!snapshot.hasData || snapshot.data!.isEmpty) return _buildEmptyTeamsState();
+        if (!snapshot.hasData || snapshot.data!.docs.isEmpty) return _buildEmptyTeamsState();
 
-        final now = DateTime.now();
-        var list = snapshot.data!.where((item) {
-          final team = item['team'] as TeamPostModel;
-          final h = item['hackathon'] as Hackathon?;
-          final isSubmitted = item['isSubmitted'] == true;
-          if (h == null) return false;
-
-          final DateTime endOfHackathonDay = DateTime(h.endDate.year, h.endDate.month, h.endDate.day, 23, 59, 59);
-          final bool registrationClosed = now.isAfter(h.applicationDeadline);
-          final bool hackathonEnded = now.isAfter(endOfHackathonDay);
-
-          if (isSubmitted) {
-            if (hackathonEnded) return false;
-          } else {
-            if (registrationClosed) return false;
-          }
-          return true; 
+        // 1. التصفية محلياً: نجيب بس الفرق اللي اليوزر الحالي موجود في قائمة أعضاءها أو هو المؤسس
+        final myTeams = snapshot.data!.docs.where((doc) {
+          final data = doc.data() as Map<String, dynamic>;
+          final members = List<String>.from(data['members'] ?? []);
+          final createdBy = data['createdBy'] ?? '';
+          return members.contains(currentUid) || createdBy == currentUid;
         }).toList();
 
-        if (list.isEmpty) return _buildEmptyTeamsState();
+        if (myTeams.isEmpty) return _buildEmptyTeamsState();
 
-        return SizedBox(
-          height: 265,
-          child: ListView.builder(
-            scrollDirection: Axis.horizontal,
-            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-            itemCount: list.length > 10 ? 10 : list.length,
-            itemBuilder: (context, index) {
-              final item = list[index];
-              return _buildProfessionalTeamMiniCard(item['team'], item['hackathon']!, item['isSubmitted']);
-            },
-          ),
+        // 2. دمج تفاصيل الهاكاثون مع الفريق
+        return FutureBuilder<List<Map<String, dynamic>>>(
+          future: Future.wait(myTeams.map((doc) async {
+            final data = doc.data() as Map<String, dynamic>;
+            final team = TeamPostModel.fromMap(doc.id, data);
+            final hackathonDoc = await FirebaseFirestore.instance.collection('hackathons').doc(team.hackathonId).get();
+
+            Hackathon? hackathon;
+            if (hackathonDoc.exists) {
+              hackathon = Hackathon.fromFirestore(hackathonDoc);
+            }
+            return {
+              'team': team,
+              'hackathon': hackathon,
+              'isSubmitted': data['submittedToInstitution'] == true
+            };
+          })),
+          builder: (context, futureSnapshot) {
+            if (!futureSnapshot.hasData) {
+              return const SizedBox(height: 250, child: Center(child: CircularProgressIndicator(color: _purple)));
+            }
+
+            // 🔴 شلنا الفلتر حق التواريخ اللي كان يخفي الفريق لو الهاكاثون انتهى تسجيله
+            var list = futureSnapshot.data!.where((item) => item['hackathon'] != null).toList();
+
+            // ترتيب الفرق من الأحدث للأقدم
+            list.sort((a, b) => (b['team'] as TeamPostModel).createdAt.compareTo((a['team'] as TeamPostModel).createdAt));
+
+            if (list.isEmpty) return _buildEmptyTeamsState();
+
+            return SizedBox(
+              height: 265,
+              child: ListView.builder(
+                scrollDirection: Axis.horizontal,
+                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                itemCount: list.length > 10 ? 10 : list.length,
+                itemBuilder: (context, index) {
+                  final item = list[index];
+                  return _buildProfessionalTeamMiniCard(
+                      item['team'] as TeamPostModel,
+                      item['hackathon'] as Hackathon,
+                      item['isSubmitted'] as bool
+                  );
+                },
+              ),
+            );
+          },
         );
       },
     );

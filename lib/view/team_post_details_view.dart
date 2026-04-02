@@ -119,18 +119,19 @@ class _TeamPostDetailsViewState extends State<TeamPostDetailsView> {
 
             const SizedBox(height: 40),
 
-// 7️⃣ زر طلب الانضمام
-    _btn("Request to join team", _purple, () {
-    Navigator.push(
-    context,
-    MaterialPageRoute(
-    builder: (context) => teams_view.ExploreTeamsView(
-    hackathonId: widget.hackathon.id ?? "",
-    hackathonTeamSize: widget.hackathon.teamSize,
-    ),
-    ),
-    );
-    }),
+// 🔴 التعديل في ملف team_post_details_view.dart 🔴
+            _btn("Join Team", _purple, () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (c) => teams_view.ExploreTeamsView(
+                    hackathonId: widget.hackathon.id ?? "",
+                    hackathonTeamSize: widget.hackathon.teamSize,
+                    teamId: widget.team.id, // 👈 التعديل هنا: تمرير الـ id حق الفريق الحالي
+                  ),
+                ),
+              );
+            }),
 
 
             const SizedBox(height: 40),
