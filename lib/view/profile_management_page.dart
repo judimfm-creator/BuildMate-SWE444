@@ -405,15 +405,15 @@ class _ProfileManagementPageState extends State<ProfileManagementPage> {
                         String v = value?.trim() ?? "";
 
                         if (label == "Full Name") {
-                          if (v.isEmpty) return "Enter your first, middle, last name(Letters only)";
-                          if (!RegExp(r"^[a-zA-Z\s\u0600-\u06FF]+$").hasMatch(v)) return "Enter your first, middle, last name(Letters only)";
-                          if (v.split(RegExp(r'\s+')).length < 3) return "Enter your first, middle, last name(Letters only)";
+                          if (v.isEmpty) return "Enter your first, middle, last name";
+                          if (!RegExp(r"^[a-zA-Z\s\u0600-\u06FF]+$").hasMatch(v)) return "Letters only";
+                          if (v.split(RegExp(r'\s+')).length < 3) return "Enter your first, middle, last name";
                         }
 
                         if (label == "Username") {
-                          if (v.isEmpty) return "minimum 3 characters , spaces are not allowed";
-                          if (v.contains(' ')) return "minimum 3 characters , spaces are not allowed";
-                          if (v.length < 3) return "minimum 3 characters , spaces are not allowed";
+                          if (v.isEmpty) return "minimum 3 characters";
+                          if (v.contains(' ')) return "spaces are not allowed";
+                          if (v.length < 3) return "minimum 3 characters";
                         }
 
                         // 🔴 إضافة التحقق الخاص بالمدينة (حروف فقط) نفس اللي بالرجستر 🔴
