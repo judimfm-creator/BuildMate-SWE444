@@ -157,20 +157,36 @@ class _ProfileManagementPageState extends State<ProfileManagementPage> {
               shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12))
           ),
           onPressed: () async {
-            // 1. فحص المدخلات (الشروط اللي طابقناها مع كرييت اكاونت)
             if (_formKey.currentState!.validate()) {
               final vm = Provider.of<RegisterViewModel>(context, listen: false);
 
-              // 2. معالجة المهارات (تصفية المهارات اللي اخترتي حذفها)
+              // 🔴 تعديل: تحويل اليوزرنيم لحروف صغيرة (toLowerCase) لتفادي مشكلة الـ Case Sensitive 🔴
+              final newUsername = _controllers["Username"]?.text.trim().toLowerCase() ?? "";
+              final currentUsername = user?.username?.toLowerCase() ?? "";
+
+              // نفحص فقط إذا المستخدم قام بتغيير اليوزرنيم الخاص به
+              if (newUsername.isNotEmpty && newUsername != currentUsername) {
+                bool taken = await vm.isUsernameAlreadyExists(newUsername);
+                if (taken) {
+                  if (mounted) {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(
+                          content: Text("Username is already taken!"),
+                          backgroundColor: Colors.red
+                      ),
+                    );
+                  }
+                  return; // نوقف عملية الحفظ
+                }
+              }
+
               List<String> finalSkills = _selectedSkills
                   .where((s) => !_itemsMarkedForDeletion.contains("skill_$s"))
                   .toList();
 
-              // 3. استدعاء دالة زميلتك (تحديث شامل للباك اند)
-              // نمرر لها كل الحقول، وإذا الحقل محدد للحذف نرسل نص فارغ ""
               await vm.updateProfile(
-                name: _controllers["Full Name"]?.text,     // 👈 أضيفي هذا السطر (سحب الاسم من التكست فيلد)
-                username: _controllers["Username"]?.text,
+                name: _controllers["Full Name"]?.text,
+                username: newUsername.isEmpty ? (user?.username ?? "") : newUsername, // نحفظ اليوزرنيم بالحروف الصغيرة
                 bio: _itemsMarkedForDeletion.contains("bio") ? "" : (_controllers["Biography"]?.text ?? ""),
                 city: _itemsMarkedForDeletion.contains("city") ? "" : (_controllers["City"]?.text ?? ""),
                 linkedin: _itemsMarkedForDeletion.contains("linkedin") ? "" : (_controllers["LinkedIn"]?.text ?? ""),
@@ -178,24 +194,16 @@ class _ProfileManagementPageState extends State<ProfileManagementPage> {
                 skills: finalSkills,
                 gender: _selectedGender ?? "",
                 context: context,
-                // تمرير حالة حذف الصورة لدالة زميلتك
                 deletePhoto: _itemsMarkedForDeletion.contains("photo"),
               );
 
-              // 4. تحديث البيانات في واجهتك فوراً بعد الحفظ
               await _loadUserData();
 
-              // 5. إغلاق وضع التعديل وتصفير قائمة الحذف
               setState(() {
                 _isEditMode = false;
                 _itemsMarkedForDeletion.clear();
-                // تصفير الصورة المختارة في موديل زميلتك بعد الحفظ
                 vm.clearPickedImage();
               });
-
-              ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(content: Text('Profile updated successfully! ✅'), backgroundColor: Colors.green)
-              );
             }
           },
           child: const Text("SAVE CHANGES", style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
@@ -337,101 +345,126 @@ class _ProfileManagementPageState extends State<ProfileManagementPage> {
     bool isPhone = label.toLowerCase().contains("phone");
     bool isEmail = label.toLowerCase().contains("email");
 
-    // ✅ تحديد النص المساعد (Helper Text) الثابت بناءً على الحقل
+    // ✅ النصوص المساعدة (Helper Text) الثابتة
     String? helperText;
     if (canEdit) {
       if (label == "Full Name") helperText = "Enter your first, middle, last name(Letters only)";
       else if (label == "Username") helperText = "minimum 3 characters , spaces are not allowed";
-      else if (label == "LinkedIn") helperText = "https://linkedin.com/in/Sara-Mohammed";
-      else if (label == "GitHub") helperText = "https://github.com/Sara-Mohammed";
+      else if (label == "LinkedIn") helperText = "Example: https://linkedin.com/in/Sara-Mohammed";
+      else if (label == "GitHub") helperText = "Example: https://github.com/Sara-Mohammed";
     }
 
-    return Container(
-      margin: const EdgeInsets.only(bottom: 12),
-      padding: const EdgeInsets.all(15),
-      decoration: BoxDecoration(
-          color: Colors.white,
-          borderRadius: BorderRadius.circular(12),
-          border: Border.all(
-              color: canEdit ? deepMediumPurple.withOpacity(0.5) : Colors.grey.shade100,
-              width: canEdit ? 1.5 : 1
-          )
-      ),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Padding(
-            padding: const EdgeInsets.only(top: 2),
-            child: Icon(icon, color: deepMediumPurple, size: 20),
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Opacity(opacity: canEdit ? 1.0 : 0.6, child:
+        Container(
+          margin: const EdgeInsets.only(bottom: 4), // قللنا المسافة عشان النص الثابت يجي تحته مباشرة
+          padding: const EdgeInsets.all(15),
+          decoration: BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.circular(12),
+              border: Border.all(
+                  color: canEdit ? deepMediumPurple.withOpacity(0.5) : Colors.grey.shade100,
+                  width: canEdit ? 1.5 : 1
+              )
           ),
-          const SizedBox(width: 15),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(label, style: TextStyle(color: Colors.grey.shade500, fontSize: 11)),
-                TextFormField(
-                  controller: ctrl,
-                  enabled: canEdit,
-                  maxLines: isPhone ? 1 : null,
-                  maxLength: isBio ? 100 : (isPhone ? 10 : 40),
-                  keyboardType: isPhone
-                      ? TextInputType.phone
-                      : (isEmail ? TextInputType.emailAddress : TextInputType.multiline),
-                  style: const TextStyle(fontSize: 14, fontWeight: FontWeight.bold),
-                  decoration: InputDecoration(
-                    isDense: true,
-                    border: InputBorder.none,
-                    contentPadding: EdgeInsets.zero,
-                    counterText: isBio ? null : "",
-                    // ✅ إضافة الـ Helper Text والستايل الخاص فيه ليكون رمادي
-                    helperText: helperText,
-                    helperStyle: const TextStyle(fontSize: 10, color: Colors.blueGrey, height: 1.2),
-                    helperMaxLines: 2,
-                    // الستايل لما يصير أحمر وقت الخطأ
-                    errorStyle: const TextStyle(fontSize: 10, color: Colors.red, height: 1.2),
-                    errorMaxLines: 3,
-                  ),
-                  validator: (value) {
-                    if (!canEdit) return null;
-                    String v = value?.trim() ?? "";
+          child: Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Padding(
+                padding: const EdgeInsets.only(top: 2),
+                child: Icon(icon, color: deepMediumPurple, size: 20),
+              ),
+              const SizedBox(width: 15),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(label, style: TextStyle(color: Colors.grey.shade500, fontSize: 11)),
+                    TextFormField(
+                      controller: ctrl,
+                      enabled: canEdit,
+                      maxLines: isPhone ? 1 : null,
+                      maxLength: isBio ? 100 : (isPhone ? 10 : 40),
+                      keyboardType: isPhone
+                          ? TextInputType.phone
+                          : (isEmail ? TextInputType.emailAddress : TextInputType.multiline),
+                      style: const TextStyle(fontSize: 14, fontWeight: FontWeight.bold, color: Colors.black87),
+                      decoration: const InputDecoration(
+                        isDense: true,
+                        contentPadding: EdgeInsets.symmetric(vertical: 4),
+                        border: InputBorder.none,
+                        counterText: "",
+                        // 🔴 شلنا الـ helperText من هنا عشان ما يختفي وقت الإيرور
+                        errorStyle: TextStyle(fontSize: 11, color: Colors.red, height: 1.2),
+                        errorMaxLines: 3,
+                      ),
+                      validator: (value) {
+                        if (!canEdit) return null;
+                        String v = value?.trim() ?? "";
 
-                    if (label == "Full Name") {
-                      if (v.isEmpty) return "Enter your first, middle, last name(Letters only)";
-                      if (!RegExp(r"^[a-zA-Z\s\u0600-\u06FF]+$").hasMatch(v)) return "Enter your first, middle, last name(Letters only)";
-                      if (v.split(RegExp(r'\s+')).length < 3) return "Enter your first, middle, last name(Letters only)";
-                    }
+                        if (label == "Full Name") {
+                          if (v.isEmpty) return "Enter your first, middle, last name(Letters only)";
+                          if (!RegExp(r"^[a-zA-Z\s\u0600-\u06FF]+$").hasMatch(v)) return "Enter your first, middle, last name(Letters only)";
+                          if (v.split(RegExp(r'\s+')).length < 3) return "Enter your first, middle, last name(Letters only)";
+                        }
 
-                    if (label == "Username") {
-                      if (v.isEmpty) return "minimum 3 characters , spaces are not allowed";
-                      if (v.contains(' ')) return "minimum 3 characters , spaces are not allowed";
-                      if (v.length < 3) return "minimum 3 characters , spaces are not allowed";
-                    }
+                        if (label == "Username") {
+                          if (v.isEmpty) return "minimum 3 characters , spaces are not allowed";
+                          if (v.contains(' ')) return "minimum 3 characters , spaces are not allowed";
+                          if (v.length < 3) return "minimum 3 characters , spaces are not allowed";
+                        }
 
-                    if (label == "LinkedIn") {
-                      if (v.isNotEmpty && !v.contains("linkedin.com/")) {
-                        return "Please enter a valid LinkedIn URL";
-                      }
-                    }
+                        // 🔴 إضافة التحقق الخاص بالمدينة (حروف فقط) نفس اللي بالرجستر 🔴
+                        if (label == "City") {
+                          if (v.isNotEmpty && !RegExp(r"^[a-zA-Z\s\u0600-\u06FF]+$").hasMatch(v)) {
+                            return "City must contain letters only";
+                          }
+                        }
 
-                    if (label == "GitHub") {
-                      if (v.isNotEmpty && !v.contains("github.com/")) {
-                        return "Please enter a valid GitHub URL";
-                      }
-                    }
-                    return null;
-                  },
+                        // 🔴 توحيد رسائل الخطأ للروابط 🔴
+                        if (label == "LinkedIn") {
+                          if (v.isNotEmpty && !v.toLowerCase().contains("linkedin.com/")) {
+                            return "Enter a valid LinkedIn URL";
+                          }
+                        }
+
+                        if (label == "GitHub") {
+                          if (v.isNotEmpty && !v.toLowerCase().contains("github.com/")) {
+                            return "Enter a valid GitHub URL";
+                          }
+                        }
+                        return null;
+                      },
+                    ),
+                  ],
                 ),
-              ],
+              ),
+              if (isAlwaysDisabled)
+                Padding(
+                  padding: const EdgeInsets.only(top: 10),
+                  child: Icon(Icons.lock_outline, size: 16, color: Colors.grey.shade300),
+                ),
+            ],
+          ),
+        ),
+        ), // 👈 ضيفي هذا القوس والفاصلة هنا عشان تقفلين الـ Opacity
+
+        // 🔴 النص الثابت (Helper) صار هنا برا المربع عشان يبقى صامد ودائماً ظاهر 🔴
+        if (helperText != null)
+          Padding(
+            padding: const EdgeInsets.only(left: 15, bottom: 12),
+            child: Text(
+              helperText,
+              style: const TextStyle(
+                color: Colors.blueGrey,
+                fontSize: 11,
+                height: 1.2,
+              ),
             ),
           ),
-          if (isAlwaysDisabled)
-            Padding(
-              padding: const EdgeInsets.only(top: 10),
-              child: Icon(Icons.lock_outline, size: 16, color: Colors.grey.shade300),
-            ),
-        ],
-      ),
+      ],
     );
   }
 
@@ -532,8 +565,40 @@ class _ProfileManagementPageState extends State<ProfileManagementPage> {
     );
   }
 
-  Widget _buildEditToggle() => Padding(padding: const EdgeInsets.symmetric(horizontal: 25, vertical: 15), child: Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [Text("Enable Editing Mode", style: TextStyle(color: _isEditMode ? deepMediumPurple : Colors.grey.shade600, fontWeight: FontWeight.bold)), Switch(value: _isEditMode, activeThumbColor: deepMediumPurple, onChanged: (v) => setState(() { _isEditMode = v; }))]));
-  
+  Widget _buildEditToggle() => Padding(
+    padding: const EdgeInsets.symmetric(horizontal: 25, vertical: 15),
+    child: Row(
+      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+      children: [
+        Text(
+          "Enable Editing Mode",
+          style: TextStyle(
+              color: _isEditMode ? deepMediumPurple : Colors.grey.shade600,
+              fontWeight: FontWeight.bold),
+        ),
+        Switch(
+          value: _isEditMode,
+          activeThumbColor: deepMediumPurple,
+          onChanged: (v) {
+            setState(() {
+              _isEditMode = v;
+            });
+
+            // 🔴 التعديل هنا: إذا قفل وضع التعديل (v == false) بدون ما يحفظ
+            if (!v) {
+              // 1. نشيل كل رسائل الخطأ الحمراء
+              _formKey.currentState?.reset();
+              // 2. نمسح الصورة اللي اختارها (لو كان مختار صورة جديدة وما حفظها)
+              Provider.of<RegisterViewModel>(context, listen: false).clearPickedImage();
+              // 3. نرجع نحمل بياناته الأصلية النظيفة ونعبيها في الحقول من جديد
+              _loadUserData();
+            }
+          },
+        )
+      ],
+    ),
+  );
+
   Widget _buildGenderDropdown() => Container(
     margin: const EdgeInsets.only(bottom: 12), padding: const EdgeInsets.all(15), 
     decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(12), border: Border.all(color: Colors.grey.shade100)), 

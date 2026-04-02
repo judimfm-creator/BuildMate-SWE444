@@ -281,20 +281,28 @@ Future<void> updateProfile({
 // Change _isUsernameAlreadyExists to isUsernameAlreadyExists (Remove the _)
 // This is the function that was missing!
   Future<bool> isUsernameAlreadyExists(String username) async {
-    // 1. Check in 'users' collection
-    final userQuery = await FirebaseFirestore.instance
-        .collection('users')
-        .where('username', isEqualTo: username.trim())
-        .get();
-    
-    if (userQuery.docs.isNotEmpty) return true;
+    // الكلمة اللي دخلها اليوزر نحولها لسمول عشان نقارنها
+    String searchName = username.trim().toLowerCase();
 
-    // 2. Check in 'organizations' collection (so usernames are unique globally)
-    final orgQuery = await FirebaseFirestore.instance
-        .collection('organizations')
-        .where('username', isEqualTo: username.trim())
-        .get();
-        
-    return orgQuery.docs.isNotEmpty;
+    // 1. نجيب اليوزرات من الداتابيس ونخلي الفلتر (دارت) يقارنها
+    final userQuery = await FirebaseFirestore.instance.collection('users').get();
+    for (var doc in userQuery.docs) {
+      // ناخذ اليوزرنيم المخزن ونحوله سمول وقت المقارنة فقط
+      String dbUsername = (doc.data()['username'] ?? '').toString().toLowerCase();
+      if (dbUsername == searchName) {
+        return true; // لقينا تطابق! (اليوزرنيم مأخوذ)
+      }
+    }
+
+    // 2. نجيب المنشآت من الداتابيس ونقارنها
+    final orgQuery = await FirebaseFirestore.instance.collection('organizations').get();
+    for (var doc in orgQuery.docs) {
+      String dbUsername = (doc.data()['username'] ?? '').toString().toLowerCase();
+      if (dbUsername == searchName) {
+        return true; // لقينا تطابق! (اليوزرنيم مأخوذ)
+      }
+    }
+
+    return false; // اليوزرنيم متاح ومافي أحد ماخذه
   }
 }
