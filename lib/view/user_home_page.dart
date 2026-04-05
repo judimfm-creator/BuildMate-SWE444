@@ -26,33 +26,21 @@ class _UserHomePageState extends State<UserHomePage> {
 
   static const Color _purple = Color(0xFF6D56B3);
 
+  // ✅ دالة الـ Stream لمراقبة حالة الفريق لحظياً (شغل جودي الجديد)
+  Stream<QuerySnapshot> _getUserTeamStream(String uid, String hid) {
+    return FirebaseFirestore.instance
+        .collection('team_posts')
+        .where('hackathonId', isEqualTo: hid)
+        .where('members', arrayContains: uid)
+        .snapshots();
+  }
+
   void _navigateToExplore(int tabIndex) {
     targetExploreTab = tabIndex;
     homeScreenState?.changeTab(1);
     Future.delayed(const Duration(milliseconds: 100), () {
       exploreTabStream.add(tabIndex);
     });
-  }
-
-  Future<QueryDocumentSnapshot<Map<String, dynamic>>?> _getUserTeamPost(
-      String uid, String hid) async {
-    final firestore = FirebaseFirestore.instance;
-    final leader = await firestore
-        .collection('team_posts')
-        .where('hackathonId', isEqualTo: hid)
-        .where('createdBy', isEqualTo: uid)
-        .limit(1)
-        .get();
-    if (leader.docs.isNotEmpty) return leader.docs.first;
-
-    final member = await firestore
-        .collection('team_posts')
-        .where('hackathonId', isEqualTo: hid)
-        .where('members', arrayContains: uid)
-        .limit(1)
-        .get();
-    if (member.docs.isNotEmpty) return member.docs.first;
-    return null;
   }
 
   @override
@@ -146,7 +134,7 @@ class _UserHomePageState extends State<UserHomePage> {
               ),
             ),
             SizedBox(
-              height: 380,
+              height: 390, // زيادة بسيطة للارتفاع لضمان عدم القص
               child: ListView.builder(
                 scrollDirection: Axis.horizontal,
                 padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
@@ -166,7 +154,6 @@ class _UserHomePageState extends State<UserHomePage> {
     if (currentUid == null) return _buildEmptyTeamsState();
 
     return StreamBuilder<QuerySnapshot>(
-      // تنصت مباشر لكل بوستات الفرق بدون فلاتر فايربيز معقدة
       stream: FirebaseFirestore.instance.collection('team_posts').snapshots(),
       builder: (context, snapshot) {
         if (snapshot.connectionState == ConnectionState.waiting) {
@@ -174,7 +161,6 @@ class _UserHomePageState extends State<UserHomePage> {
         }
         if (!snapshot.hasData || snapshot.data!.docs.isEmpty) return _buildEmptyTeamsState();
 
-        // 1. التصفية محلياً: نجيب بس الفرق اللي اليوزر الحالي موجود في قائمة أعضاءها أو هو المؤسس
         final myTeams = snapshot.data!.docs.where((doc) {
           final data = doc.data() as Map<String, dynamic>;
           final members = List<String>.from(data['members'] ?? []);
@@ -184,7 +170,6 @@ class _UserHomePageState extends State<UserHomePage> {
 
         if (myTeams.isEmpty) return _buildEmptyTeamsState();
 
-        // 2. دمج تفاصيل الهاكاثون مع الفريق
         return FutureBuilder<List<Map<String, dynamic>>>(
           future: Future.wait(myTeams.map((doc) async {
             final data = doc.data() as Map<String, dynamic>;
@@ -206,10 +191,7 @@ class _UserHomePageState extends State<UserHomePage> {
               return const SizedBox(height: 250, child: Center(child: CircularProgressIndicator(color: _purple)));
             }
 
-            // 🔴 شلنا الفلتر حق التواريخ اللي كان يخفي الفريق لو الهاكاثون انتهى تسجيله
             var list = futureSnapshot.data!.where((item) => item['hackathon'] != null).toList();
-
-            // ترتيب الفرق من الأحدث للأقدم
             list.sort((a, b) => (b['team'] as TeamPostModel).createdAt.compareTo((a['team'] as TeamPostModel).createdAt));
 
             if (list.isEmpty) return _buildEmptyTeamsState();
@@ -258,23 +240,50 @@ class _UserHomePageState extends State<UserHomePage> {
             Row(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Expanded(
-                  child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                    FutureBuilder<DocumentSnapshot>(
-                      future: FirebaseFirestore.instance.collection('hackathons').doc(hid).get(),
-                      builder: (context, snap) {
-                        String orgName = "Organizer";
-                        if (snap.hasData && snap.data!.exists) {
-                          final data = snap.data!.data() as Map<String, dynamic>;
-                          orgName = data['orgName'] ?? data['organizationName'] ?? "Organizer";
-                        }
-                        return Text("By $orgName", style: TextStyle(fontWeight: FontWeight.bold, color: _purple.withOpacity(0.8), fontSize: 10, letterSpacing: 0.5), maxLines: 2, overflow: TextOverflow.ellipsis);
-                      },
-                    ),
-                    const SizedBox(height: 4),
-                    Text(h.name, style: const TextStyle(fontSize: 15, fontWeight: FontWeight.bold, height: 1.2), maxLines: 2, overflow: TextOverflow.ellipsis),
-                  ]),
-                ),
+               Expanded(
+  child: Column(
+    crossAxisAlignment: CrossAxisAlignment.start, 
+    children: [
+      // 1. استخدام FutureBuilder لجلب الاسم من جدول المنظمات (organizations)
+      FutureBuilder<DocumentSnapshot>(
+        future: FirebaseFirestore.instance
+            .collection('organizations') 
+            .doc(h.organizationId) // بياخذ الـ ID حق المنظمة من الهاكاثون
+            .get(),
+        builder: (context, orgSnap) {
+          String nameToShow = "Organizer"; // الاسم اللي بيطلع لين يحمل
+          
+          if (orgSnap.hasData && orgSnap.data!.exists) {
+            final orgData = orgSnap.data!.data() as Map<String, dynamic>;
+            
+            // ✅ هنا الحل السحري: اسم الحقل في صورتك هو orgName
+            nameToShow = orgData['orgName'] ?? "Organizer";
+          }
+
+          return Text(
+            "By $nameToShow", 
+            style: TextStyle(
+              fontWeight: FontWeight.bold, 
+              color: const Color(0xFF6D56B3).withOpacity(0.8), 
+              fontSize: 10, 
+              letterSpacing: 0.5
+            ), 
+            maxLines: 2, 
+            overflow: TextOverflow.ellipsis
+          );
+        },
+      ),
+      const SizedBox(height: 4),
+      // 2. اسم الهاكاثون
+      Text(
+        h.name, 
+        style: const TextStyle(fontSize: 15, fontWeight: FontWeight.bold, height: 1.2), 
+        maxLines: 2, 
+        overflow: TextOverflow.ellipsis
+      ),
+    ]
+  ),
+),
                 const SizedBox(width: 8),
                 _miniStatusBadge(regClosed ? "Closed" : (regNotStarted ? "Upcoming" : "Open"), regClosed ? Colors.red : (regNotStarted ? Colors.orange : Colors.green)),
               ],
@@ -292,32 +301,46 @@ class _UserHomePageState extends State<UserHomePage> {
               child: Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
-                  const Row(children: [Icon(Icons.timer_outlined, size: 12, color: Colors.redAccent), SizedBox(width: 4), Text("Registration Deadline:", style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: Colors.grey))]),
+                  const Row(children: [Icon(Icons.timer_outlined, size: 12, color: Colors.redAccent), SizedBox(width: 4), Text("Deadline Registration:", style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: Colors.grey))]),
                   Text("${h.applicationDeadline.day} ${_getMonthName(h.applicationDeadline.month)}", style: const TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: Colors.redAccent)),
                 ],
               ),
             ),
             const SizedBox(height: 12),
             SizedBox(width: double.infinity, height: 42, child: ElevatedButton(style: ElevatedButton.styleFrom(backgroundColor: _purple, shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)), elevation: 0),
-              onPressed: () => Navigator.push(context, MaterialPageRoute(builder: (_) => HackathonDetailsView(hackathon: h))),
+              onPressed: () => Navigator.push(context, MaterialPageRoute(builder: (_) => HackathonDetailsView(hackathon: h ,))),
               child: const Text("View Full Details", style: TextStyle(color: Colors.white, fontSize: 13, fontWeight: FontWeight.bold)))),
             const SizedBox(height: 10),
+            
+            // ✅ تم استبدال الـ FutureBuilder بـ StreamBuilder لضمان التحديث اللحظي
             if (currentUid != null)
-              FutureBuilder<QueryDocumentSnapshot<Map<String, dynamic>>?>(
-                key: ValueKey('card_${h.id}_${DateTime.now().millisecondsSinceEpoch}'),
-                future: _getUserTeamPost(currentUid, hid),
+              StreamBuilder<QuerySnapshot>(
+                stream: _getUserTeamStream(currentUid, hid),
                 builder: (context, teamSnap) {
                   if (teamSnap.connectionState == ConnectionState.waiting) return const SizedBox(height: 38);
-                  if (teamSnap.hasData && teamSnap.data != null) {
-                    final bool isOwner = teamSnap.data!.data()['createdBy'] == currentUid;
-                    return _buildActionBtnOutlined(label: isOwner ? "Manage My Team" : "View My Team", icon: isOwner ? Icons.edit_note_rounded : Icons.visibility_outlined, color: _purple,
-                      onTap: () => Navigator.push(context, MaterialPageRoute(builder: (context) => MyTeamPostView(teamPostId: teamSnap.data!.id, hackathonId: hid, hackathonTeamSize: h.teamSize))).then((_) { if (mounted) setState(() {}); }));
+                  
+                  // إذا وجدنا فريق لليوزر (سواء هو اللي سواه أو انضم له)
+                  if (teamSnap.hasData && teamSnap.data!.docs.isNotEmpty) {
+                    final teamDoc = teamSnap.data!.docs.first;
+                    final bool isOwner = teamDoc['createdBy'] == currentUid;
+                    return _buildActionBtnOutlined(
+                      label: isOwner ? "Manage My Team" : "View My Team", 
+                      icon: isOwner ? Icons.edit_note_rounded : Icons.visibility_outlined, 
+                      color: _purple,
+                      onTap: () => Navigator.push(context, MaterialPageRoute(builder: (context) => MyTeamPostView(
+                        teamPostId: teamDoc.id, 
+                        hackathonId: hid, 
+                        hackathonTeamSize: h.teamSize
+                      )))
+                    );
                   }
+
                   if (regClosed) return _buildActionBtnOutlined(label: "Registration Closed", icon: Icons.lock_outline, color: Colors.grey, onTap: () {});
+                  
                   return Row(children: [
-                    Expanded(child: _buildActionBtnOutlined(label: "Create Team", icon: Icons.add_circle_outline, color: _purple, onTap: regNotStarted ? () {} : () => Navigator.push(context, MaterialPageRoute(builder: (context) => CreateTeamPostScreen(hackathonId: hid, hackathonTeamSize: h.teamSize))).then((_) { if (mounted) setState(() {}); }))),
+                    Expanded(child: _buildActionBtnOutlined(label: "Create Team", icon: Icons.add_circle_outline, color: _purple, onTap: regNotStarted ? () {} : () => Navigator.push(context, MaterialPageRoute(builder: (context) => CreateTeamPostScreen(hackathonId: hid, hackathonTeamSize: h.teamSize))))),
                     const SizedBox(width: 8),
-                    Expanded(child: _buildActionBtnOutlined(label: "Join Team", icon: Icons.person_add_alt_1_outlined, color: _purple, onTap: regNotStarted ? () {} : () => Navigator.push(context, MaterialPageRoute(builder: (context) => teams_view.ExploreTeamsView(hackathonId: hid, hackathonTeamSize: h.teamSize))).then((_) { if (mounted) setState(() {}); }))),
+                    Expanded(child: _buildActionBtnOutlined(label: "Join Team", icon: Icons.person_add_alt_1_outlined, color: _purple, onTap: regNotStarted ? () {} : () => Navigator.push(context, MaterialPageRoute(builder: (context) => teams_view.ExploreTeamsView(hackathonId: hid, hackathonTeamSize: h.teamSize))))),
                   ]);
                 },
               ),
@@ -357,7 +380,7 @@ class _UserHomePageState extends State<UserHomePage> {
           _compactInfoRow(Icons.event_outlined, "Event: ${hackathon.startDate.day} ${_getMonthName(hackathon.startDate.month)}"),
           const SizedBox(height: 16),
           SizedBox(width: double.infinity, height: 38, child: ElevatedButton(style: ElevatedButton.styleFrom(backgroundColor: _purple, shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)), elevation: 0, padding: EdgeInsets.zero),
-            onPressed: () => Navigator.push(context, MaterialPageRoute(builder: (context) => MyTeamPostView(teamPostId: team.id ?? "", hackathonId: hackathon.id ?? "", hackathonTeamSize: hackathon.teamSize))).then((_) { if (mounted) setState(() {}); }),
+            onPressed: () => Navigator.push(context, MaterialPageRoute(builder: (context) => MyTeamPostView(teamPostId: team.id ?? "", hackathonId: hackathon.id ?? "", hackathonTeamSize: hackathon.teamSize))),
             child: Text(isLeader ? "Manage Team" : "View Team", style: const TextStyle(color: Colors.white, fontSize: 11, fontWeight: FontWeight.bold)))),
         ]),
       ),

@@ -219,7 +219,20 @@ class _ExploreUserViewState extends State<ExploreUserView> with SingleTickerProv
         child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
           Row(children: [
             Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-              Text("By ${h.organizationName ?? "Organizer"}", style: TextStyle(fontWeight: FontWeight.w600, color: _purple.withOpacity(0.7), fontSize: 11)),
+              // داخل _buildProfessionalMiniCard
+// استبدلي الـ FutureBuilder الموجود عند اسم المنظمة بهذا الكود البسيط:
+
+Text(
+  "By ${h.organizationName ?? "Organizer"}", // تأكدي أن مودل Hackathon فيه هذا الحقل
+  style: TextStyle(
+    fontWeight: FontWeight.bold,
+    color: _purple.withOpacity(0.8),
+    fontSize: 10,
+    letterSpacing: 0.5,
+  ),
+  maxLines: 2,
+  overflow: TextOverflow.ellipsis,
+),
               const SizedBox(height: 4),
               Text(h.name, style: const TextStyle(fontSize: 17, fontWeight: FontWeight.bold)),
             ])),
@@ -477,7 +490,7 @@ class _ExploreUserViewState extends State<ExploreUserView> with SingleTickerProv
     return TextField(
       controller: _searchController,
       decoration: InputDecoration(
-        hintText: "Search hackathons, orgs, domains...", hintStyle: TextStyle(color: Colors.grey.shade400, fontSize: 13),
+        hintText: "Search hackathons,orgs,domain,team", hintStyle: TextStyle(color: Colors.grey.shade400, fontSize: 12),
         prefixIcon: const Icon(Icons.search, color: _purple, size: 20),
         suffixIcon: _searchController.text.isNotEmpty ? IconButton(icon: const Icon(Icons.cancel, color: Colors.grey, size: 16), onPressed: () { vm.updateSearchQuery(""); _searchController.clear(); setState(() {}); }) : null,
         filled: true, fillColor: Colors.white,
