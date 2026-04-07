@@ -280,8 +280,7 @@ class _CreateTeamPostScreenState extends State<CreateTeamPostScreen> {
         'myRole': finalRole,
         'neededRoles': needed, // THIS WAS MISSING!
         'genderPreference': _selectedGender,
-        'projectIdea': _ideaController.text.trim(), // We use this key
-        'currentMembers': 1,
+        'idea': _ideaController.text.trim(), // 🔴 صلحنا الكلمة صارت idea نفس الموديل        'currentMembers': 1,
         'maxMembers': widget.hackathonTeamSize,
         'createdAt': FieldValue.serverTimestamp(),
         'status': 'open',

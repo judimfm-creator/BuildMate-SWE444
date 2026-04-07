@@ -546,8 +546,8 @@ class InstitutionTeamPostDetailsView extends StatelessWidget {
           borderRadius: BorderRadius.circular(12),
           border: Border.all(color: Colors.orange.withOpacity(0.30)),
         ),
-        child: Row(
-          children: const [
+        child: const Row(
+          children: [
             Icon(
               Icons.visibility_outlined,
               color: Colors.orange,

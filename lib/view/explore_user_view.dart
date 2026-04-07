@@ -38,8 +38,7 @@ class _ExploreUserViewState extends State<ExploreUserView> with SingleTickerProv
 
   // متغيرات الفلترة
   String? selectedMode;
-  String? selectedStatus;
-  String? selectedEducation;
+  List<String> selectedStatuses = [];  String? selectedEducation;
   DateTime? selectedEndRegDate;
   DateTime? selectedStartEventDate;
   DateTime? selectedEndEventDate;
@@ -74,7 +73,7 @@ class _ExploreUserViewState extends State<ExploreUserView> with SingleTickerProv
       _cityController.clear();
       _searchController.clear();
       selectedMode = null;
-      selectedStatus = null;
+      selectedStatuses = []; // 🔴 تصفير القائمة
       selectedEducation = null;
       selectedEndRegDate = null;
       selectedStartEventDate = null;
@@ -83,8 +82,13 @@ class _ExploreUserViewState extends State<ExploreUserView> with SingleTickerProv
     });
   }
 
-  bool _hasActiveFilters() => _cityController.text.isNotEmpty || selectedMode != null || selectedStatus != null || selectedEndRegDate != null || selectedStartEventDate != null || selectedEndEventDate != null;
-
+  bool _hasActiveFilters() =>
+      _cityController.text.isNotEmpty ||
+          selectedMode != null ||
+          selectedStatuses.isNotEmpty || // 🔴 التحقق من وجود فلاتر نشطة
+          selectedEndRegDate != null ||
+          selectedStartEventDate != null ||
+          selectedEndEventDate != null;
   @override
   Widget build(BuildContext context) {
     final vm = context.watch<OrgHackathonsViewModel>();
@@ -164,13 +168,17 @@ class _ExploreUserViewState extends State<ExploreUserView> with SingleTickerProv
                   bool mCity = _cityController.text.isEmpty || h.city.toLowerCase().contains(_cityController.text.toLowerCase());
                   bool mMode = selectedMode == null || h.mode == selectedMode;
                   bool mEdu = selectedEducation == null || (h.educationCriteria ?? "Any") == selectedEducation;
-                  bool mStatus = true;
-                  if (selectedStatus != null) {
-                    final hEndOfDeadline = DateTime(h.applicationDeadline.year, h.applicationDeadline.month, h.applicationDeadline.day, 23, 59, 59);
-                    if (selectedStatus == "Registration Upcoming Soon") mStatus = now.isBefore(h.applicationOpenDate);
-                    else if (selectedStatus == "Registration Open") mStatus = now.isAfter(h.applicationOpenDate) && now.isBefore(hEndOfDeadline);
-                    else if (selectedStatus == "Registration Closed") mStatus = now.isAfter(hEndOfDeadline);
+                  final hEndOfDeadline = DateTime(h.applicationDeadline.year, h.applicationDeadline.month, h.applicationDeadline.day, 23, 59, 59);
+                  String currentHStatus = "";
+                  if (now.isBefore(h.applicationOpenDate)) {
+                    currentHStatus = "Registration Upcoming Soon";
+                  } else if (now.isAfter(h.applicationOpenDate) && now.isBefore(hEndOfDeadline)) {
+                    currentHStatus = "Registration Open";
+                  } else {
+                    currentHStatus = "Registration Closed";
                   }
+                  bool mStatus = selectedStatuses.isEmpty || selectedStatuses.contains(currentHStatus);
+
                   bool mEvStart = selectedStartEventDate == null || isSameDay(h.startDate, selectedStartEventDate!);
                   bool mEvEnd = selectedEndEventDate == null || isSameDay(h.endDate, selectedEndEventDate!);
                   bool mDeadline = selectedEndRegDate == null || isSameDay(h.applicationDeadline, selectedEndRegDate!);
@@ -211,7 +219,20 @@ class _ExploreUserViewState extends State<ExploreUserView> with SingleTickerProv
         child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
           Row(children: [
             Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-              Text("By ${h.organizationName ?? "Organizer"}", style: TextStyle(fontWeight: FontWeight.w600, color: _purple.withOpacity(0.7), fontSize: 11)),
+              // داخل _buildProfessionalMiniCard
+// استبدلي الـ FutureBuilder الموجود عند اسم المنظمة بهذا الكود البسيط:
+
+Text(
+  "By ${h.organizationName ?? "Organizer"}", // تأكدي أن مودل Hackathon فيه هذا الحقل
+  style: TextStyle(
+    fontWeight: FontWeight.bold,
+    color: _purple.withOpacity(0.8),
+    fontSize: 10,
+    letterSpacing: 0.5,
+  ),
+  maxLines: 2,
+  overflow: TextOverflow.ellipsis,
+),
               const SizedBox(height: 4),
               Text(h.name, style: const TextStyle(fontSize: 17, fontWeight: FontWeight.bold)),
             ])),
@@ -382,13 +403,19 @@ class _ExploreUserViewState extends State<ExploreUserView> with SingleTickerProv
           bool mCity = _cityController.text.isEmpty || h.city.toLowerCase().contains(_cityController.text.toLowerCase());
           bool mMode = selectedMode == null || h.mode == selectedMode;
           bool mEdu = selectedEducation == null || h.educationCriteria == selectedEducation;
-          
-          bool mStatus = true;
-          if (selectedStatus != null) {
-            if (selectedStatus == "Registration Upcoming Soon") mStatus = now.isBefore(h.applicationOpenDate);
-            else if (selectedStatus == "Registration Open") mStatus = now.isAfter(h.applicationOpenDate) && now.isBefore(h.applicationDeadline);
-            else if (selectedStatus == "Registration Closed") mStatus = now.isAfter(h.applicationDeadline);
+
+          final hEndOfDeadline = DateTime(h.applicationDeadline.year, h.applicationDeadline.month, h.applicationDeadline.day, 23, 59, 59);
+          String currentHStatus = "";
+          if (now.isBefore(h.applicationOpenDate)) {
+            currentHStatus = "Registration Upcoming Soon";
+          } else if (now.isAfter(h.applicationOpenDate) && now.isBefore(hEndOfDeadline)) {
+            currentHStatus = "Registration Open";
+          } else {
+            currentHStatus = "Registration Closed";
           }
+
+          bool mStatus = selectedStatuses.isEmpty || selectedStatuses.contains(currentHStatus);
+
           bool mEvStart = selectedStartEventDate == null || isSameDay(h.startDate, selectedStartEventDate!);
           bool mEvEnd = selectedEndEventDate == null || isSameDay(h.endDate, selectedEndEventDate!);
           bool mDeadline = selectedEndRegDate == null || isSameDay(h.applicationDeadline, selectedEndRegDate!);
@@ -431,10 +458,24 @@ class _ExploreUserViewState extends State<ExploreUserView> with SingleTickerProv
           Row(children: [
             Expanded(child: _outlinedBtn("Full Details", _purple, () { if (hackathon != null) Navigator.push(context, MaterialPageRoute(builder: (c) => TeamPostDetailsView(team: team, hackathon: hackathon))); })),
             const SizedBox(width: 12),
+// 🔴 التعديل هنا: تمرير الـ team.id للصفحة
             Expanded(child: _btn("Join Team", _purple, () {
               if (hackathon != null) {
-                Navigator.push(context, MaterialPageRoute(builder: (c) => teams_view.ExploreTeamsView(hackathonId: hackathon.id ?? "", hackathonTeamSize: hackathon.teamSize))).then((dynamic res) async {
-                  if (res == true && mounted) { await Future.delayed(const Duration(milliseconds: 500)); setState(() {}); homeScreenState?.changeTab(0); }
+                Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                        builder: (c) => teams_view.ExploreTeamsView(
+                          hackathonId: hackathon.id ?? "",
+                          hackathonTeamSize: hackathon.teamSize,
+                          teamId: team.id, // 👈 هذا هو السطر السحري اللي بيخلي الصفحة تعرض هالتيم بس
+                        )
+                    )
+                ).then((dynamic res) async {
+                  if (res == true && mounted) {
+                    await Future.delayed(const Duration(milliseconds: 500));
+                    setState(() {});
+                    homeScreenState?.changeTab(0);
+                  }
                 });
               }
             })),
@@ -449,7 +490,7 @@ class _ExploreUserViewState extends State<ExploreUserView> with SingleTickerProv
     return TextField(
       controller: _searchController,
       decoration: InputDecoration(
-        hintText: "Search hackathons, orgs, domains...", hintStyle: TextStyle(color: Colors.grey.shade400, fontSize: 13),
+        hintText: "Search hackathons,orgs,domain,team", hintStyle: TextStyle(color: Colors.grey.shade400, fontSize: 12),
         prefixIcon: const Icon(Icons.search, color: _purple, size: 20),
         suffixIcon: _searchController.text.isNotEmpty ? IconButton(icon: const Icon(Icons.cancel, color: Colors.grey, size: 16), onPressed: () { vm.updateSearchQuery(""); _searchController.clear(); setState(() {}); }) : null,
         filled: true, fillColor: Colors.white,
@@ -494,10 +535,29 @@ class _ExploreUserViewState extends State<ExploreUserView> with SingleTickerProv
         ),
         const SizedBox(height: 15),
         _filterSectionTitle("Status"),
-        Wrap(spacing: 5, children: ["Registration Upcoming Soon", "Registration Open", "Registration Closed"].map((s) => ChoiceChip(
-          label: Text(s, style: const TextStyle(fontSize: 9)), selected: selectedStatus == s,
-          onSelected: (v) => setDialogState(() => selectedStatus = v ? s : null),
-        )).toList()),
+        _filterSectionTitle("Status"),
+        Wrap(
+          spacing: 5,
+          children: ["Registration Upcoming Soon", "Registration Open", "Registration Closed"].map((s) {
+            final isSelected = selectedStatuses.contains(s); // التحقق من الاختيار
+            return ChoiceChip(
+              label: Text(s, style: const TextStyle(fontSize: 9)),
+              selected: isSelected,
+              onSelected: (v) {
+                setDialogState(() {
+                  if (v) {
+                    // 🔴 يسمح باختيار حالتين فقط بحد أقصى
+                    if (selectedStatuses.length < 2) {
+                      selectedStatuses.add(s);
+                    }
+                  } else {
+                    selectedStatuses.remove(s);
+                  }
+                });
+              },
+            );
+          }).toList(),
+        ),
       ])),
       actions: [TextButton(onPressed: () => Navigator.pop(context), child: const Text("Cancel")), ElevatedButton(style: ElevatedButton.styleFrom(backgroundColor: _purple), onPressed: () { setState(() {}); Navigator.pop(context); }, child: const Text("Apply", style: TextStyle(color: Colors.white)))],
     )));

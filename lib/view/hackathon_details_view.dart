@@ -81,13 +81,7 @@ class _HackathonDetailsViewState extends State<HackathonDetailsView> {
                       _buildSimpleStatusBadge(regNotStarted, regClosed, isEventEnded),
                       const SizedBox(height: 12),
                       
-                      if (!isInstitution) ...[
-                        Text(
-                          "By ${widget.hackathon.organizationName ?? 'Organizer'}", 
-                          style: TextStyle(fontWeight: FontWeight.bold, color: _purple.withOpacity(0.7), fontSize: 13),
-                        ),
-                        const SizedBox(height: 4),
-                      ],
+                     
 
                       Text(
                         widget.hackathon.name, 

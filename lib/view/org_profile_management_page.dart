@@ -128,127 +128,133 @@ class _OrgProfileManagementPageState extends State<OrgProfileManagementPage> {
     );
   }
 
-  Widget _buildInfoField(String label, IconData icon,
-      {bool isAlwaysDisabled = false}) {
+  Widget _buildInfoField(String label, IconData icon, {bool isAlwaysDisabled = false}) {
     TextEditingController ctrl = _controllers[label] ?? TextEditingController();
     bool canEdit = _isEditMode && !isAlwaysDisabled;
 
-    bool isBio = label.toLowerCase().contains("bio") ||
-        label.toLowerCase().contains("biography");
+    bool isBio = label.toLowerCase().contains("bio") || label.toLowerCase().contains("biography");
     bool isPhone = label.toLowerCase().contains("phone");
     bool isEmail = label.toLowerCase().contains("email");
 
-    // ✅ تحديد النص المساعد (Helper Text) الثابت بناءً على الحقل للمنشأة
+    // ✅ تحديد النص المساعد (Helper Text) الثابت
     String? helperText;
     if (canEdit) {
       if (label == "Organization Name") helperText = "Only English letters, min 3 letters";
       else if (label == "Username") helperText = "minimum 3 characters, spaces are not allowed";
-      else if (label == "Location") helperText = "Only English letters, min 3 letters";
+      else if (label == "Location") helperText = "e.g. Riyadh"; // 🔴 تم إضافة الهيلبر للمدينة (Location)
     }
 
-    return Opacity(
-      opacity: canEdit || !isAlwaysDisabled ? 1.0 : 0.6,
-      child: Container(
-        margin: const EdgeInsets.only(bottom: 12),
-        padding: const EdgeInsets.all(15),
-        decoration: BoxDecoration(
-          color: Colors.white,
-          borderRadius: BorderRadius.circular(12),
-          border: Border.all(
-            color:
-            canEdit ? primaryPurple.withOpacity(0.5) : Colors.grey.shade100,
-            width: canEdit ? 1.5 : 1,
+    // 🔴 التغليف بـ Column لإخراج النص المساعد (Helper) أسفل المربع 🔴
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Opacity(
+          opacity: canEdit ? 1.0 : 0.6,          child: Container(
+            margin: const EdgeInsets.only(bottom: 4), // تقليل المسافة عشان النص يجي تحته مباشرة
+            padding: const EdgeInsets.all(15),
+            decoration: BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.circular(12),
+              border: Border.all(
+                color: canEdit ? primaryPurple.withOpacity(0.5) : Colors.grey.shade100,
+                width: canEdit ? 1.5 : 1,
+              ),
+            ),
+            child: Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Padding(
+                  padding: const EdgeInsets.only(top: 2),
+                  child: Icon(icon, color: primaryPurple, size: 20),
+                ),
+                const SizedBox(width: 15),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(label, style: TextStyle(color: Colors.grey.shade500, fontSize: 11)),
+                      const SizedBox(height: 2),
+                      TextFormField(
+                        controller: ctrl,
+                        enabled: canEdit,
+                        maxLines: (isPhone || isEmail) ? 1 : null,
+                        maxLength: isBio ? 100 : (isPhone ? 10 : 40),
+                        keyboardType: isPhone
+                            ? TextInputType.phone
+                            : (isEmail ? TextInputType.emailAddress : TextInputType.multiline),
+                        style: const TextStyle(fontSize: 14, fontWeight: FontWeight.bold, color: Colors.black87),
+                        decoration: const InputDecoration(
+                          isDense: true,
+                          border: InputBorder.none,
+                          contentPadding: EdgeInsets.symmetric(vertical: 4),
+                          counterText: "",
+                          // 🔴 شلنا الـ helperText من هنا عشان ما يختفي وقت الخطأ
+                          errorStyle: TextStyle(fontSize: 10, color: Colors.red, height: 1.2),
+                          errorMaxLines: 3,
+                        ),
+                        validator: (value) {
+                          if (!canEdit) return null;
+                          String v = value?.trim() ?? "";
+
+                          // نفس الشروط حقتك بالضبط بدون تغيير
+                          if (label == "Organization Name") {
+                            int letterCount = v.replaceAll(RegExp(r'[^a-zA-Z]'), '').length;
+
+                            if (!RegExp(r"^[a-zA-Z][a-zA-Z\s\-\,\.]*$").hasMatch(v)) {
+                              return "Only English letters are allowed";
+                            }
+                            if (letterCount < 3 ) {
+                              return "Must have at least 3 letters";
+                            }
+                          }
+
+                          if (label == "Username") {
+                            if (v.isEmpty || v.contains(' ') || v.length < 3) {
+                              return "minimum 3 characters, spaces are not allowed";
+                            }
+                          }
+
+                          if (label == "Location") {
+                            if (v.isNotEmpty) {
+                              int letterCount = v.replaceAll(RegExp(r'[^a-zA-Z]'), '').length;
+
+                              if (!RegExp(r"^[a-zA-Z][a-zA-Z\s\-\,\.]*$").hasMatch(v)) {
+                                return "Only English letters are allowed";
+                              }
+                              if (letterCount < 3 ) {
+                                return "Must have at least 3 letters";
+                              }
+                            }
+                          }
+                          return null;
+                        },
+                      ),
+                    ],
+                  ),
+                ),
+                if (isAlwaysDisabled)
+                  Padding(
+                    padding: const EdgeInsets.only(top: 10),
+                    child: Icon(Icons.lock_outline, size: 16, color: Colors.grey.shade300),
+                  ),
+              ],
+            ),
           ),
         ),
-        child: Row(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Padding(
-              padding: const EdgeInsets.only(top: 2),
-              child: Icon(icon, color: primaryPurple, size: 20),
-            ),
-            const SizedBox(width: 15),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(label,
-                      style:
-                      TextStyle(color: Colors.grey.shade500, fontSize: 11)),
-                  const SizedBox(height: 2),
-                  TextFormField(
-                    controller: ctrl,
-                    enabled: canEdit,
-                    maxLines: (isPhone || isEmail) ? 1 : null,
-                    maxLength: isBio ? 100 : (isPhone ? 10 : 40),
-                    keyboardType: isPhone
-                        ? TextInputType.phone
-                        : (isEmail
-                        ? TextInputType.emailAddress
-                        : TextInputType.multiline),
-                    style: const TextStyle(
-                        fontSize: 14, fontWeight: FontWeight.bold),
-                    decoration: InputDecoration(
-                      isDense: true,
-                      border: InputBorder.none,
-                      contentPadding: EdgeInsets.zero,
-                      counterText: isBio ? null : "",
-                      // ✅ إضافة الـ Helper Text والستايل الرمادي
-                      helperText: helperText,
-                      helperStyle: const TextStyle(fontSize: 10, color: Colors.blueGrey, height: 1.2),
-                      helperMaxLines: 2,
-                      // ✅ ستايل الخطأ لما يصير أحمر
-                      errorStyle: const TextStyle(fontSize: 10, color: Colors.red, height: 1.2),
-                      errorMaxLines: 3,
-                    ),
-                    validator: (value) {
-                      if (!canEdit) return null;
-                      String v = value?.trim() ?? "";
-
-                      if (label == "Organization Name") {
-                        int letterCount = v.replaceAll(RegExp(r'[^a-zA-Z]'), '').length;
-
-                        if (!RegExp(r"^[a-zA-Z][a-zA-Z\s\-\,\.]*$").hasMatch(v)) {
-                          return "Only English letters are allowed";
-                        }
-                        if (letterCount < 3 ) {
-                          return "Must have at least 3 letters";
-                        }
-                      }
-
-                      if (label == "Username") {
-                        if (v.isEmpty || v.contains(' ') || v.length < 3) {
-                          return "minimum 3 characters, spaces are not allowed";
-                        }
-                      }
-
-                      if (label == "Location") {
-                        if (v.isNotEmpty) {
-                          int letterCount = v.replaceAll(RegExp(r'[^a-zA-Z]'), '').length;
-
-                          if (!RegExp(r"^[a-zA-Z][a-zA-Z\s\-\,\.]*$").hasMatch(v)) {
-                            return "Only English letters are allowed";
-                          }
-                          if (letterCount < 3 ) {
-                            return "Must have at least 3 letters";
-                          }
-                        }
-                      }
-                      return null;
-                    },
-                  ),
-                ],
+        // 🔴 النص الثابت (Helper) صار برا المربع عشان يكون صامد ودائماً ظاهر 🔴
+        if (helperText != null)
+          Padding(
+            padding: const EdgeInsets.only(left: 15, bottom: 12),
+            child: Text(
+              helperText,
+              style: const TextStyle(
+                color: Colors.blueGrey,
+                fontSize: 11,
+                height: 1.2,
               ),
             ),
-            if (isAlwaysDisabled)
-              Padding(
-                padding: const EdgeInsets.only(top: 10),
-                child: Icon(Icons.lock_outline,
-                    size: 16, color: Colors.grey.shade300),
-              ),
-          ],
-        ),
-      ),
+          ),
+      ],
     );
   }
 
@@ -296,14 +302,33 @@ class _OrgProfileManagementPageState extends State<OrgProfileManagementPage> {
               shape: RoundedRectangleBorder(
                   borderRadius: BorderRadius.circular(12))),
           onPressed: () async {
-            // ✅ لا يتم الحفظ إلا إذا كانت جميع الحقول صحيحة
             if (_formKey.currentState!.validate()) {
               final orgVM = Provider.of<OrgProfileViewModel>(context, listen: false);
               final regVM = Provider.of<RegisterViewModel>(context, listen: false);
 
+              // أخذنا اليوزرنيم الأصلي (بالكابيتال والسمول) للحفظ
+              final newUsername = _controllers["Username"]?.text.trim() ?? "";
+              final currentUsername = org?.username ?? "";
+
+              // التحقق case-insensitive: حولناهم لسمول وقت المقارنة فقط
+              if (newUsername.isNotEmpty && newUsername.toLowerCase() != currentUsername.toLowerCase()) {
+                bool taken = await regVM.isUsernameAlreadyExists(newUsername);
+                if (taken) {
+                  if (mounted) {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(
+                          content: Text("This Organization username is already taken!"),
+                          backgroundColor: Colors.red
+                      ),
+                    );
+                  }
+                  return; // نوقف عملية الحفظ
+                }
+              }
+
               await orgVM.updateOrgProfile(
                 name: _controllers["Organization Name"]?.text ?? org?.orgName ?? "",
-                username: _controllers["Username"]?.text ?? org?.username ?? "",
+                username: newUsername.isEmpty ? (org?.username ?? "") : newUsername,
                 phone: _controllers["Phone Number"]?.text ?? org?.phoneNumber ?? "",
                 location: _itemsMarkedForDeletion.contains("location")
                     ? ""
@@ -317,9 +342,8 @@ class _OrgProfileManagementPageState extends State<OrgProfileManagementPage> {
                     : (regVM.pickedImage?.path),
               );
 
-              if (_itemsMarkedForDeletion.contains("photo")) {
-                regVM.clearPickedImage();
-              }
+              // 🔴 الحل الجذري للمشكلة: تنظيف الذاكرة من الصورة دائماً بعد الحفظ 🔴
+              regVM.clearPickedImage();
 
               ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
                   content: Text('Profile updated successfully! ✅'),
@@ -449,9 +473,18 @@ class _OrgProfileManagementPageState extends State<OrgProfileManagementPage> {
         Switch(
             value: _isEditMode,
             activeThumbColor: primaryPurple,
-            onChanged: (v) => setState(() {
-                  _isEditMode = v;
-                }))
+            onChanged: (v) {
+              setState(() {
+                _isEditMode = v;
+              });
+
+              // 🔴 التعديل: تصفير الأخطاء واسترجاع البيانات النظيفة عند إغلاق وضع التعديل بدون حفظ 🔴
+              if (!v) {
+                _formKey.currentState?.reset();
+                Provider.of<RegisterViewModel>(context, listen: false).clearPickedImage();
+                _loadOrgData(); // يرجع يعبي الحقول بالبيانات الأصلية من السيرفر
+              }
+            })
       ]));
   Widget _buildSectionTitle(String title) => Padding(
       padding: const EdgeInsets.only(bottom: 12, left: 5),

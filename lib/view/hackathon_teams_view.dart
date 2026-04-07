@@ -7,11 +7,13 @@ import 'other_user_profile_page.dart';
 class ExploreTeamsView extends StatelessWidget {
   final String hackathonId;
   final int hackathonTeamSize;
+  final String? teamId; // 🔴 أضيفي هذا السطر
 
   const ExploreTeamsView({
     super.key,
     required this.hackathonId,
     required this.hackathonTeamSize,
+    this.teamId, // 🔴 وأضيفي هذا السطر
   });
 
   static const Color _purple = Color(0xFF6D56B3);
@@ -73,6 +75,12 @@ class ExploreTeamsView extends StatelessWidget {
           final docs = (snapshot.data?.docs ?? []).where((doc) {
             final data = doc.data();
             final List members = data['members'] ?? [];
+
+            // إذا كان فيه teamId محدد، نتحقق إنه يطابق الـ ID حق الدوكيمينت الحالي
+            if (teamId != null) {
+              return doc.id == teamId;
+            }
+
             return data['createdBy'] != currentUserId &&
                 !members.contains(currentUserId);
           }).toList();
@@ -260,7 +268,7 @@ class ExploreTeamsView extends StatelessWidget {
                           ),
                           child: Text(
                             isRegistered
-                                ? "Registration Submitted"
+                                ? "TEAM FULL"
                                 : (isFull ? "TEAM FULL" : "JOIN TEAM"),
                             style: const TextStyle(
                               color: Colors.white,
