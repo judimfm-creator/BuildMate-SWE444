@@ -518,22 +518,45 @@ class InstitutionTeamPostDetailsView extends StatelessWidget {
     bool isDeadlinePassed,
   ) {
     if (status == 'accepted' || status == 'rejected') {
-      final c = status == 'accepted' ? Colors.green : Colors.red;
-      return Container(
-        width: double.infinity,
-        padding: const EdgeInsets.all(16),
-        decoration: BoxDecoration(
-          color: c.withOpacity(0.1),
-          borderRadius: BorderRadius.circular(12),
-        ),
-        child: Text(
-          "APPLICATION ${status.toUpperCase()}",
-          textAlign: TextAlign.center,
-          style: TextStyle(
-            fontWeight: FontWeight.bold,
-            color: c,
+      final Color color = status == 'accepted' ? Colors.green : Colors.red;
+
+      return Column(
+        children: [
+          Container(
+            width: double.infinity,
+            padding: const EdgeInsets.all(16),
+            decoration: BoxDecoration(
+              color: color.withOpacity(0.1),
+              borderRadius: BorderRadius.circular(12),
+            ),
+            child: Text(
+              "APPLICATION ${status.toUpperCase()}",
+              textAlign: TextAlign.center,
+              style: TextStyle(
+                fontWeight: FontWeight.bold,
+                color: color,
+              ),
+            ),
           ),
-        ),
+          const SizedBox(height: 10),
+          SizedBox(
+            width: double.infinity,
+            child: OutlinedButton(
+              onPressed: () => _showEditDecisionDialog(context),
+              style: OutlinedButton.styleFrom(
+                side: BorderSide(color: color.withOpacity(0.4)),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                padding: const EdgeInsets.symmetric(vertical: 14),
+              ),
+              child: const Text(
+                "Edit Decision",
+                style: TextStyle(fontWeight: FontWeight.bold),
+              ),
+            ),
+          ),
+        ],
       );
     }
 
@@ -589,6 +612,60 @@ class InstitutionTeamPostDetailsView extends StatelessWidget {
         ),
       ],
     );
+  }
+
+  Future<void> _showEditDecisionDialog(BuildContext context) async {
+    final result = await showDialog<String>(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(16),
+        ),
+        title: const Text("Edit Decision"),
+        content: const Text("Choose the new status"),
+        actionsPadding: const EdgeInsets.symmetric(
+          horizontal: 12,
+          vertical: 8,
+        ),
+        actions: [
+          Row(
+            children: [
+              Expanded(
+                child: ElevatedButton(
+                  onPressed: () => Navigator.pop(dialogContext, 'accepted'),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: Colors.green,
+                    foregroundColor: Colors.white,
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(10),
+                    ),
+                  ),
+                  child: const Text("Accept"),
+                ),
+              ),
+              const SizedBox(width: 10),
+              Expanded(
+                child: ElevatedButton(
+                  onPressed: () => Navigator.pop(dialogContext, 'rejected'),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: Colors.red,
+                    foregroundColor: Colors.white,
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(10),
+                    ),
+                  ),
+                  child: const Text("Reject"),
+                ),
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+
+    if (result == null) return;
+
+    await _updateStatus(context, result);
   }
 
   Future<void> _updateStatus(BuildContext context, String newStatus) async {

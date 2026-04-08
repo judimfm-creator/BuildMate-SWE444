@@ -1,8 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
+
 import '../model/hackathon.dart';
-import '../view/hackathon_details_view.dart';
+import '../services/hackathon_deletion_service.dart';
 import '../view/create_hackathon_view.dart';
+import '../view/hackathon_details_view.dart';
 
 class HackathonCard extends StatelessWidget {
   final Hackathon hackathon;
@@ -17,18 +19,68 @@ class HackathonCard extends StatelessWidget {
   });
 
   static const Color _purple = Color(0xFF6D56B3);
-  static const Color _lightBg = Color(0xFFF0EEFF);
 
-  String _format(DateTime d) => DateFormat('MMM dd, yyyy').format(d);
+  String _formatDate(DateTime date) {
+    return DateFormat('MMM dd, yyyy').format(date);
+  }
+
+  Future<void> _deleteHackathon(BuildContext context) async {
+    final confirm = await showDialog<bool>(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        title: const Text("Delete Hackathon"),
+        content: const Text(
+          "Are you sure you want to delete this hackathon?",
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(dialogContext, false),
+            child: const Text("Cancel"),
+          ),
+          TextButton(
+            onPressed: () => Navigator.pop(dialogContext, true),
+            child: const Text(
+              "Delete",
+              style: TextStyle(color: Colors.red),
+            ),
+          ),
+        ],
+      ),
+    );
+
+    if (confirm != true) return;
+
+    try {
+      final deletionService = HackathonDeletionService();
+      await deletionService.deleteHackathonCompletely(hackathon.id!);
+
+      if (!context.mounted) return;
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text("Hackathon deleted successfully"),
+        ),
+      );
+    } catch (e) {
+      if (!context.mounted) return;
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text("Error deleting hackathon: $e"),
+        ),
+      );
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
-    // ✅ تحديد الموعد النهائي الدقيق (نهاية اليوم 23:59:59)
     final deadlineDateTime = DateTime(
       hackathon.applicationDeadline.year,
       hackathon.applicationDeadline.month,
       hackathon.applicationDeadline.day,
-      23, 59, 59,
+      23,
+      59,
+      59,
     );
 
     return Container(
@@ -50,10 +102,8 @@ class HackathonCard extends StatelessWidget {
         padding: const EdgeInsets.all(16),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
-          mainAxisSize: MainAxisSize.min,
           children: [
             Row(
-              crossAxisAlignment: CrossAxisAlignment.start, // ✅ لضمان محاذاة البادج مع أول سطر
               children: [
                 Expanded(
                   child: Text(
@@ -61,68 +111,68 @@ class HackathonCard extends StatelessWidget {
                     style: const TextStyle(
                       fontSize: 15,
                       fontWeight: FontWeight.bold,
-                      height: 1.2,
                     ),
-                    // ✅ حل مشكلة الـ Wrap لاسم الهاكاثون
-                    softWrap: true,
-                    maxLines: 2, 
+                    maxLines: 2,
                     overflow: TextOverflow.ellipsis,
                   ),
                 ),
-                const SizedBox(width: 8),
-                _statusBadge(deadlineDateTime), // نمرر التوقيت الدقيق هنا
+                _buildStatusBadge(deadlineDateTime),
               ],
             ),
-            const Divider(height: 20),
-            _infoRow(Icons.category_outlined, hackathon.domain),
-            const SizedBox(height: 8),
-            _infoRow(Icons.location_on_outlined, "${hackathon.city}, ${hackathon.mode}"),
-            const SizedBox(height: 8),
-            _infoRow(Icons.groups_outlined, hackathon.teamSize > 2 ? "2 - ${hackathon.teamSize} members" : "2 members"),
-            
-            const SizedBox(height: 15),
-            
-            // قسم التواريخ
-            Container(
-              padding: const EdgeInsets.all(12),
-              decoration: BoxDecoration(
-                color: _lightBg.withOpacity(0.5), 
-                borderRadius: BorderRadius.circular(16)
-              ),
-              child: Column(
-                children: [
-                  _dateRow("Reg. Starts", _format(hackathon.applicationOpenDate), "Reg. Deadline", _format(hackathon.applicationDeadline), isDeadline: true),
-                  const Padding(padding: EdgeInsets.symmetric(vertical: 6), child: Divider(color: Colors.white)),
-                  _dateRow("Event Starts", _format(hackathon.startDate), "Event Ends", _format(hackathon.endDate)),
-                ],
+
+            const SizedBox(height: 10),
+
+            Text(
+              "${_formatDate(hackathon.startDate)} - ${_formatDate(hackathon.endDate)}",
+              style: TextStyle(
+                fontSize: 12,
+                color: Colors.grey.shade600,
               ),
             ),
 
+            const Divider(height: 20),
+
+            _buildInfoRow(Icons.category_outlined, hackathon.domain),
+            const SizedBox(height: 8),
+            _buildInfoRow(
+              Icons.location_on_outlined,
+              "${hackathon.city}, ${hackathon.mode}",
+            ),
+            const SizedBox(height: 8),
+            _buildInfoRow(
+              Icons.groups_outlined,
+              hackathon.teamSize > 2
+                  ? "2 - ${hackathon.teamSize} members"
+                  : "2 members",
+            ),
+
             const SizedBox(height: 15),
-            
-            // زر التفاصيل
+
             SizedBox(
               width: double.infinity,
               height: 42,
               child: ElevatedButton(
                 style: ElevatedButton.styleFrom(
                   backgroundColor: _purple,
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(12),
+                  ),
                   elevation: 0,
                 ),
                 onPressed: () {
                   Navigator.push(
                     context,
                     MaterialPageRoute(
-                      builder: (_) => HackathonDetailsView(hackathon: hackathon),
+                      builder: (_) => HackathonDetailsView(
+                        hackathon: hackathon,
+                      ),
                     ),
                   );
                 },
-                child: Text(
-                  isPast ? "View Details" : "View Details & Teams",
-                  style: const TextStyle(
+                child: const Text(
+                  "View Details",
+                  style: TextStyle(
                     color: Colors.white,
-                    fontSize: 13,
                     fontWeight: FontWeight.bold,
                   ),
                 ),
@@ -131,26 +181,55 @@ class HackathonCard extends StatelessWidget {
 
             if (!isPast) ...[
               const SizedBox(height: 8),
+
               SizedBox(
                 width: double.infinity,
                 height: 42,
                 child: OutlinedButton(
                   style: OutlinedButton.styleFrom(
-                    backgroundColor: Colors.white,
                     side: const BorderSide(color: _purple, width: 1.2),
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                  ),
-                  onPressed: () => Navigator.push(
-                    context,
-                    MaterialPageRoute(
-                      builder: (_) => CreateHackathonView(hackathonToEdit: hackathon),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12),
                     ),
                   ),
+                  onPressed: onEdit ??
+                      () {
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (_) => CreateHackathonView(
+                              hackathonToEdit: hackathon,
+                            ),
+                          ),
+                        );
+                      },
                   child: const Text(
                     "Edit",
                     style: TextStyle(
                       color: _purple,
-                      fontSize: 13,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                ),
+              ),
+
+              const SizedBox(height: 8),
+
+              SizedBox(
+                width: double.infinity,
+                height: 42,
+                child: OutlinedButton(
+                  style: OutlinedButton.styleFrom(
+                    side: const BorderSide(color: Colors.red, width: 1.2),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                  ),
+                  onPressed: () => _deleteHackathon(context),
+                  child: const Text(
+                    "Delete",
+                    style: TextStyle(
+                      color: Colors.red,
                       fontWeight: FontWeight.bold,
                     ),
                   ),
@@ -163,46 +242,30 @@ class HackathonCard extends StatelessWidget {
     );
   }
 
- Widget _statusBadge(DateTime deadlineDateTime) {
-  final DateTime now = DateTime.now();
-  
-  // ✅ فحص دقيق للحالات بناءً على الوقت الحالي
-  final bool regNotStarted = now.isBefore(hackathon.applicationOpenDate);
-  final bool regClosed = now.isAfter(deadlineDateTime); // يستخدم 23:59:59
-  final bool isEventEnded = now.isAfter(hackathon.endDate);
+  Widget _buildStatusBadge(DateTime deadlineDateTime) {
+    final now = DateTime.now();
+    final regClosed = now.isAfter(deadlineDateTime);
 
-  String text = "Registration Open";
-  Color color = Colors.green;
-
-  if (isEventEnded) {
-    text = "Hackathon Ended";
-    color = Colors.blueGrey; // لون هادئ للانتهاء
-  } else if (regClosed) {
-    text = "Registration Closed";
-    color = Colors.red;
-  } else if (regNotStarted) {
-    text = "Registration Upcoming Soon";
-    color = Colors.orange;
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+      decoration: BoxDecoration(
+        color: regClosed
+            ? Colors.red.withOpacity(0.1)
+            : Colors.green.withOpacity(0.1),
+        borderRadius: BorderRadius.circular(8),
+      ),
+      child: Text(
+        regClosed ? "CLOSED" : "OPEN",
+        style: TextStyle(
+          color: regClosed ? Colors.red : Colors.green,
+          fontSize: 8,
+          fontWeight: FontWeight.bold,
+        ),
+      ),
+    );
   }
 
-  return Container(
-    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-    decoration: BoxDecoration(
-      color: color.withOpacity(0.1),
-      borderRadius: BorderRadius.circular(8),
-    ),
-    child: Text(
-      text.toUpperCase(),
-      style: TextStyle(
-        color: color, 
-        fontSize: 8, 
-        fontWeight: FontWeight.bold
-      ),
-    ),
-  );
-}
-
-  Widget _infoRow(IconData icon, String text) {
+  Widget _buildInfoRow(IconData icon, String text) {
     return Row(
       children: [
         Icon(icon, size: 14, color: _purple),
@@ -210,32 +273,14 @@ class HackathonCard extends StatelessWidget {
         Expanded(
           child: Text(
             text,
-            style: const TextStyle(fontSize: 12, color: Colors.black87),
+            style: const TextStyle(
+              fontSize: 12,
+              color: Colors.black87,
+            ),
             maxLines: 1,
             overflow: TextOverflow.ellipsis,
           ),
         ),
-      ],
-    );
-  }
-
-  Widget _dateRow(String l1, String d1, String l2, String d2, {bool isDeadline = false}) {
-    return Row(
-      children: [
-        Expanded(child: _dateItem(l1, d1)),
-        Container(width: 1, height: 18, color: _purple.withOpacity(0.2)),
-        const SizedBox(width: 12),
-        Expanded(child: _dateItem(l2, d2, isCritical: isDeadline)),
-      ],
-    );
-  }
-
-  Widget _dateItem(String label, String date, {bool isCritical = false}) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text(label, style: const TextStyle(fontSize: 9, color: Colors.grey, fontWeight: FontWeight.bold)),
-        Text(date, style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: isCritical ? Colors.redAccent : Colors.black)),
       ],
     );
   }

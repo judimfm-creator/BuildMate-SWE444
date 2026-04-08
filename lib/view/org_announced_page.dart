@@ -17,7 +17,6 @@ class OrgAnnouncedPage extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    // استخدمنا watch هنا للتأكد من تحديث القائمة فور حدوث أي تغيير
     final vm = context.watch<OrgHackathonsViewModel>();
 
     return Scaffold(
@@ -55,8 +54,6 @@ class OrgAnnouncedPage extends StatelessWidget {
             itemCount: list.length,
             itemBuilder: (_, i) {
               final h = list[i];
-              // الكرت هنا سيقوم داخلياً بحساب الحالة (Open/Closed/Upcoming)
-              // وسيدعم الـ Wrap للاسماء الطويلة تلقائياً
               return HackathonCard(
                 hackathon: h,
                 isPast: false,

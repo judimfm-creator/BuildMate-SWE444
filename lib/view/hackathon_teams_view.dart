@@ -268,7 +268,7 @@ class ExploreTeamsView extends StatelessWidget {
                           ),
                           child: Text(
                             isRegistered
-                                ? "Registration Submitted"
+                                ? "TEAM FULL"
                                 : (isFull ? "TEAM FULL" : "JOIN TEAM"),
                             style: const TextStyle(
                               color: Colors.white,

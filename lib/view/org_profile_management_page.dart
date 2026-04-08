@@ -78,85 +78,97 @@ class _OrgProfileManagementPageState extends State<OrgProfileManagementPage> {
             showBack: true,
             onBack: () => Navigator.pop(context),
             onLogout: () async =>
-            await Provider.of<RegisterViewModel>(context, listen: false)
-                .logout(context),
+                await Provider.of<RegisterViewModel>(context, listen: false)
+                    .logout(context),
           ),
           body: !_isInitialized
               ? const Center(child: CircularProgressIndicator())
               : Column(
-            children: [
-              _buildEditToggle(),
-              Expanded(
-                child: SingleChildScrollView(
-                  padding: const EdgeInsets.symmetric(horizontal: 25),
-                  // 2. تغليف الحقول بـ Form
-                  child: Form(
-                    key: _formKey,
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        _buildAvatarSection(org),
-                        const SizedBox(height: 25),
-                        _buildSectionTitle("Organization Info"),
-                        _buildInfoField(
-                            "Organization Name", Icons.business_rounded),
-                        _buildInfoField("Username", Icons.person_outline),
-                        _buildInfoField(
-                            "Email Address", Icons.email_outlined,
-                            isAlwaysDisabled: true),
-                        _buildInfoField("Phone Number", Icons.phone_android,
-                            isAlwaysDisabled: true),
-                        const SizedBox(height: 15),
-                        _buildSectionTitle("Additional Details"),
-                        _buildFieldRow(
-                            "Biography", "biography", Icons.info_outline),
-                        _buildInfoField(
-                            "Location", Icons.location_on_outlined),
-                        const SizedBox(height: 30),
-                        if (!_isEditMode) _buildDeleteButton(),
-                        const SizedBox(height: 50),
-                      ],
+                  children: [
+                    _buildEditToggle(),
+                    Expanded(
+                      child: SingleChildScrollView(
+                        padding: const EdgeInsets.symmetric(horizontal: 25),
+                        child: Form(
+                          key: _formKey,
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              _buildAvatarSection(org),
+                              const SizedBox(height: 25),
+                              _buildSectionTitle("Organization Info"),
+                              _buildInfoField(
+                                  "Organization Name", Icons.business_rounded),
+                              _buildInfoField("Username", Icons.person_outline),
+                              _buildInfoField(
+                                "Email Address",
+                                Icons.email_outlined,
+                                isAlwaysDisabled: true,
+                              ),
+                              _buildInfoField(
+                                "Phone Number",
+                                Icons.phone_android,
+                              ),
+                              const SizedBox(height: 15),
+                              _buildSectionTitle("Additional Details"),
+                              _buildFieldRow(
+                                  "Biography", "biography", Icons.info_outline),
+                              _buildInfoField(
+                                  "Location", Icons.location_on_outlined),
+                              const SizedBox(height: 30),
+                              if (!_isEditMode) _buildDeleteButton(),
+                              const SizedBox(height: 50),
+                            ],
+                          ),
+                        ),
+                      ),
                     ),
-                  ),
+                    if (_isEditMode) _buildSaveButton(org),
+                  ],
                 ),
-              ),
-              if (_isEditMode) _buildSaveButton(org),
-            ],
-          ),
         );
       },
     );
   }
 
-  Widget _buildInfoField(String label, IconData icon, {bool isAlwaysDisabled = false}) {
+  Widget _buildInfoField(String label, IconData icon,
+      {bool isAlwaysDisabled = false}) {
     TextEditingController ctrl = _controllers[label] ?? TextEditingController();
     bool canEdit = _isEditMode && !isAlwaysDisabled;
 
-    bool isBio = label.toLowerCase().contains("bio") || label.toLowerCase().contains("biography");
+    bool isBio = label.toLowerCase().contains("bio") ||
+        label.toLowerCase().contains("biography");
     bool isPhone = label.toLowerCase().contains("phone");
     bool isEmail = label.toLowerCase().contains("email");
 
-    // ✅ تحديد النص المساعد (Helper Text) الثابت
     String? helperText;
     if (canEdit) {
-      if (label == "Organization Name") helperText = "Only English letters, min 3 letters";
-      else if (label == "Username") helperText = "minimum 3 characters, spaces are not allowed";
-      else if (label == "Location") helperText = "e.g. Riyadh"; // 🔴 تم إضافة الهيلبر للمدينة (Location)
+      if (label == "Organization Name") {
+        helperText = "Only English letters, min 3 letters";
+      } else if (label == "Username") {
+        helperText = "minimum 3 characters, spaces are not allowed";
+      } else if (label == "Location") {
+        helperText = "e.g. Riyadh";
+      } else if (label == "Phone Number") {
+        helperText = "Must start with 05 and be exactly 10 digits";
+      }
     }
 
-    // 🔴 التغليف بـ Column لإخراج النص المساعد (Helper) أسفل المربع 🔴
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Opacity(
-          opacity: canEdit ? 1.0 : 0.6,          child: Container(
-            margin: const EdgeInsets.only(bottom: 4), // تقليل المسافة عشان النص يجي تحته مباشرة
+          opacity: canEdit ? 1.0 : 0.6,
+          child: Container(
+            margin: const EdgeInsets.only(bottom: 4),
             padding: const EdgeInsets.all(15),
             decoration: BoxDecoration(
               color: Colors.white,
               borderRadius: BorderRadius.circular(12),
               border: Border.all(
-                color: canEdit ? primaryPurple.withOpacity(0.5) : Colors.grey.shade100,
+                color: canEdit
+                    ? primaryPurple.withOpacity(0.5)
+                    : Colors.grey.shade100,
                 width: canEdit ? 1.5 : 1,
               ),
             ),
@@ -172,7 +184,9 @@ class _OrgProfileManagementPageState extends State<OrgProfileManagementPage> {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Text(label, style: TextStyle(color: Colors.grey.shade500, fontSize: 11)),
+                      Text(label,
+                          style: TextStyle(
+                              color: Colors.grey.shade500, fontSize: 11)),
                       const SizedBox(height: 2),
                       TextFormField(
                         controller: ctrl,
@@ -181,29 +195,39 @@ class _OrgProfileManagementPageState extends State<OrgProfileManagementPage> {
                         maxLength: isBio ? 100 : (isPhone ? 10 : 40),
                         keyboardType: isPhone
                             ? TextInputType.phone
-                            : (isEmail ? TextInputType.emailAddress : TextInputType.multiline),
-                        style: const TextStyle(fontSize: 14, fontWeight: FontWeight.bold, color: Colors.black87),
+                            : (isEmail
+                                ? TextInputType.emailAddress
+                                : TextInputType.multiline),
+                        style: const TextStyle(
+                          fontSize: 14,
+                          fontWeight: FontWeight.bold,
+                          color: Colors.black87,
+                        ),
                         decoration: const InputDecoration(
                           isDense: true,
                           border: InputBorder.none,
                           contentPadding: EdgeInsets.symmetric(vertical: 4),
                           counterText: "",
-                          // 🔴 شلنا الـ helperText من هنا عشان ما يختفي وقت الخطأ
-                          errorStyle: TextStyle(fontSize: 10, color: Colors.red, height: 1.2),
+                          errorStyle: TextStyle(
+                            fontSize: 10,
+                            color: Colors.red,
+                            height: 1.2,
+                          ),
                           errorMaxLines: 3,
                         ),
                         validator: (value) {
                           if (!canEdit) return null;
                           String v = value?.trim() ?? "";
 
-                          // نفس الشروط حقتك بالضبط بدون تغيير
                           if (label == "Organization Name") {
-                            int letterCount = v.replaceAll(RegExp(r'[^a-zA-Z]'), '').length;
+                            int letterCount =
+                                v.replaceAll(RegExp(r'[^a-zA-Z]'), '').length;
 
-                            if (!RegExp(r"^[a-zA-Z][a-zA-Z\s\-\,\.]*$").hasMatch(v)) {
+                            if (!RegExp(r"^[a-zA-Z][a-zA-Z\s\-\,\.]*$")
+                                .hasMatch(v)) {
                               return "Only English letters are allowed";
                             }
-                            if (letterCount < 3 ) {
+                            if (letterCount < 3) {
                               return "Must have at least 3 letters";
                             }
                           }
@@ -214,14 +238,31 @@ class _OrgProfileManagementPageState extends State<OrgProfileManagementPage> {
                             }
                           }
 
+                          if (label == "Phone Number") {
+                            if (v.isEmpty) {
+                              return "Phone number is required";
+                            }
+                            if (!RegExp(r'^\d+$').hasMatch(v)) {
+                              return "Only numbers are allowed";
+                            }
+                            if (!v.startsWith('05')) {
+                              return "Phone number must start with 05";
+                            }
+                            if (v.length != 10) {
+                              return "Phone number must be exactly 10 digits";
+                            }
+                          }
+
                           if (label == "Location") {
                             if (v.isNotEmpty) {
-                              int letterCount = v.replaceAll(RegExp(r'[^a-zA-Z]'), '').length;
+                              int letterCount =
+                                  v.replaceAll(RegExp(r'[^a-zA-Z]'), '').length;
 
-                              if (!RegExp(r"^[a-zA-Z][a-zA-Z\s\-\,\.]*$").hasMatch(v)) {
+                              if (!RegExp(r"^[a-zA-Z][a-zA-Z\s\-\,\.]*$")
+                                  .hasMatch(v)) {
                                 return "Only English letters are allowed";
                               }
-                              if (letterCount < 3 ) {
+                              if (letterCount < 3) {
                                 return "Must have at least 3 letters";
                               }
                             }
@@ -235,13 +276,13 @@ class _OrgProfileManagementPageState extends State<OrgProfileManagementPage> {
                 if (isAlwaysDisabled)
                   Padding(
                     padding: const EdgeInsets.only(top: 10),
-                    child: Icon(Icons.lock_outline, size: 16, color: Colors.grey.shade300),
+                    child: Icon(Icons.lock_outline,
+                        size: 16, color: Colors.grey.shade300),
                   ),
               ],
             ),
           ),
         ),
-        // 🔴 النص الثابت (Helper) صار برا المربع عشان يكون صامد ودائماً ظاهر 🔴
         if (helperText != null)
           Padding(
             padding: const EdgeInsets.only(left: 15, bottom: 12),
@@ -264,15 +305,19 @@ class _OrgProfileManagementPageState extends State<OrgProfileManagementPage> {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Expanded(
-            child: Opacity(
-                opacity: isMarked ? 0.3 : 1.0,
-                child: _buildInfoField(label, icon))),
+          child: Opacity(
+            opacity: isMarked ? 0.3 : 1.0,
+            child: _buildInfoField(label, icon),
+          ),
+        ),
         if (_isEditMode)
           Padding(
             padding: const EdgeInsets.only(top: 10, left: 5),
             child: IconButton(
-              icon: Icon(isMarked ? Icons.undo : Icons.close,
-                  color: isMarked ? Colors.blue : Colors.red),
+              icon: Icon(
+                isMarked ? Icons.undo : Icons.close,
+                color: isMarked ? Colors.blue : Colors.red,
+              ),
               onPressed: () => setState(() {
                 isMarked
                     ? _itemsMarkedForDeletion.remove(key)
@@ -287,49 +332,61 @@ class _OrgProfileManagementPageState extends State<OrgProfileManagementPage> {
   Widget _buildSaveButton(OrgModel? org) {
     return Container(
       padding: const EdgeInsets.all(20),
-      decoration: BoxDecoration(color: Colors.white, boxShadow: [
-        BoxShadow(
+      decoration: BoxDecoration(
+        color: Colors.white,
+        boxShadow: [
+          BoxShadow(
             color: Colors.black.withOpacity(0.05),
             blurRadius: 10,
-            offset: const Offset(0, -5))
-      ]),
+            offset: const Offset(0, -5),
+          )
+        ],
+      ),
       child: SizedBox(
         width: double.infinity,
         height: 50,
         child: ElevatedButton(
           style: ElevatedButton.styleFrom(
-              backgroundColor: primaryPurple,
-              shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(12))),
+            backgroundColor: primaryPurple,
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(12),
+            ),
+          ),
           onPressed: () async {
             if (_formKey.currentState!.validate()) {
-              final orgVM = Provider.of<OrgProfileViewModel>(context, listen: false);
-              final regVM = Provider.of<RegisterViewModel>(context, listen: false);
+              final orgVM =
+                  Provider.of<OrgProfileViewModel>(context, listen: false);
+              final regVM =
+                  Provider.of<RegisterViewModel>(context, listen: false);
 
-              // أخذنا اليوزرنيم الأصلي (بالكابيتال والسمول) للحفظ
               final newUsername = _controllers["Username"]?.text.trim() ?? "";
               final currentUsername = org?.username ?? "";
 
-              // التحقق case-insensitive: حولناهم لسمول وقت المقارنة فقط
-              if (newUsername.isNotEmpty && newUsername.toLowerCase() != currentUsername.toLowerCase()) {
+              if (newUsername.isNotEmpty &&
+                  newUsername.toLowerCase() != currentUsername.toLowerCase()) {
                 bool taken = await regVM.isUsernameAlreadyExists(newUsername);
                 if (taken) {
                   if (mounted) {
                     ScaffoldMessenger.of(context).showSnackBar(
                       const SnackBar(
-                          content: Text("This Organization username is already taken!"),
-                          backgroundColor: Colors.red
+                        content:
+                            Text("This Organization username is already taken!"),
+                        backgroundColor: Colors.red,
                       ),
                     );
                   }
-                  return; // نوقف عملية الحفظ
+                  return;
                 }
               }
 
               await orgVM.updateOrgProfile(
-                name: _controllers["Organization Name"]?.text ?? org?.orgName ?? "",
-                username: newUsername.isEmpty ? (org?.username ?? "") : newUsername,
-                phone: _controllers["Phone Number"]?.text ?? org?.phoneNumber ?? "",
+                name: _controllers["Organization Name"]?.text ??
+                    org?.orgName ??
+                    "",
+                username:
+                    newUsername.isEmpty ? (org?.username ?? "") : newUsername,
+                phone:
+                    _controllers["Phone Number"]?.text ?? org?.phoneNumber ?? "",
                 location: _itemsMarkedForDeletion.contains("location")
                     ? ""
                     : (_controllers["Location"]?.text ?? ""),
@@ -342,12 +399,14 @@ class _OrgProfileManagementPageState extends State<OrgProfileManagementPage> {
                     : (regVM.pickedImage?.path),
               );
 
-              // 🔴 الحل الجذري للمشكلة: تنظيف الذاكرة من الصورة دائماً بعد الحفظ 🔴
               regVM.clearPickedImage();
 
-              ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
+              ScaffoldMessenger.of(context).showSnackBar(
+                const SnackBar(
                   content: Text('Profile updated successfully! ✅'),
-                  backgroundColor: Colors.green));
+                  backgroundColor: Colors.green,
+                ),
+              );
 
               await _loadOrgData();
 
@@ -357,27 +416,28 @@ class _OrgProfileManagementPageState extends State<OrgProfileManagementPage> {
               });
             }
           },
-          child: const Text("SAVE CHANGES",
-              style:
-              TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+          child: const Text(
+            "SAVE CHANGES",
+            style: TextStyle(
+              color: Colors.white,
+              fontWeight: FontWeight.bold,
+            ),
+          ),
         ),
       ),
     );
   }
 
   Widget _buildAvatarSection(OrgModel? org) {
-    // استخدام الـ ViewModel الموحد (RegisterViewModel) كما في اليوزر العادي
     final regVM = Provider.of<RegisterViewModel>(context);
     bool isMarked = _itemsMarkedForDeletion.contains("photo");
 
     ImageProvider? imageProvider;
 
-    // 1. عرض الصورة المختارة للتعديل (إذا اختارت المنظمة صورة جديدة)
     if (regVM.pickedImage != null) {
       imageProvider = FileImage(regVM.pickedImage!);
-    }
-    // 2. عرض الصورة الأصلية من قاعدة البيانات
-    else if (org?.profilePhotoPath != null && org!.profilePhotoPath!.isNotEmpty) {
+    } else if (org?.profilePhotoPath != null &&
+        org!.profilePhotoPath!.isNotEmpty) {
       imageProvider = org.profilePhotoPath!.startsWith('http')
           ? NetworkImage(org.profilePhotoPath!)
           : FileImage(File(org.profilePhotoPath!)) as ImageProvider;
@@ -398,13 +458,11 @@ class _OrgProfileManagementPageState extends State<OrgProfileManagementPage> {
             ),
           ),
           if (_isEditMode) ...[
-            // --- زر التعديل (الكاميرا) - مطابق لليوزر العادي ---
             Positioned(
               bottom: 0,
               right: 0,
               child: GestureDetector(
                 onTap: () {
-                  // فتح خيارات (كاميرا أو استوديو) كما في ملف اليوزر
                   showModalBottomSheet(
                     context: context,
                     builder: (context) => Column(
@@ -415,7 +473,10 @@ class _OrgProfileManagementPageState extends State<OrgProfileManagementPage> {
                           title: const Text("Take Photo"),
                           onTap: () {
                             regVM.pickImage(ImageSource.camera);
-                            if (isMarked) setState(() => _itemsMarkedForDeletion.remove("photo"));
+                            if (isMarked) {
+                              setState(
+                                  () => _itemsMarkedForDeletion.remove("photo"));
+                            }
                             Navigator.pop(context);
                           },
                         ),
@@ -424,7 +485,10 @@ class _OrgProfileManagementPageState extends State<OrgProfileManagementPage> {
                           title: const Text("Upload Image"),
                           onTap: () {
                             regVM.pickImage(ImageSource.gallery);
-                            if (isMarked) setState(() => _itemsMarkedForDeletion.remove("photo"));
+                            if (isMarked) {
+                              setState(
+                                  () => _itemsMarkedForDeletion.remove("photo"));
+                            }
                             Navigator.pop(context);
                           },
                         ),
@@ -435,12 +499,11 @@ class _OrgProfileManagementPageState extends State<OrgProfileManagementPage> {
                 child: CircleAvatar(
                   radius: 16,
                   backgroundColor: primaryPurple,
-                  child: const Icon(Icons.camera_alt, size: 16, color: Colors.white),
+                  child: const Icon(Icons.camera_alt,
+                      size: 16, color: Colors.white),
                 ),
               ),
             ),
-
-            // --- زر الحذف (الإغلاق) - يحافظ على منطق المنظمة الأصلي ---
             if (imageProvider != null)
               Positioned(
                 top: 0,
@@ -452,8 +515,11 @@ class _OrgProfileManagementPageState extends State<OrgProfileManagementPage> {
                   child: CircleAvatar(
                     radius: 14,
                     backgroundColor: isMarked ? Colors.blue : Colors.red,
-                    child: Icon(isMarked ? Icons.undo : Icons.close,
-                        size: 14, color: Colors.white),
+                    child: Icon(
+                      isMarked ? Icons.undo : Icons.close,
+                      size: 14,
+                      color: Colors.white,
+                    ),
                   ),
                 ),
               ),
@@ -464,49 +530,66 @@ class _OrgProfileManagementPageState extends State<OrgProfileManagementPage> {
   }
 
   Widget _buildEditToggle() => Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 25, vertical: 15),
-      child: Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [
-        Text("Enable Editing Mode",
-            style: TextStyle(
+        padding: const EdgeInsets.symmetric(horizontal: 25, vertical: 15),
+        child: Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: [
+            Text(
+              "Enable Editing Mode",
+              style: TextStyle(
                 color: _isEditMode ? primaryPurple : Colors.grey.shade600,
-                fontWeight: FontWeight.bold)),
-        Switch(
-            value: _isEditMode,
-            activeThumbColor: primaryPurple,
-            onChanged: (v) {
-              setState(() {
-                _isEditMode = v;
-              });
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+            Switch(
+              value: _isEditMode,
+              activeThumbColor: primaryPurple,
+              onChanged: (v) {
+                setState(() {
+                  _isEditMode = v;
+                });
 
-              // 🔴 التعديل: تصفير الأخطاء واسترجاع البيانات النظيفة عند إغلاق وضع التعديل بدون حفظ 🔴
-              if (!v) {
-                _formKey.currentState?.reset();
-                Provider.of<RegisterViewModel>(context, listen: false).clearPickedImage();
-                _loadOrgData(); // يرجع يعبي الحقول بالبيانات الأصلية من السيرفر
-              }
-            })
-      ]));
+                if (!v) {
+                  _formKey.currentState?.reset();
+                  Provider.of<RegisterViewModel>(context, listen: false)
+                      .clearPickedImage();
+                  _loadOrgData();
+                }
+              },
+            )
+          ],
+        ),
+      );
+
   Widget _buildSectionTitle(String title) => Padding(
-      padding: const EdgeInsets.only(bottom: 12, left: 5),
-      child: Text(title,
+        padding: const EdgeInsets.only(bottom: 12, left: 5),
+        child: Text(
+          title,
           style: TextStyle(
-              color: primaryPurple,
-              fontSize: 14,
-              fontWeight: FontWeight.bold)));
+            color: primaryPurple,
+            fontSize: 14,
+            fontWeight: FontWeight.bold,
+          ),
+        ),
+      );
 
-  // ✅ تفعيل حذف الحساب الحقيقي للمنشأة (نفس نظام اليوزر)
   Widget _buildDeleteButton() => Center(
-      child: OutlinedButton.icon(
+        child: OutlinedButton.icon(
           onPressed: _handleDeleteAccount,
           icon: Icon(Icons.delete_forever_outlined, color: deleteRed),
-          label: Text("Delete Account",
-              style: TextStyle(color: deleteRed, fontWeight: FontWeight.bold)),
+          label: Text(
+            "Delete Account",
+            style: TextStyle(color: deleteRed, fontWeight: FontWeight.bold),
+          ),
           style: OutlinedButton.styleFrom(
-              side: BorderSide(color: deleteRed.withOpacity(0.4)),
-              shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(10)),
-              padding:
-                  const EdgeInsets.symmetric(horizontal: 25, vertical: 12))));
+            side: BorderSide(color: deleteRed.withOpacity(0.4)),
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(10),
+            ),
+            padding: const EdgeInsets.symmetric(horizontal: 25, vertical: 12),
+          ),
+        ),
+      );
 
   Future<void> _handleDeleteAccount() async {
     final confirmDelete = await showDialog<bool>(
@@ -515,22 +598,26 @@ class _OrgProfileManagementPageState extends State<OrgProfileManagementPage> {
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(15)),
         title: const Text("Confirm Account Deletion"),
         content: const Text(
-            "Are you sure you want to permanently delete your organization account? This action cannot be undone."),
+          "Are you sure you want to permanently delete your organization account? This action cannot be undone.",
+        ),
         actions: [
           TextButton(
-              onPressed: () => Navigator.pop(context, false),
-              child: const Text("Cancel")),
+            onPressed: () => Navigator.pop(context, false),
+            child: const Text("Cancel"),
+          ),
           TextButton(
-              onPressed: () => Navigator.pop(context, true),
-              child: const Text("Yes, Delete",
-                  style: TextStyle(color: Colors.red))),
+            onPressed: () => Navigator.pop(context, true),
+            child: const Text(
+              "Yes, Delete",
+              style: TextStyle(color: Colors.red),
+            ),
+          ),
         ],
       ),
     );
 
     if (confirmDelete != true) return;
 
-    // ✅ نفس نظام اليوزر — Widget مستقل
     final password = await showDialog<String>(
       context: context,
       builder: (context) => const _OrgDeletePasswordDialog(),
@@ -553,22 +640,25 @@ class _OrgProfileManagementPageState extends State<OrgProfileManagementPage> {
         await Future.delayed(const Duration(seconds: 1));
         if (context.mounted) {
           Navigator.pushNamedAndRemoveUntil(
-              context, '/loginUser', (route) => false);
+            context,
+            '/loginUser',
+            (route) => false,
+          );
         }
       }
     } on FirebaseAuthException catch (e) {
       if (context.mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-              content: Text(e.message ?? "Failed to delete account"),
-              backgroundColor: Colors.red),
+            content: Text(e.message ?? "Failed to delete account"),
+            backgroundColor: Colors.red,
+          ),
         );
       }
     }
   }
 }
 
-// ✅ Widget مستقل للـ dialog — نفس نظام اليوزر
 class _OrgDeletePasswordDialog extends StatefulWidget {
   const _OrgDeletePasswordDialog();
 
@@ -628,13 +718,16 @@ class _OrgDeletePasswordDialogState extends State<_OrgDeletePasswordDialog> {
             errorText: _serverError,
             suffixIcon: IconButton(
               icon: Icon(
-                  _obscurePassword ? Icons.visibility_off : Icons.visibility),
+                _obscurePassword ? Icons.visibility_off : Icons.visibility,
+              ),
               onPressed: () =>
                   setState(() => _obscurePassword = !_obscurePassword),
             ),
           ),
           onChanged: (_) {
-            if (_serverError != null) setState(() => _serverError = null);
+            if (_serverError != null) {
+              setState(() => _serverError = null);
+            }
           },
           validator: (value) {
             if (value == null || value.trim().isEmpty) {
@@ -646,11 +739,15 @@ class _OrgDeletePasswordDialogState extends State<_OrgDeletePasswordDialog> {
       ),
       actions: [
         TextButton(
-            onPressed: () => Navigator.pop(context, null),
-            child: const Text("Cancel")),
+          onPressed: () => Navigator.pop(context, null),
+          child: const Text("Cancel"),
+        ),
         TextButton(
           onPressed: () => _tryDelete(context),
-          child: const Text("Delete", style: TextStyle(color: Colors.red)),
+          child: const Text(
+            "Delete",
+            style: TextStyle(color: Colors.red),
+          ),
         ),
       ],
     );

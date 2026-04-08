@@ -9,32 +9,43 @@ class UserHackathonsView extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      body: StreamBuilder<QuerySnapshot>(
+      body: StreamBuilder<QuerySnapshot<Map<String, dynamic>>>(
         stream: FirebaseFirestore.instance
             .collection('hackathons')
             .snapshots(),
         builder: (context, snapshot) {
           if (snapshot.hasError) {
-            return const Center(child: Text("Something went wrong"));
+            return const Center(
+              child: Text("Something went wrong"),
+            );
           }
 
           if (snapshot.connectionState == ConnectionState.waiting) {
-            return const Center(child: CircularProgressIndicator());
+            return const Center(
+              child: CircularProgressIndicator(),
+            );
           }
 
-          final docs = snapshot.data?.docs ?? [];
+          final now = DateTime.now();
 
-          if (docs.isEmpty) {
-            return const Center(child: Text("No hackathons available"));
+          final hackathons = (snapshot.data?.docs ?? [])
+              .map((doc) => Hackathon.fromFirestore(doc))
+              .where((h) => h.endDate.isAfter(now))
+              .toList()
+            ..sort((a, b) => a.startDate.compareTo(b.startDate));
+
+          if (hackathons.isEmpty) {
+            return const Center(
+              child: Text("No hackathons available"),
+            );
           }
 
           return ListView.builder(
             padding: const EdgeInsets.all(16),
-            itemCount: docs.length,
+            itemCount: hackathons.length,
             itemBuilder: (context, index) {
-              final data = docs[index].data() as Map<String, dynamic>;
+              final hackathon = hackathons[index];
 
-              final hackathon = Hackathon.fromFirestore(docs[index]);
               return Card(
                 child: ListTile(
                   title: Text(hackathon.name),
@@ -43,8 +54,9 @@ class UserHackathonsView extends StatelessWidget {
                     Navigator.push(
                       context,
                       MaterialPageRoute(
-                        builder: (_) =>
-                            HackathonDetailsView(hackathon: hackathon),
+                        builder: (_) => HackathonDetailsView(
+                          hackathon: hackathon,
+                        ),
                       ),
                     );
                   },
