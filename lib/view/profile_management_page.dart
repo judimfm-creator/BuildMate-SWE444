@@ -104,7 +104,7 @@ class _ProfileManagementPageState extends State<ProfileManagementPage> {
                               _buildInfoField("Full Name", Icons.badge_outlined),
                               _buildInfoField("Username", Icons.person_outline),
                               _buildInfoField("Email Address", Icons.email_outlined, isAlwaysDisabled: true),
-                              _buildInfoField("Phone Number", Icons.phone_android, isAlwaysDisabled: true),
+                              _buildInfoField("Phone Number", Icons.phone_android),
                               const SizedBox(height: 15),
                               _buildSectionTitle("Skills"),
                               _buildSkillsSection(),
@@ -164,6 +164,25 @@ class _ProfileManagementPageState extends State<ProfileManagementPage> {
               final newUsername = _controllers["Username"]?.text.trim().toLowerCase() ?? "";
               final currentUsername = user?.username?.toLowerCase() ?? "";
 
+              final String newPhone = _controllers["Phone Number"]?.text.trim() ?? "";
+              final String currentPhone = _viewModel.currentUser?.phoneNumber ?? ""; // ✅ جلب الرقم الحالي من المودل
+
+// ✅ فحص رقم الجوال: نفحص فقط إذا قام المستخدم بتغيير الرقم
+              if (newPhone.isNotEmpty && newPhone != currentPhone) {
+                bool taken = await _viewModel.isPhoneNumberAlreadyExists(newPhone);
+                if (taken) {
+                  if (mounted) {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(
+                        content: Text("Phone number is already taken!"),
+                        backgroundColor: Colors.red,
+                      ),
+                    );
+                  }
+                  return; // نوقف عملية الحفظ
+                }
+              }
+
               // نفحص فقط إذا المستخدم قام بتغيير اليوزرنيم الخاص به
               if (newUsername.isNotEmpty && newUsername != currentUsername) {
                 bool taken = await vm.isUsernameAlreadyExists(newUsername);
@@ -187,6 +206,7 @@ class _ProfileManagementPageState extends State<ProfileManagementPage> {
               await vm.updateProfile(
                 name: _controllers["Full Name"]?.text,
                 username: newUsername.isEmpty ? (user?.username ?? "") : newUsername, // نحفظ اليوزرنيم بالحروف الصغيرة
+                phone: newPhone,
                 bio: _itemsMarkedForDeletion.contains("bio") ? "" : (_controllers["Biography"]?.text ?? ""),
                 city: _itemsMarkedForDeletion.contains("city") ? "" : (_controllers["City"]?.text ?? ""),
                 linkedin: _itemsMarkedForDeletion.contains("linkedin") ? "" : (_controllers["LinkedIn"]?.text ?? ""),
@@ -216,7 +236,7 @@ class _ProfileManagementPageState extends State<ProfileManagementPage> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        // 1. عرض المهارات الموجودة (Chips) - نفس الترتيب
+        // 1. عرض المهارات الموجودة (Chips)
         Wrap(
           spacing: 10,
           runSpacing: 10,
@@ -232,7 +252,6 @@ class _ProfileManagementPageState extends State<ProfileManagementPage> {
                   fontWeight: FontWeight.bold,
                   fontSize: 13,
                 ),
-                // أيقونة الحذف تظهر فقط في وضع التعديل
                 onDeleted: _isEditMode ? () => _toggleDeletion("skill_$skill") : null,
                 deleteIcon: Icon(
                   isMarked ? Icons.undo : Icons.cancel,
@@ -251,16 +270,15 @@ class _ProfileManagementPageState extends State<ProfileManagementPage> {
           }).toList(),
         ),
 
-        // 2. حقل "Add Skill" - يظهر في وضع التعديل بنفس ستايل Complete Profile
+        // 2. حقل الإضافة المطور
         if (_isEditMode) ...[
           const SizedBox(height: 15),
           Container(
-            padding: const EdgeInsets.symmetric(horizontal: 15, vertical: 4),
+            padding: const EdgeInsets.all(12),
             decoration: BoxDecoration(
               color: Colors.white,
               borderRadius: BorderRadius.circular(12),
-              border: Border.all(color: Colors.grey.shade100, width: 1),
-              // إضافة ظل خفيف ليطابق ستايل حقول الإدخال عندك
+              border: Border.all(color: Colors.grey.shade200, width: 1.5),
               boxShadow: [
                 BoxShadow(
                   color: Colors.black.withOpacity(0.02),
@@ -269,25 +287,33 @@ class _ProfileManagementPageState extends State<ProfileManagementPage> {
                 )
               ],
             ),
-            child: Row(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Icon(Icons.star_border, color: deepMediumPurple, size: 20),
-                const SizedBox(width: 15),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      const Text("Add Skill", style: TextStyle(color: Color(0xFF9E9E9E), fontSize: 11)),
-                      TextFormField(
+                const Text("Add a new skill", style: TextStyle(color: Color(0xFF9E9E9E), fontSize: 11)),
+                const SizedBox(height: 8),
+                Row(
+                  crossAxisAlignment: CrossAxisAlignment.start, // ✅ عدلناها لـ start عشان الزر ما ينزل مع مساحة العداد
+                  children: [
+                    Expanded(
+                      child: TextFormField(
                         controller: _skillController,
+                        maxLines: null,
+                        maxLength: 25, // ✅ 1. أضفنا الحد الأقصى لعدد الأحرف
+                        keyboardType: TextInputType.multiline,
                         style: const TextStyle(fontSize: 14, fontWeight: FontWeight.bold),
                         decoration: InputDecoration(
-                          hintText: "e.g. Flutter",
+                          hintText: "e.g. UI/UX Design...",
                           hintStyle: TextStyle(color: Colors.grey.shade400, fontSize: 13, fontWeight: FontWeight.normal),
-                          border: InputBorder.none,
+                          filled: true,
+                          fillColor: Colors.grey.shade50,
                           isDense: true,
-                          contentPadding: const EdgeInsets.symmetric(vertical: 4),
+                          contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
+                          border: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(8),
+                            borderSide: BorderSide.none,
+                          ),
+                          counterStyle: const TextStyle(fontSize: 11, color: Colors.blueGrey), // ✅ 2. ستايل ولون عداد الأحرف ليطابق البايو
                         ),
                         onFieldSubmitted: (val) {
                           if (val.trim().isNotEmpty) {
@@ -300,21 +326,31 @@ class _ProfileManagementPageState extends State<ProfileManagementPage> {
                           }
                         },
                       ),
-                    ],
-                  ),
-                ),
-                IconButton(
-                  icon: Icon(Icons.add_circle, color: deepMediumPurple),
-                  onPressed: () {
-                    if (_skillController.text.trim().isNotEmpty) {
-                      setState(() {
-                        if (!_selectedSkills.contains(_skillController.text.trim())) {
-                          _selectedSkills.add(_skillController.text.trim());
+                    ),
+                    const SizedBox(width: 10),
+                    // زر الإضافة
+                    ElevatedButton.icon(
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: deepMediumPurple,
+                        foregroundColor: Colors.white,
+                        elevation: 0,
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                      ),
+                      icon: const Icon(Icons.add, size: 18),
+                      label: const Text("Add", style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13)),
+                      onPressed: () {
+                        if (_skillController.text.trim().isNotEmpty) {
+                          setState(() {
+                            if (!_selectedSkills.contains(_skillController.text.trim())) {
+                              _selectedSkills.add(_skillController.text.trim());
+                            }
+                            _skillController.clear();
+                          });
                         }
-                        _skillController.clear();
-                      });
-                    }
-                  },
+                      },
+                    ),
+                  ],
                 ),
               ],
             ),
@@ -344,6 +380,7 @@ class _ProfileManagementPageState extends State<ProfileManagementPage> {
     bool isBio = label.toLowerCase().contains("bio") || label.toLowerCase().contains("biography");
     bool isPhone = label.toLowerCase().contains("phone");
     bool isEmail = label.toLowerCase().contains("email");
+    bool isCity = label == "City"; // ✅ إضافة للمدينة
 
     // ✅ النصوص المساعدة (Helper Text) الثابتة
     String? helperText;
@@ -352,6 +389,7 @@ class _ProfileManagementPageState extends State<ProfileManagementPage> {
       else if (label == "Username") helperText = "minimum 3 characters , spaces are not allowed";
       else if (label == "LinkedIn") helperText = "Example: https://linkedin.com/in/Sara-Mohammed";
       else if (label == "GitHub") helperText = "Example: https://github.com/Sara-Mohammed";
+      else if (label == "Phone Number") helperText = "10 digits starting with 05"; // ✅
     }
 
     return Column(
@@ -386,17 +424,17 @@ class _ProfileManagementPageState extends State<ProfileManagementPage> {
                       controller: ctrl,
                       enabled: canEdit,
                       maxLines: isPhone ? 1 : null,
-                      maxLength: isBio ? 100 : (isPhone ? 10 : 40),
-                      keyboardType: isPhone
-                          ? TextInputType.phone
-                          : (isEmail ? TextInputType.emailAddress : TextInputType.multiline),
+                      maxLength: isBio ? 100 : (isPhone ? 10 : (label == "City" ? 15 : 40)),
+                      keyboardType: isPhone ? TextInputType.phone : (isEmail ? TextInputType.emailAddress : TextInputType.multiline),
                       style: const TextStyle(fontSize: 14, fontWeight: FontWeight.bold, color: Colors.black87),
-                      decoration: const InputDecoration(
+                      decoration: InputDecoration(
                         isDense: true,
-                        contentPadding: EdgeInsets.symmetric(vertical: 4),
                         border: InputBorder.none,
-                        counterText: "",
-                        // 🔴 شلنا الـ helperText من هنا عشان ما يختفي وقت الإيرور
+                        contentPadding: EdgeInsets.zero,
+                        // ✅ تم التعديل ليظهر العداد (0/15) للمدينة وأيضاً للبيو (0/100)
+                        counterText: (isBio || isCity) ? null : "",
+                        // ✅ إضافة ستايل العداد ليكون متناسقاً باللون الرمادي المزرق
+                        counterStyle: const TextStyle(fontSize: 10, color: Colors.blueGrey),
                         errorStyle: TextStyle(fontSize: 11, color: Colors.red, height: 1.2),
                         errorMaxLines: 3,
                       ),
@@ -414,6 +452,14 @@ class _ProfileManagementPageState extends State<ProfileManagementPage> {
                           if (v.isEmpty) return "minimum 3 characters";
                           if (v.contains(' ')) return "spaces are not allowed";
                           if (v.length < 3) return "minimum 3 characters";
+                        }
+
+                        // ✅ الفاليديشن الخاص بالجوال مطابق للتسجيل
+                        if (label == "Phone Number") {
+                          final regex = RegExp(r'^05\d{8}$');
+                          if (!regex.hasMatch(v)) {
+                            return "must be 10 digits starting with 05";
+                          }
                         }
 
                         // 🔴 إضافة التحقق الخاص بالمدينة (حروف فقط) نفس اللي بالرجستر 🔴

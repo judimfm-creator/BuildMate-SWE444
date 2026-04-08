@@ -127,6 +127,7 @@ bool usernameExists = await isUsernameAlreadyExists(user.username);      if (use
 Future<void> updateProfile({
   String? name,
   String? username,
+  String? phone,
   required String bio,
   required dynamic skills,
   required String city,
@@ -163,6 +164,10 @@ Future<void> updateProfile({
     }
     if (username != null && username.isNotEmpty) {
       dataToUpdate['username'] = username.trim();
+    }
+
+    if (phone != null && phone.isNotEmpty) {
+      dataToUpdate['phoneNumber'] = phone.trim();
     }
 
     if (deletePhoto) {

@@ -107,16 +107,17 @@ class MyTeamPostView extends StatelessWidget {
 
                 const SizedBox(height: 24),
 
-                _sectionTitle("Project Idea"),
-                _infoBox([
+                _sectionTitle("Project Idea"),_infoBox([
                   Text(
-                    data['projectIdea'] != null &&
-                        data['projectIdea'].toString().isNotEmpty
+                    (data['projectIdea'] != null && data['projectIdea'].toString().trim().isNotEmpty)
                         ? data['projectIdea']
+                        : (data['idea'] != null && data['idea'].toString().trim().isNotEmpty)
+                        ? data['idea']
                         : "No project idea added yet.",
-                    style: TextStyle(
-                      color: Colors.grey.shade700,
-                      fontSize: 14,
+                    style: const TextStyle(
+                      color: purple, // ✅ تعديل اللون للموف
+                      fontWeight: FontWeight.bold, // ✅ خليناه عريض عشان يطابق باقي البيانات
+                      fontSize: 13, // ✅ نفس حجم خط باقي البيانات
                       height: 1.5,
                     ),
                   ),
@@ -580,7 +581,14 @@ Widget _buildStatusHeader(bool isSubmitted, int currentMembers, String? adminSta
 
       if (context.mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text("Team successfully registered!")),
+          const SnackBar(
+            content: Text(
+              "Team successfully registered!",
+              style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
+            ),
+            backgroundColor: Colors.green, // ✅ هنا أضفنا اللون الأخضر للرسالة
+            duration: Duration(seconds: 3), // (اختياري) مدة ظهور الرسالة
+          ),
         );
       }
     }

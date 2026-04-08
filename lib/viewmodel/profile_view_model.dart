@@ -59,7 +59,7 @@ class ProfileViewModel extends ChangeNotifier {
   Future<void> updateProfile({
     required String name,
     required String username,
-    required String phone,
+    required String phone, // ✅ أضفنا هذا المتغير
     required String bio,
     required String city,
     required String skills,
@@ -72,12 +72,14 @@ class ProfileViewModel extends ChangeNotifier {
     try {
       String uid = _auth.currentUser?.uid ?? "";
       if (uid.isNotEmpty) {
-        await _firestore.collection('users').doc(uid).update({          'fullName': name.trim(),
+        // ✅ تحديث الحقول في Firestore لتشمل رقم الجوال الجديد
+        await _firestore.collection('users').doc(uid).update({
+          'fullName': name.trim(),
           'username': username.trim(),
-          'phoneNumber': phone.trim(),
+          'phoneNumber': phone.trim(), // ✅ حفظ رقم الجوال
           'bio': bio.trim(),
           'city': city.trim(),
-          'skills': skills.trim(), // ✅ تأكدنا من إضافة المهارات هنا للحفظ
+          'skills': skills.trim(),
           'linkedin': linkedin.trim(),
           'github': github.trim(),
           'gender': gender,
@@ -118,5 +120,24 @@ class ProfileViewModel extends ChangeNotifier {
   void _setLoading(bool value) {
     _isLoading = value;
     notifyListeners();
+  }
+
+  // ✅ دالة جديدة لفحص هل رقم الجوال مستخدم مسبقاً
+  Future<bool> isPhoneNumberAlreadyExists(String phone) async {
+    // نتحقق في مجموعة المستخدمين
+    final userQuery = await _firestore
+        .collection('users')
+        .where('phoneNumber', isEqualTo: phone.trim())
+        .get();
+
+    if (userQuery.docs.isNotEmpty) return true;
+
+    // نتحقق أيضاً في مجموعة المنشآت لضمان عدم التكرار في النظام كاملاً
+    final orgQuery = await _firestore
+        .collection('organizations')
+        .where('phoneNumber', isEqualTo: phone.trim())
+        .get();
+
+    return orgQuery.docs.isNotEmpty;
   }
 }

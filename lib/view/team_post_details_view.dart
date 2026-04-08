@@ -64,6 +64,17 @@ class _TeamPostDetailsViewState extends State<TeamPostDetailsView> {
               _row(Icons.calendar_today_outlined, "Posted On", _formatDate(widget.team.createdAt)),
             ]),
 
+            if (widget.team.idea.isNotEmpty) ...[
+              const SizedBox(height: 16),
+              _sectionTitle("Project Idea"),
+              _infoCard([
+                Text(
+                  widget.team.idea,
+                  style: TextStyle(fontSize: 14, color: Colors.grey.shade700, height: 1.5),
+                ),
+              ]),
+            ],
+
             const SizedBox(height: 32),
             Divider(color: Colors.grey.shade200, thickness: 1),
             const SizedBox(height: 24),

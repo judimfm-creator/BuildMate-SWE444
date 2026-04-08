@@ -10,6 +10,7 @@ class TeamPostModel {
   final String idea; // ✅ أضفنا فكرة المشروع
   final List<String> members; // ✅ أضفنا قائمة الأعضاء
   final DateTime createdAt;
+  final String status; // ✅ أضفنا حالة الفريق هنا
 
   TeamPostModel({
     this.id,
@@ -21,6 +22,7 @@ class TeamPostModel {
     required this.idea, // ✅
     required this.members, // ✅
     required this.createdAt,
+    required this.status, // ✅
   });
 
   Map<String, dynamic> toMap() {
@@ -30,9 +32,10 @@ class TeamPostModel {
       'teamName': teamName,
       'genderPreference': genderPreference,
       'myRole': myRole,
-      'idea': idea, // ✅
+      'projectIdea': idea,
       'members': members, // ✅
       'createdAt': FieldValue.serverTimestamp(), // ✅ تعديل مهم
+      'status': status, // ✅
     };
   }
 
@@ -44,10 +47,11 @@ class TeamPostModel {
       teamName: map['teamName'] ?? '',
       genderPreference: map['genderPreference'] ?? '',
       myRole: map['myRole'] ?? '',
-      idea: map['idea'] ?? map['projectIdea'] ?? '',      members: List<String>.from(map['members'] ?? []), // ✅ تحويل آمن لقائمة الأعضاء
+      idea: map['projectIdea'] ?? map['idea'] ?? '',     members: List<String>.from(map['members'] ?? []), // ✅ تحويل آمن لقائمة الأعضاء
       createdAt: map['createdAt'] != null
           ? (map['createdAt'] as Timestamp).toDate()
           : DateTime.now(), // fallback
+      status: map['status'] ?? 'open', // ✅
     );
   }
 }

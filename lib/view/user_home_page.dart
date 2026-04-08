@@ -331,35 +331,73 @@ class _UserHomePageState extends State<UserHomePage> {
     final currentUid = FirebaseAuth.instance.currentUser?.uid;
     final bool isLeader = team.createdBy == currentUid;
 
+    // ✅ ألوان مميزة لحالة التسجيل (مستقلة تماماً عن ألوان الأدوار)
+    String statusText;
+    Color statusColor;
+
+    if (!isSubmitted) {
+      statusText = "Not Registered";
+      statusColor = Colors.grey.shade600; // رمادي
+    } else {
+      if (team.status == 'accepted') {
+        statusText = "Accepted Registration";
+        statusColor = Colors.green.shade600; // أخضر
+      } else if (team.status == 'rejected') {
+        statusText = "Rejected Registration";
+        statusColor = Colors.red.shade600; // أحمر
+      } else {
+        statusText = "Pending Registration";
+        statusColor = Colors.blue.shade600; // أزرق صريح للانتظار
+      }
+    }
+
     return Container(
       width: 300, margin: const EdgeInsets.only(right: 16),
       decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(20), border: Border.all(color: Colors.grey.shade200),
-        boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.04), blurRadius: 10, offset: const Offset(0, 4))]),
+          boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.04), blurRadius: 10, offset: const Offset(0, 4))]),
       child: Padding(
         padding: const EdgeInsets.all(16),
-        child: Column(crossAxisAlignment: CrossAxisAlignment.start, mainAxisSize: MainAxisSize.min, children: [
-          Row(children: [
-            Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+        child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              // ✅ 1. اسم الفريق ياخذ راحته فوق بدون ما يزاحمه أي شيء
               Text("Team Name", style: TextStyle(fontWeight: FontWeight.bold, color: _purple.withOpacity(0.8), fontSize: 10)),
-              Text(team.teamName, style: const TextStyle(fontSize: 15, fontWeight: FontWeight.bold), maxLines: 1, overflow: TextOverflow.ellipsis),
-            ])),
-            Row(mainAxisSize: MainAxisSize.min, children: [
-              _miniStatusBadge(isSubmitted ? "Registered" : "Pending", isSubmitted ? Colors.green : Colors.redAccent),
-              const SizedBox(width: 6),
-              _miniStatusBadge(isLeader ? "Team Leader" : "Team Member", isLeader ? Colors.orange : _purple),
+              Text(
+                team.teamName,
+                style: const TextStyle(fontSize: 15, fontWeight: FontWeight.bold, height: 1.2),
+                maxLines: 2,
+                softWrap: true,
+                overflow: TextOverflow.ellipsis,
+              ),
+
+              const SizedBox(height: 12), // مسافة بسيطة لترتيب العين
+
+              // ✅ 2. استخدام Wrap لترتيب الحالات (Tags) تحت الاسم بشكل أنيق ومستقر
+              Wrap(
+                spacing: 8, // المسافة الأفقية بين التاقات
+                runSpacing: 8, // المسافة العمودية إذا كان النص طويل ونزلوا سطر جديد
+                children: [
+                  _miniStatusBadge(isLeader ? "Team Leader" : "Team Member", isLeader ? Colors.orange.shade700 : _purple),
+                  _miniStatusBadge(statusText, statusColor),
+                ],
+              ),
+
+              const Divider(height: 20),
+              _compactInfoRow(Icons.emoji_events_outlined, hackathon.name),
+              const SizedBox(height: 8),
+              _compactInfoRow(Icons.group_outlined, "${team.members.length} / ${hackathon.teamSize} Members"),
+              const SizedBox(height: 8),
+              _compactInfoRow(Icons.event_outlined, "Event: ${hackathon.startDate.day} ${_getMonthName(hackathon.startDate.month)}"),
+
+              const Spacer(), // يضمن نزول الزر للأسفل وتوحيد المحاذاة لكل الكروت
+
+              _buildActionBtnOutlined(
+                  label: isLeader ? "Manage My Team" : "View My Team",
+                  icon: isLeader ? Icons.edit_note_rounded : Icons.visibility_outlined,
+                  color: _purple,
+                  onTap: () => Navigator.push(context, MaterialPageRoute(builder: (context) => MyTeamPostView(teamPostId: team.id ?? "", hackathonId: hackathon.id ?? "", hackathonTeamSize: hackathon.teamSize))).then((_) { if (mounted) setState(() {}); })
+              ),
             ]),
-          ]),
-          const Divider(height: 20),
-          _compactInfoRow(Icons.emoji_events_outlined, hackathon.name),
-          const SizedBox(height: 8),
-          _compactInfoRow(Icons.group_outlined, "${team.members.length} / ${hackathon.teamSize} Members"),
-          const SizedBox(height: 8),
-          _compactInfoRow(Icons.event_outlined, "Event: ${hackathon.startDate.day} ${_getMonthName(hackathon.startDate.month)}"),
-          const SizedBox(height: 16),
-          SizedBox(width: double.infinity, height: 38, child: ElevatedButton(style: ElevatedButton.styleFrom(backgroundColor: _purple, shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)), elevation: 0, padding: EdgeInsets.zero),
-            onPressed: () => Navigator.push(context, MaterialPageRoute(builder: (context) => MyTeamPostView(teamPostId: team.id ?? "", hackathonId: hackathon.id ?? "", hackathonTeamSize: hackathon.teamSize))).then((_) { if (mounted) setState(() {}); }),
-            child: Text(isLeader ? "Manage Team" : "View Team", style: const TextStyle(color: Colors.white, fontSize: 11, fontWeight: FontWeight.bold)))),
-        ]),
       ),
     );
   }
