@@ -1,19 +1,18 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
-import 'my_team_post_view.dart';
 import 'other_user_profile_page.dart';
 
 class ExploreTeamsView extends StatelessWidget {
   final String hackathonId;
   final int hackathonTeamSize;
-  final String? teamId; // 🔴 أضيفي هذا السطر
+  final String? teamId;
 
   const ExploreTeamsView({
     super.key,
     required this.hackathonId,
     required this.hackathonTeamSize,
-    this.teamId, // 🔴 وأضيفي هذا السطر
+    this.teamId,
   });
 
   static const Color _purple = Color(0xFF6D56B3);
@@ -28,7 +27,11 @@ class ExploreTeamsView extends StatelessWidget {
     List<Map<String, dynamic>> members = [];
 
     for (var id in ids) {
-      var doc = await FirebaseFirestore.instance.collection('users').doc(id).get();
+      var doc = await FirebaseFirestore.instance
+          .collection('users')
+          .doc(id)
+          .get();
+
       String name = doc.data()?['fullName'] ?? 'User';
       String role =
       (id == leaderId) ? leaderRole : (memberRolesMap[id] ?? 'Member');
@@ -76,7 +79,6 @@ class ExploreTeamsView extends StatelessWidget {
             final data = doc.data();
             final List members = data['members'] ?? [];
 
-            // إذا كان فيه teamId محدد، نتحقق إنه يطابق الـ ID حق الدوكيمينت الحالي
             if (teamId != null) {
               return doc.id == teamId;
             }
@@ -143,11 +145,9 @@ class ExploreTeamsView extends StatelessWidget {
                           ),
                         ],
                       ),
-
                       const SizedBox(height: 16),
                       const Divider(height: 1),
                       const SizedBox(height: 16),
-
                       const Text(
                         "Team Members",
                         style: TextStyle(
@@ -157,7 +157,6 @@ class ExploreTeamsView extends StatelessWidget {
                         ),
                       ),
                       const SizedBox(height: 10),
-
                       FutureBuilder<List<Map<String, dynamic>>>(
                         future: _getMemberData(
                           memberIds,
@@ -188,9 +187,7 @@ class ExploreTeamsView extends StatelessWidget {
                           );
                         },
                       ),
-
                       const SizedBox(height: 14),
-
                       const Text(
                         "Project Idea",
                         style: TextStyle(
@@ -199,7 +196,6 @@ class ExploreTeamsView extends StatelessWidget {
                         ),
                       ),
                       const SizedBox(height: 6),
-
                       Container(
                         width: double.infinity,
                         padding: const EdgeInsets.all(12),
@@ -229,9 +225,7 @@ class ExploreTeamsView extends StatelessWidget {
                           overflow: TextOverflow.ellipsis,
                         ),
                       ),
-
                       const SizedBox(height: 14),
-
                       const Text(
                         "Looking For",
                         style: TextStyle(
@@ -242,40 +236,63 @@ class ExploreTeamsView extends StatelessWidget {
                       ),
                       const SizedBox(height: 8),
                       _buildRolesList(roles),
-
                       const SizedBox(height: 22),
 
-                      SizedBox(
-                        width: double.infinity,
-                        height: 50,
-                        child: ElevatedButton(
-                          style: ElevatedButton.styleFrom(
-                            backgroundColor: (isFull || isRegistered)
-                                ? Colors.grey.shade300
-                                : _purple,
-                            shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(15),
+                      StreamBuilder<QuerySnapshot<Map<String, dynamic>>>(
+                        stream: FirebaseFirestore.instance
+                            .collection('join_requests')
+                            .where('teamPostId', isEqualTo: teamId)
+                            .where('requesterId', isEqualTo: currentUserId)
+                            .where('status', isEqualTo: 'pending')
+                            .snapshots(),
+                        builder: (context, requestSnapshot) {
+                          final bool hasPendingRequest =
+                              requestSnapshot.hasData &&
+                                  requestSnapshot.data!.docs.isNotEmpty;
+
+                          return SizedBox(
+                            width: double.infinity,
+                            height: 50,
+                            child: ElevatedButton(
+                              style: ElevatedButton.styleFrom(
+                                backgroundColor:
+                                (isFull ||
+                                    isRegistered ||
+                                    hasPendingRequest)
+                                    ? Colors.grey.shade300
+                                    : _purple,
+                                shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(15),
+                                ),
+                                elevation: 0,
+                              ),
+                              onPressed:
+                              (isFull ||
+                                  isRegistered ||
+                                  hasPendingRequest)
+                                  ? null
+                                  : () => _showJoinDialog(
+                                context,
+                                teamId,
+                                data['teamName'],
+                                roles,
+                              ),
+                              child: Text(
+                                hasPendingRequest
+                                    ? "REQUESTED"
+                                    : (isRegistered
+                                    ? "TEAM FULL"
+                                    : (isFull
+                                    ? "TEAM FULL"
+                                    : "JOIN TEAM")),
+                                style: const TextStyle(
+                                  color: Colors.white,
+                                  fontWeight: FontWeight.bold,
+                                ),
+                              ),
                             ),
-                            elevation: 0,
-                          ),
-                          onPressed: (isFull || isRegistered)
-                              ? null
-                              : () => _showJoinDialog(
-                            context,
-                            teamId,
-                            data['teamName'],
-                            roles,
-                          ),
-                          child: Text(
-                            isRegistered
-                                ? "TEAM FULL"
-                                : (isFull ? "TEAM FULL" : "JOIN TEAM"),
-                            style: const TextStyle(
-                              color: Colors.white,
-                              fontWeight: FontWeight.bold,
-                            ),
-                          ),
-                        ),
+                          );
+                        },
                       ),
                     ],
                   ),
@@ -456,73 +473,102 @@ class ExploreTeamsView extends StatelessWidget {
       List<String> roles,
       ) {
     String? selected;
+    bool isSubmitting = false;
 
     showDialog(
       context: context,
-      builder: (ctx) => AlertDialog(
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(20),
-        ),
-        title: Text("Join $name"),
-        content: DropdownButtonFormField<String>(
-          decoration: const InputDecoration(labelText: "Pick your role"),
-          items: roles
-              .map((r) => DropdownMenuItem(value: r, child: Text(r)))
-              .toList(),
-          onChanged: (v) => selected = v,
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(ctx),
-            child: const Text("Cancel"),
+      builder: (ctx) => StatefulBuilder(
+        builder: (ctx, setDialogState) => AlertDialog(
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(20),
           ),
-          ElevatedButton(
-            style: ElevatedButton.styleFrom(backgroundColor: _purple),
-            onPressed: () async {
-              if (selected != null) {
-                final navigator = Navigator.of(context);
+          title: Text("Join $name"),
+          content: DropdownButtonFormField<String>(
+            decoration: const InputDecoration(labelText: "Pick your role"),
+            items: roles
+                .map((r) => DropdownMenuItem(value: r, child: Text(r)))
+                .toList(),
+            onChanged: (v) {
+              setDialogState(() {
+                selected = v;
+              });
+            },
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(ctx),
+              child: const Text("Cancel"),
+            ),
+            ElevatedButton(
+              style: ElevatedButton.styleFrom(backgroundColor: _purple),
+              onPressed: (selected == null || isSubmitting)
+                  ? null
+                  : () async {
                 final messenger = ScaffoldMessenger.of(context);
-               final String uid = FirebaseAuth.instance.currentUser!.uid;
+                final String uid =
+                    FirebaseAuth.instance.currentUser!.uid;
 
-        try {
-          await FirebaseFirestore.instance
-              .collection('team_posts')
-              .doc(teamId)
-              .update({
-            'members': FieldValue.arrayUnion([uid]),
-            'memberRoles.$uid': selected,
-            'neededRoles': FieldValue.arrayRemove([selected]),
-          });
+                try {
+                  setDialogState(() {
+                    isSubmitting = true;
+                  });
 
-          if (ctx.mounted) {
-            // ✅ التعديل الأول: نمرر true عشان صفحة الـ Explore تحس بالنجاح
-            Navigator.pop(ctx, true); 
-          }
+                  final existingRequest = await FirebaseFirestore.instance
+                      .collection('join_requests')
+                      .where('teamPostId', isEqualTo: teamId)
+                      .where('requesterId', isEqualTo: uid)
+                      .limit(1)
+                      .get();
 
-          // ✅ التعديل الثاني: نفتح صفحة MyTeamPostView 
-          // لكن التأكد من أن الهوم سيتحدث صار مسؤولية الـ Navigator.pop اللي فوق
-          navigator.pushReplacement(
-            MaterialPageRoute(
-              builder: (c) => MyTeamPostView(
-                teamPostId: teamId,
-                hackathonId: hackathonId,
-                hackathonTeamSize: hackathonTeamSize,
+                  if (existingRequest.docs.isNotEmpty) {
+                    if (ctx.mounted) {
+                      Navigator.pop(ctx);
+                    }
+
+                    messenger.showSnackBar(
+                      const SnackBar(
+                        content: Text(
+                          "You already sent a request to this team.",
+                        ),
+                      ),
+                    );
+                    return;
+                  }
+
+                  await FirebaseFirestore.instance
+                      .collection('join_requests')
+                      .add({
+                    'teamPostId': teamId,
+                    'requesterId': uid,
+                    'desiredRole': selected,
+                    'status': 'pending',
+                    'createdAt': FieldValue.serverTimestamp(),
+                  });
+
+                  if (ctx.mounted) {
+                    Navigator.pop(ctx, true);
+                  }
+
+                  messenger.showSnackBar(
+                    const SnackBar(
+                      content: Text(
+                        "Join request sent successfully.",
+                      ),
+                    ),
+                  );
+                } catch (e) {
+                  messenger.showSnackBar(
+                    SnackBar(content: Text("Error joining: $e")),
+                  );
+                }
+              },
+              child: const Text(
+                "Confirm Join",
+                style: TextStyle(color: Colors.white),
               ),
             ),
-          );
-        } catch (e) {
-          messenger.showSnackBar(
-            SnackBar(content: Text("Error joining: $e")),
-          );
-        }
-              }
-            },
-            child: const Text(
-              "Confirm Join",
-              style: TextStyle(color: Colors.white),
-            ),
-          ),
-        ],
+          ],
+        ),
       ),
     );
   }

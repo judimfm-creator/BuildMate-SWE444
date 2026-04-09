@@ -2,7 +2,8 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'other_user_profile_page.dart';
-
+import 'team_registration_form_view.dart';
+import 'leader_join_requests_view.dart';
 class MyTeamPostView extends StatelessWidget {
   final String teamPostId;
   final String hackathonId;
@@ -184,14 +185,23 @@ class MyTeamPostView extends StatelessWidget {
     ),
 
   // 2. زر طلبات الانضمام
-  _actionButton(
-    label: 'View Join Requests',
-    icon: Icons.group_add_outlined,
-    color: Colors.grey.shade300,
-    onPressed: null,
-  ),
+                _actionButton(
+                  label: 'View Join Requests',
+                  icon: Icons.group_add_outlined,
+                  color: purple,
+                  onPressed: () {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (_) => LeaderJoinRequestsView(
+                          teamPostId: teamPostId,
+                        ),
+                      ),
+                    );
+                  },
+                ),
   const SizedBox(height: 12),
-
+/*
   // 3. زر التسجيل النهائي
   _actionButton(
     label: isSubmitted
@@ -204,7 +214,33 @@ class MyTeamPostView extends StatelessWidget {
     onPressed: (!isSubmitted && currentMembers >= 2)
         ? () => _handleRegistration(context, currentMembers)
         : null,
-  ),
+  ),*/
+
+                _actionButton(
+                  label: isSubmitted
+                      ? 'Registration Submitted'
+                      : 'Finalize & Register Team',
+                  icon: isSubmitted ? Icons.verified_user : Icons.rocket_launch,
+                  color: isSubmitted
+                      ? Colors.grey
+                      : (currentMembers >= 2 ? Colors.green : Colors.grey.shade400),
+                  onPressed: (!isSubmitted && currentMembers >= 2)
+                      ? () {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (_) => TeamRegistrationFormView(
+                          hackathonId: hackathonId,
+                          teamPostId: teamPostId,
+                          teamName: data['teamName'] ?? 'Unnamed Team',
+                          members: List<String>.from(memberIds),
+                          hackathonTeamSize: hackathonTeamSize,
+                        ),
+                      ),
+                    );
+                  }
+                      : null,
+                ),
 
   // 4. التنبيه الخاص بجودة البيانات (تحت الزر الآن)
   if (!isSubmitted)
