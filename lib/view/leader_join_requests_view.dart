@@ -16,6 +16,47 @@ class LeaderJoinRequestsView extends StatelessWidget {
   static const Color _lightPurple = Color(0xFFF0EEFF);
   static const Color _pageBg = Color(0xFFF8F9FD);
 
+  Future<void> _acceptRequest(
+      BuildContext context,
+      String requestDocId,
+      String requesterId,
+      String desiredRole,
+      ) async {
+    final messenger = ScaffoldMessenger.of(context);
+
+    final firestore = FirebaseFirestore.instance;
+    final batch = firestore.batch();
+
+    final requestRef = firestore.collection('join_requests').doc(requestDocId);
+    batch.update(requestRef, {'status': 'accepted'});
+
+    final teamPostRef = firestore.collection('team_posts').doc(teamPostId);
+    batch.update(teamPostRef, {
+      'members': FieldValue.arrayUnion([requesterId]),
+    });
+
+    await batch.commit();
+
+    messenger.showSnackBar(
+      const SnackBar(content: Text('Request accepted ✓'), backgroundColor: _purple),
+    );
+    }
+
+
+  Future<void> _rejectRequest(BuildContext context, String requestDocId) async {
+
+    final messenger = ScaffoldMessenger.of(context);
+
+    await FirebaseFirestore.instance
+        .collection('join_requests')
+        .doc(requestDocId)
+        .update({'status': 'rejected'});
+
+      messenger.showSnackBar(
+        const SnackBar(content: Text('Request rejected'), backgroundColor: Color(0xFF616161), ),
+      );
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -96,7 +137,9 @@ class LeaderJoinRequestsView extends StatelessWidget {
             padding: const EdgeInsets.all(16),
             itemCount: requests.length,
             itemBuilder: (context, index) {
-              final data = requests[index].data();
+              final doc = requests[index];
+              final data = doc.data();
+              final String requestDocId = doc.id;
 
               final String requesterId =
               (data['requesterId'] ?? '').toString();
@@ -221,6 +264,42 @@ class LeaderJoinRequestsView extends StatelessWidget {
                                     color: Colors.grey.shade500,
                                     fontWeight: FontWeight.w500,
                                   ),
+                                ),
+                                const SizedBox(height: 12),
+
+                                Row(
+                                  children: [
+                                    // Accept — filled purple
+                                    Expanded(
+                                      child: ElevatedButton(
+                                        onPressed: () => _acceptRequest(context, requestDocId, requesterId, desiredRole),
+                                        style: ElevatedButton.styleFrom(
+                                          backgroundColor: _purple,
+                                          foregroundColor: Colors.white,
+                                          elevation: 0,
+                                          padding: const EdgeInsets.symmetric(vertical: 10),
+                                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                                        ),
+                                        child: const Text('Accept', style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600)),
+                                      ),
+                                    ),
+
+                                    const SizedBox(width: 10),
+
+                                    // Reject — outlined purple
+                                    Expanded(
+                                      child: OutlinedButton(
+                                        onPressed: () => _rejectRequest(context, requestDocId),
+                                        style: OutlinedButton.styleFrom(
+                                          foregroundColor: _purple,
+                                          side: const BorderSide(color: _purple, width: 1.5),
+                                          padding: const EdgeInsets.symmetric(vertical: 10),
+                                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                                        ),
+                                        child: const Text('Reject', style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600)),
+                                      ),
+                                    ),
+                                  ],
                                 ),
                               ],
                             ),

@@ -1,0 +1,10 @@
+[33m2e83e1d[m[33m ([m[1;36mHEAD[m[33m -> [m[1;32mfeature-judi[m[33m, [m[1;31morigin/Hailah[m[33m, [m[1;32mHailah[m[33m)[m Saving my current changes before merging
+[33m3a7b6ae[m Saving my current changes before merging
+[33m2dabeb3[m[33m ([m[1;31morigin/rahaf-edits[m[33m)[m fix decision edit + delete improvements
+[33m5d33950[m Merge branch 'rahaf-edits' of https://github.com/judimfm-creator/BuildMate-SWE444 into Hailah
+[33mde10ca1[m Update gitignore and pubspec.lock
+[33m0f2cdbf[m merge feature-judi into rahaf-edits
+[33maca57f2[m save my work before pulling
+[33m7290dc1[m Remove functions/node_modules from Git tracking
+[33m499b07a[m[33m ([m[1;31morigin/feature-judi[m[33m)[m fix: pass match logic
+[33m477a73a[m Fix: teams visibility on Home, update Status filter to multi-select, and fix direct team join logic

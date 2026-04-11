@@ -4,10 +4,12 @@ import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 
 import '../model/hackathon.dart';
+import '../model/org_model.dart';
 import '../widgets/buildmate_app_bar.dart';
 import 'create_team_post_view.dart';
 import 'hackathon_teams_view.dart' as teams_view;
 import 'institution_team_posts_view.dart' as institution_posts;
+import 'institution_public_profile_page.dart';
 import 'my_team_post_view.dart';
 
 class HackathonDetailsView extends StatefulWidget {
@@ -28,30 +30,74 @@ class _HackathonDetailsViewState extends State<HackathonDetailsView> {
 
   String _formatDate(DateTime d) => DateFormat('dd/MM/yyyy').format(d);
 
-  Future<QueryDocumentSnapshot<Map<String, dynamic>>?> _getUserTeamPost(String uid, String hid) async {
+  Future<QueryDocumentSnapshot<Map<String, dynamic>>?> _getUserTeamPost(
+    String uid,
+    String hid,
+  ) async {
     final firestore = FirebaseFirestore.instance;
-    final leader = await firestore.collection('team_posts').where('hackathonId', isEqualTo: hid).where('createdBy', isEqualTo: uid).limit(1).get();
+
+    final leader = await firestore
+        .collection('team_posts')
+        .where('hackathonId', isEqualTo: hid)
+        .where('createdBy', isEqualTo: uid)
+        .limit(1)
+        .get();
+
     if (leader.docs.isNotEmpty) return leader.docs.first;
-    
-    final member = await firestore.collection('team_posts').where('hackathonId', isEqualTo: hid).where('members', arrayContains: uid).limit(1).get();
+
+    final member = await firestore
+        .collection('team_posts')
+        .where('hackathonId', isEqualTo: hid)
+        .where('members', arrayContains: uid)
+        .limit(1)
+        .get();
+
     if (member.docs.isNotEmpty) return member.docs.first;
+
     return null;
+  }
+
+  Future<void> _openInstitutionProfile(BuildContext context) async {
+    try {
+      final orgId = widget.hackathon.organizationId;
+
+      final doc = await FirebaseFirestore.instance
+          .collection('organizations')
+          .doc(orgId)
+          .get();
+
+      if (!doc.exists || doc.data() == null) return;
+
+      final org = OrgModel.fromMap(doc.data()!);
+
+      if (!context.mounted) return;
+
+      Navigator.push(
+        context,
+        MaterialPageRoute(
+          builder: (_) => InstitutionPublicProfilePage(org: org),
+        ),
+      );
+    } catch (e) {
+      // نخليها ساكتة عشان ما نخرب شيء
+    }
   }
 
   @override
   Widget build(BuildContext context) {
-    // ✅ ضبط الموعد النهائي الدقيق (نهاية اليوم 23:59:59) لضمان التزامن مع الكروت
     final DateTime now = DateTime.now();
     final DateTime deadlineDateTime = DateTime(
       widget.hackathon.applicationDeadline.year,
       widget.hackathon.applicationDeadline.month,
       widget.hackathon.applicationDeadline.day,
-      23, 59, 59,
+      23,
+      59,
+      59,
     );
 
     final bool isEventEnded = widget.hackathon.endDate.isBefore(now);
     final bool regNotStarted = now.isBefore(widget.hackathon.applicationOpenDate);
-    final bool regClosed = now.isAfter(deadlineDateTime); // يستخدم التوقيت الجديد
+    final bool regClosed = now.isAfter(deadlineDateTime);
     final String? currentUid = FirebaseAuth.instance.currentUser?.uid;
 
     return Scaffold(
@@ -64,10 +110,15 @@ class _HackathonDetailsViewState extends State<HackathonDetailsView> {
       body: currentUid == null
           ? const Center(child: Text("Please sign in."))
           : FutureBuilder<DocumentSnapshot>(
-              future: FirebaseFirestore.instance.collection('organizations').doc(currentUid).get(),
+              future: FirebaseFirestore.instance
+                  .collection('organizations')
+                  .doc(currentUid)
+                  .get(),
               builder: (context, roleSnapshot) {
                 if (roleSnapshot.connectionState == ConnectionState.waiting) {
-                  return const Center(child: CircularProgressIndicator(color: _purple));
+                  return const Center(
+                    child: CircularProgressIndicator(color: _purple),
+                  );
                 }
 
                 final bool isInstitution = roleSnapshot.data?.exists ?? false;
@@ -77,31 +128,116 @@ class _HackathonDetailsViewState extends State<HackathonDetailsView> {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      // ✅ تم استدعاء البادج المحدث
-                      _buildSimpleStatusBadge(regNotStarted, regClosed, isEventEnded),
+                      _buildSimpleStatusBadge(
+                        regNotStarted,
+                        regClosed,
+                        isEventEnded,
+                      ),
                       const SizedBox(height: 12),
-                      
-                     
+
+                      if (!isInstitution) ...[
+                        SizedBox(
+                          width: double.infinity,
+                          child: OutlinedButton(
+                            style: OutlinedButton.styleFrom(
+                              backgroundColor: _lightPurple,
+                              side: BorderSide(
+                                color: _purple.withOpacity(0.3),
+                              ),
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(12),
+                              ),
+                              padding: const EdgeInsets.symmetric(
+                                vertical: 12,
+                                horizontal: 12,
+                              ),
+                            ),
+                            onPressed: () => _openInstitutionProfile(context),
+                            child: Row(
+                              children: [
+                                const Icon(
+                                  Icons.business,
+                                  color: _purple,
+                                  size: 20,
+                                ),
+                                const SizedBox(width: 10),
+                                const Expanded(
+                                  child: Text(
+                                    "View Organizer Profile",
+                                    style: TextStyle(
+                                      color: _purple,
+                                      fontWeight: FontWeight.bold,
+                                      fontSize: 14,
+                                    ),
+                                  ),
+                                ),
+                                const Icon(
+                                  Icons.arrow_forward_ios,
+                                  size: 14,
+                                  color: _purple,
+                                ),
+                              ],
+                            ),
+                          ),
+                        ),
+                        const SizedBox(height: 12),
+                      ],
 
                       Text(
-                        widget.hackathon.name, 
-                        style: const TextStyle(fontSize: 24, fontWeight: FontWeight.bold, color: Colors.black),
+                        widget.hackathon.name,
+                        style: const TextStyle(
+                          fontSize: 24,
+                          fontWeight: FontWeight.bold,
+                          color: Colors.black,
+                        ),
                       ),
-                      
+
                       const SizedBox(height: 16),
                       _sectionTitle("Description"),
-                      Text(widget.hackathon.description, style: TextStyle(fontSize: 14, color: Colors.grey.shade700, height: 1.6)),
-                      
+                      Text(
+                        widget.hackathon.description,
+                        style: TextStyle(
+                          fontSize: 14,
+                          color: Colors.grey.shade700,
+                          height: 1.6,
+                        ),
+                      ),
+
                       const SizedBox(height: 22),
                       _sectionTitle("Event Details"),
                       _infoCard([
-                        _row(Icons.category_outlined, "Domain", widget.hackathon.domain),
-                        _row(Icons.public_outlined, "Mode", widget.hackathon.mode),
-                        _row(Icons.location_city_outlined, "City", widget.hackathon.city),
-                        _row(Icons.place_outlined, "Location", widget.hackathon.location),
-                        _row(Icons.groups_outlined, "Team Size", 
-                          widget.hackathon.teamSize > 2 ? "2 - ${widget.hackathon.teamSize} members" : "2 members"),
-                        _row(Icons.school_outlined, "Education", widget.hackathon.educationCriteria),
+                        _row(
+                          Icons.category_outlined,
+                          "Domain",
+                          widget.hackathon.domain,
+                        ),
+                        _row(
+                          Icons.public_outlined,
+                          "Mode",
+                          widget.hackathon.mode,
+                        ),
+                        _row(
+                          Icons.location_city_outlined,
+                          "City",
+                          widget.hackathon.city,
+                        ),
+                        _row(
+                          Icons.place_outlined,
+                          "Location",
+                          widget.hackathon.location,
+                        ),
+                        _row(
+                          Icons.groups_outlined,
+                          "Team Size",
+                          widget.hackathon.teamSize > 2
+                              ? "2 - ${widget.hackathon.teamSize} members"
+                              : "2 members",
+                        ),
+                        _row(
+                          Icons.school_outlined,
+                          "Education",
+                          widget.hackathon.educationCriteria,
+                        ),
                       ]),
 
                       const SizedBox(height: 16),
@@ -110,21 +246,42 @@ class _HackathonDetailsViewState extends State<HackathonDetailsView> {
                       const SizedBox(height: 16),
                       _sectionTitle("Important Dates"),
                       _infoCard([
-                        _row(Icons.calendar_month_outlined, "Registration Starts", _formatDate(widget.hackathon.applicationOpenDate)),
-                        _row(Icons.timer_outlined, "Registration Deadline", _formatDate(widget.hackathon.applicationDeadline)),
-                        _row(Icons.event_outlined, "Start Date", _formatDate(widget.hackathon.startDate)),
-                        _row(Icons.event_available_outlined, "End Date", _formatDate(widget.hackathon.endDate)),
+                        _row(
+                          Icons.calendar_month_outlined,
+                          "Registration Starts",
+                          _formatDate(widget.hackathon.applicationOpenDate),
+                        ),
+                        _row(
+                          Icons.timer_outlined,
+                          "Registration Deadline",
+                          _formatDate(widget.hackathon.applicationDeadline),
+                        ),
+                        _row(
+                          Icons.event_outlined,
+                          "Start Date",
+                          _formatDate(widget.hackathon.startDate),
+                        ),
+                        _row(
+                          Icons.event_available_outlined,
+                          "End Date",
+                          _formatDate(widget.hackathon.endDate),
+                        ),
                       ]),
-                      
+
                       const SizedBox(height: 16),
                       if (widget.hackathon.rolesNeeded.isNotEmpty) ...[
                         _sectionTitle("Roles Needed"),
                         _buildRolesSection(),
                       ],
-                      
+
                       const SizedBox(height: 30),
-                      // ✅ تم تمرير الحالة المحدثة للأزرار لضمان عملها حتى 11:59م
-                      _buildActionButtons(context, isInstitution, currentUid, regNotStarted, regClosed),
+                      _buildActionButtons(
+                        context,
+                        isInstitution,
+                        currentUid,
+                        regNotStarted,
+                        regClosed,
+                      ),
                       const SizedBox(height: 40),
                     ],
                   ),
@@ -134,9 +291,6 @@ class _HackathonDetailsViewState extends State<HackathonDetailsView> {
     );
   }
 
-  // --- UI Helpers ---
-
-  // ✅ تحديث البادج ليدعم الحالات الثلاث بدقة الوقت الجديدة
   Widget _buildSimpleStatusBadge(bool ns, bool cl, bool ended) {
     String label = "Registration Open";
     Color color = Colors.green;
@@ -160,79 +314,154 @@ class _HackathonDetailsViewState extends State<HackathonDetailsView> {
       children: [
         Icon(icon, color: color, size: 16),
         const SizedBox(width: 6),
-        Text(label, style: TextStyle(color: color, fontWeight: FontWeight.bold, fontSize: 13)),
+        Text(
+          label,
+          style: TextStyle(
+            color: color,
+            fontWeight: FontWeight.bold,
+            fontSize: 13,
+          ),
+        ),
       ],
     );
   }
 
   Widget _infoCard(List<Widget> rows) {
     return Container(
-      width: double.infinity, padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(color: _lightPurple, borderRadius: BorderRadius.circular(14)),
-      child: Column(children: rows.expand((w) => [w, if (w != rows.last) Divider(color: _purple.withOpacity(0.1), height: 16)]).toList()),
+      width: double.infinity,
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: _lightPurple,
+        borderRadius: BorderRadius.circular(14),
+      ),
+      child: Column(
+        children: rows
+            .expand(
+              (w) => [
+                w,
+                if (w != rows.last)
+                  Divider(
+                    color: _purple.withOpacity(0.1),
+                    height: 16,
+                  ),
+              ],
+            )
+            .toList(),
+      ),
     );
   }
 
   Widget _row(IconData icon, String label, String value) {
-    return Row(children: [
-      Icon(icon, size: 18, color: _purple), const SizedBox(width: 12),
-      Text("$label: ", style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13)),
-      Expanded(child: Text(value, style: TextStyle(fontSize: 13, color: Colors.grey.shade700))),
-    ]);
+    return Row(
+      children: [
+        Icon(icon, size: 18, color: _purple),
+        const SizedBox(width: 12),
+        Text(
+          "$label: ",
+          style: const TextStyle(
+            fontWeight: FontWeight.bold,
+            fontSize: 13,
+          ),
+        ),
+        Expanded(
+          child: Text(
+            value,
+            style: TextStyle(
+              fontSize: 13,
+              color: Colors.grey.shade700,
+            ),
+          ),
+        ),
+      ],
+    );
   }
 
-  Widget _buildActionButtons(BuildContext context, bool isInst, String uid, bool notStarted, bool closed) {
+  Widget _buildActionButtons(
+    BuildContext context,
+    bool isInst,
+    String uid,
+    bool notStarted,
+    bool closed,
+  ) {
     final String hid = widget.hackathon.id ?? "";
+
     if (isInst) {
       return _btn(
-        "View Teams Submission", 
-        _purple, 
+        "View Teams Submission",
+        _purple,
         () => Navigator.push(
-          context, 
+          context,
           MaterialPageRoute(
-            builder: (context) => institution_posts.InstitutionTeamPostsView(hackathonId: hid)
-          )
-        )
+            builder: (context) =>
+                institution_posts.InstitutionTeamPostsView(hackathonId: hid),
+          ),
+        ),
       );
     }
+
     return FutureBuilder<QueryDocumentSnapshot<Map<String, dynamic>>?>(
       future: _getUserTeamPost(uid, hid),
       builder: (context, teamSnap) {
-        if (teamSnap.connectionState == ConnectionState.waiting) return const SizedBox();
+        if (teamSnap.connectionState == ConnectionState.waiting) {
+          return const SizedBox();
+        }
+
         if (teamSnap.hasData && teamSnap.data != null) {
           final bool isOwner = teamSnap.data!.data()['createdBy'] == uid;
-          return _btn(isOwner ? "Manage My Team" : "View My Team", _purple, () {
-            Navigator.push(context, MaterialPageRoute(builder: (context) => MyTeamPostView(
-              teamPostId: teamSnap.data!.id, hackathonId: hid, hackathonTeamSize: widget.hackathon.teamSize
-            ))).then((_) => setState(() {})); 
-          });
+
+          return _btn(
+            isOwner ? "Manage My Team" : "View My Team",
+            _purple,
+            () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (context) => MyTeamPostView(
+                    teamPostId: teamSnap.data!.id,
+                    hackathonId: hid,
+                    hackathonTeamSize: widget.hackathon.teamSize,
+                  ),
+                ),
+              ).then((_) => setState(() {}));
+            },
+          );
         }
+
         return Column(
           children: [
-            if (closed) 
+            if (closed)
               _btn("Registration Closed", Colors.grey, null)
             else if (notStarted) ...[
               _btn("Create Team Post (Opening Soon)", Colors.grey, null),
               const SizedBox(height: 12),
               _outlinedBtn("Join Existing Team (Opening Soon)", Colors.grey, null),
-            ]
-            else ...[
+            ] else ...[
               _btn(
-                "Create Team Post", 
-                _purple, 
+                "Create Team Post",
+                _purple,
                 () => Navigator.push(
-                  context, 
-                  MaterialPageRoute(builder: (context) => CreateTeamPostScreen(hackathonId: hid, hackathonTeamSize: widget.hackathon.teamSize))
-                ).then((_) => setState(() {}))
+                  context,
+                  MaterialPageRoute(
+                    builder: (context) => CreateTeamPostScreen(
+                      hackathonId: hid,
+                      hackathonTeamSize: widget.hackathon.teamSize,
+                    ),
+                  ),
+                ).then((_) => setState(() {})),
               ),
               const SizedBox(height: 12),
               _outlinedBtn(
-                "Join Existing Team", 
-                _purple, 
+                "Join Existing Team",
+                _purple,
                 () => Navigator.push(
-                  context, 
-                  MaterialPageRoute(builder: (context) => teams_view.ExploreTeamsView(hackathonId: hid, hackathonTeamSize: widget.hackathon.teamSize))
-                ).then((_) => setState(() {}))
+                  context,
+                  MaterialPageRoute(
+                    builder: (context) => teams_view.ExploreTeamsView(
+                      hackathonId: hid,
+                      hackathonTeamSize: widget.hackathon.teamSize,
+                    ),
+                  ),
+                ).then((_) => setState(() {})),
               ),
             ],
           ],
@@ -241,9 +470,98 @@ class _HackathonDetailsViewState extends State<HackathonDetailsView> {
     );
   }
 
-  Widget _btn(String l, Color c, VoidCallback? a) => SizedBox(width: double.infinity, height: 50, child: ElevatedButton(style: ElevatedButton.styleFrom(backgroundColor: c, foregroundColor: Colors.white, shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12))), onPressed: a, child: Text(l, style: const TextStyle(fontWeight: FontWeight.bold))));
-  Widget _outlinedBtn(String l, Color c, VoidCallback? a) => SizedBox(width: double.infinity, height: 50, child: OutlinedButton(style: OutlinedButton.styleFrom(foregroundColor: c, side: BorderSide(color: c), shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12))), onPressed: a, child: Text(l, style: const TextStyle(fontWeight: FontWeight.bold))));
-  Widget _sectionTitle(String title) => Padding(padding: const EdgeInsets.only(bottom: 8, top: 12), child: Text(title, style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold)));
-  Widget _buildRolesSection() => Wrap(spacing: 8, runSpacing: 8, children: widget.hackathon.rolesNeeded.map((r) => Container(padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6), decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(20), border: Border.all(color: _purple.withOpacity(0.3))), child: Text(r, style: const TextStyle(fontSize: 12, color: _purple, fontWeight: FontWeight.w500)))).toList());
-  Widget _buildRequirementNote() => Container(padding: const EdgeInsets.all(12), decoration: BoxDecoration(color: Colors.amber.shade50, borderRadius: BorderRadius.circular(12), border: Border.all(color: Colors.amber.shade200)), child: const Row(children: [Icon(Icons.info_outline, color: Colors.orange, size: 20), SizedBox(width: 10), Expanded(child: Text("Note: You must have at least 2 members to register", style: TextStyle(fontSize: 12, fontWeight: FontWeight.w500)))]));
+  Widget _btn(String l, Color c, VoidCallback? a) => SizedBox(
+        width: double.infinity,
+        height: 50,
+        child: ElevatedButton(
+          style: ElevatedButton.styleFrom(
+            backgroundColor: c,
+            foregroundColor: Colors.white,
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(12),
+            ),
+          ),
+          onPressed: a,
+          child: Text(
+            l,
+            style: const TextStyle(fontWeight: FontWeight.bold),
+          ),
+        ),
+      );
+
+  Widget _outlinedBtn(String l, Color c, VoidCallback? a) => SizedBox(
+        width: double.infinity,
+        height: 50,
+        child: OutlinedButton(
+          style: OutlinedButton.styleFrom(
+            foregroundColor: c,
+            side: BorderSide(color: c),
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(12),
+            ),
+          ),
+          onPressed: a,
+          child: Text(
+            l,
+            style: const TextStyle(fontWeight: FontWeight.bold),
+          ),
+        ),
+      );
+
+  Widget _sectionTitle(String title) => Padding(
+        padding: const EdgeInsets.only(bottom: 8, top: 12),
+        child: Text(
+          title,
+          style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+        ),
+      );
+
+  Widget _buildRolesSection() => Wrap(
+        spacing: 8,
+        runSpacing: 8,
+        children: widget.hackathon.rolesNeeded
+            .map(
+              (r) => Container(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 12,
+                  vertical: 6,
+                ),
+                decoration: BoxDecoration(
+                  color: Colors.white,
+                  borderRadius: BorderRadius.circular(20),
+                  border: Border.all(color: _purple.withOpacity(0.3)),
+                ),
+                child: Text(
+                  r,
+                  style: const TextStyle(
+                    fontSize: 12,
+                    color: _purple,
+                    fontWeight: FontWeight.w500,
+                  ),
+                ),
+              ),
+            )
+            .toList(),
+      );
+
+  Widget _buildRequirementNote() => Container(
+        padding: const EdgeInsets.all(12),
+        decoration: BoxDecoration(
+          color: Colors.amber.shade50,
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(color: Colors.amber.shade200),
+        ),
+        child: const Row(
+          children: [
+            Icon(Icons.info_outline, color: Colors.orange, size: 20),
+            SizedBox(width: 10),
+            Expanded(
+              child: Text(
+                "Note: You must have at least 2 members to register",
+                style: TextStyle(fontSize: 12, fontWeight: FontWeight.w500),
+              ),
+            ),
+          ],
+        ),
+      );
 }
