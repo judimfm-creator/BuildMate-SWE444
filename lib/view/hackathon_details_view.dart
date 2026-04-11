@@ -4,10 +4,12 @@ import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 
 import '../model/hackathon.dart';
+import '../model/org_model.dart';
 import '../widgets/buildmate_app_bar.dart';
 import 'create_team_post_view.dart';
 import 'hackathon_teams_view.dart' as teams_view;
 import 'institution_team_posts_view.dart' as institution_posts;
+import 'institution_public_profile_page.dart';
 import 'my_team_post_view.dart';
 
 class HackathonDetailsView extends StatefulWidget {
@@ -38,9 +40,35 @@ class _HackathonDetailsViewState extends State<HackathonDetailsView> {
     return null;
   }
 
+  // 🔥 الجديد (فتح بروفايل المنشأة)
+  Future<void> _openInstitutionProfile(BuildContext context) async {
+    try {
+      final orgId = widget.hackathon.organizationId;
+
+      final doc = await FirebaseFirestore.instance
+          .collection('organizations')
+          .doc(orgId)
+          .get();
+
+      if (!doc.exists || doc.data() == null) return;
+
+      final org = OrgModel.fromMap(doc.data()!);
+
+      if (!context.mounted) return;
+
+      Navigator.push(
+        context,
+        MaterialPageRoute(
+          builder: (_) => InstitutionPublicProfilePage(org: org),
+        ),
+      );
+    } catch (e) {
+      // ما نخرب شي
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
-    // ✅ ضبط الموعد النهائي الدقيق (نهاية اليوم 23:59:59) لضمان التزامن مع الكروت
     final DateTime now = DateTime.now();
     final DateTime deadlineDateTime = DateTime(
       widget.hackathon.applicationDeadline.year,
@@ -51,7 +79,7 @@ class _HackathonDetailsViewState extends State<HackathonDetailsView> {
 
     final bool isEventEnded = widget.hackathon.endDate.isBefore(now);
     final bool regNotStarted = now.isBefore(widget.hackathon.applicationOpenDate);
-    final bool regClosed = now.isAfter(deadlineDateTime); // يستخدم التوقيت الجديد
+    final bool regClosed = now.isAfter(deadlineDateTime);
     final String? currentUid = FirebaseAuth.instance.currentUser?.uid;
 
     return Scaffold(
@@ -77,11 +105,42 @@ class _HackathonDetailsViewState extends State<HackathonDetailsView> {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      // ✅ تم استدعاء البادج المحدث
                       _buildSimpleStatusBadge(regNotStarted, regClosed, isEventEnded),
                       const SizedBox(height: 12),
-                      
-                     
+
+SizedBox(
+  width: double.infinity,
+  child: OutlinedButton(
+    style: OutlinedButton.styleFrom(
+      backgroundColor: _lightPurple,
+      side: BorderSide(color: _purple.withOpacity(0.3)),
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(12),
+      ),
+      padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 12),
+    ),
+    onPressed: () => _openInstitutionProfile(context),
+    child: Row(
+      children: [
+        const Icon(Icons.business, color: _purple, size: 20),
+        const SizedBox(width: 10),
+        Expanded(
+          child: Text(
+            "View Organizer Profile",
+            style: const TextStyle(
+              color: _purple,
+              fontWeight: FontWeight.bold,
+              fontSize: 14,
+            ),
+          ),
+        ),
+        const Icon(Icons.arrow_forward_ios, size: 14, color: _purple),
+      ],
+    ),
+  ),
+),
+
+const SizedBox(height: 12),
 
                       Text(
                         widget.hackathon.name, 
@@ -123,7 +182,6 @@ class _HackathonDetailsViewState extends State<HackathonDetailsView> {
                       ],
                       
                       const SizedBox(height: 30),
-                      // ✅ تم تمرير الحالة المحدثة للأزرار لضمان عملها حتى 11:59م
                       _buildActionButtons(context, isInstitution, currentUid, regNotStarted, regClosed),
                       const SizedBox(height: 40),
                     ],
@@ -134,9 +192,6 @@ class _HackathonDetailsViewState extends State<HackathonDetailsView> {
     );
   }
 
-  // --- UI Helpers ---
-
-  // ✅ تحديث البادج ليدعم الحالات الثلاث بدقة الوقت الجديدة
   Widget _buildSimpleStatusBadge(bool ns, bool cl, bool ended) {
     String label = "Registration Open";
     Color color = Colors.green;
