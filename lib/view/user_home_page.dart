@@ -313,12 +313,121 @@ class _UserHomePageState extends State<UserHomePage> {
                     return _buildActionBtnOutlined(label: isOwner ? "Manage My Team" : "View My Team", icon: isOwner ? Icons.edit_note_rounded : Icons.visibility_outlined, color: _purple,
                       onTap: () => Navigator.push(context, MaterialPageRoute(builder: (context) => MyTeamPostView(teamPostId: teamSnap.data!.id, hackathonId: hid, hackathonTeamSize: h.teamSize))).then((_) { if (mounted) setState(() {}); }));
                   }
-                  if (regClosed) return _buildActionBtnOutlined(label: "Registration Closed", icon: Icons.lock_outline, color: Colors.grey, onTap: () {});
-                  return Row(children: [
-                    Expanded(child: _buildActionBtnOutlined(label: "Create Team", icon: Icons.add_circle_outline, color: _purple, onTap: regNotStarted ? () {} : () => Navigator.push(context, MaterialPageRoute(builder: (context) => CreateTeamPostScreen(hackathonId: hid, hackathonTeamSize: h.teamSize))).then((_) { if (mounted) setState(() {}); }))),
-                    const SizedBox(width: 8),
-                    Expanded(child: _buildActionBtnOutlined(label: "Join Team", icon: Icons.person_add_alt_1_outlined, color: _purple, onTap: regNotStarted ? () {} : () => Navigator.push(context, MaterialPageRoute(builder: (context) => teams_view.ExploreTeamsView(hackathonId: hid, hackathonTeamSize: h.teamSize))).then((_) { if (mounted) setState(() {}); }))),
-                  ]);
+                  if (regClosed) {
+                    return _buildActionBtnOutlined(
+                      label: "Registration Closed",
+                      icon: Icons.lock_outline,
+                      color: Colors.grey,
+                      onTap: () {},
+                    );
+                  }
+
+                  return StreamBuilder<QuerySnapshot<Map<String, dynamic>>>(
+                    stream: FirebaseFirestore.instance
+                        .collection('join_requests')
+                        .where('hackathonId', isEqualTo: hid)
+                        .where('requesterId', isEqualTo: currentUid)
+                        .where('status', isEqualTo: 'pending')
+                        .snapshots(),
+                    builder: (context, requestSnapshot) {
+                      final bool hasPendingRequest =
+                          requestSnapshot.hasData &&
+                              requestSnapshot.data!.docs.isNotEmpty;
+
+                      if (hasPendingRequest) {
+                        return Column(
+                          children: [
+                            Container(
+                              width: double.infinity,
+                              padding: const EdgeInsets.all(8),
+                              decoration: BoxDecoration(
+                                color: Colors.orange.shade50,
+                                borderRadius: BorderRadius.circular(10),
+                                border: Border.all(color: Colors.orange.shade200),
+                              ),
+                              child: const Text(
+                                "Request already sent.",
+                                textAlign: TextAlign.center,
+                                style: TextStyle(
+                                  fontSize: 10,
+                                  fontWeight: FontWeight.bold,
+                                  color: Colors.orange,
+                                ),
+                              ),
+                            ),
+                            const SizedBox(height: 8),
+                            Row(
+                              children: [
+                                Expanded(
+                                  child: _buildActionBtnOutlined(
+                                    label: "Create Team",
+                                    icon: Icons.add_circle_outline,
+                                    color: Colors.grey,
+                                    onTap: () {},
+                                  ),
+                                ),
+                                const SizedBox(width: 8),
+                                Expanded(
+                                  child: _buildActionBtnOutlined(
+                                    label: "Pending",
+                                    icon: Icons.hourglass_top_rounded,
+                                    color: Colors.orange,
+                                    onTap: () {},
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ],
+                        );
+                      }
+
+                      return Row(
+                        children: [
+                          Expanded(
+                            child: _buildActionBtnOutlined(
+                              label: "Create Team",
+                              icon: Icons.add_circle_outline,
+                              color: regNotStarted ? Colors.grey : _purple,
+                              onTap: regNotStarted
+                                  ? () {}
+                                  : () => Navigator.push(
+                                context,
+                                MaterialPageRoute(
+                                  builder: (context) => CreateTeamPostScreen(
+                                    hackathonId: hid,
+                                    hackathonTeamSize: h.teamSize,
+                                  ),
+                                ),
+                              ).then((_) {
+                                if (mounted) setState(() {});
+                              }),
+                            ),
+                          ),
+                          const SizedBox(width: 8),
+                          Expanded(
+                            child: _buildActionBtnOutlined(
+                              label: "Join Team",
+                              icon: Icons.person_add_alt_1_outlined,
+                              color: regNotStarted ? Colors.grey : _purple,
+                              onTap: regNotStarted
+                                  ? () {}
+                                  : () => Navigator.push(
+                                context,
+                                MaterialPageRoute(
+                                  builder: (context) => teams_view.ExploreTeamsView(
+                                    hackathonId: hid,
+                                    hackathonTeamSize: h.teamSize,
+                                  ),
+                                ),
+                              ).then((_) {
+                                if (mounted) setState(() {});
+                              }),
+                            ),
+                          ),
+                        ],
+                      );
+                    },
+                  );
                 },
               ),
           ],

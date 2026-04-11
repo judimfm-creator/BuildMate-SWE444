@@ -427,44 +427,92 @@ class _HackathonDetailsViewState extends State<HackathonDetailsView> {
           );
         }
 
-        return Column(
-          children: [
-            if (closed)
-              _btn("Registration Closed", Colors.grey, null)
-            else if (notStarted) ...[
-              _btn("Create Team Post (Opening Soon)", Colors.grey, null),
-              const SizedBox(height: 12),
-              _outlinedBtn("Join Existing Team (Opening Soon)", Colors.grey, null),
-            ] else ...[
-              _btn(
-                "Create Team Post",
-                _purple,
-                () => Navigator.push(
-                  context,
-                  MaterialPageRoute(
-                    builder: (context) => CreateTeamPostScreen(
-                      hackathonId: hid,
-                      hackathonTeamSize: widget.hackathon.teamSize,
+        return StreamBuilder<QuerySnapshot<Map<String, dynamic>>>(
+          stream: FirebaseFirestore.instance
+              .collection('join_requests')
+              .where('hackathonId', isEqualTo: hid)
+              .where('requesterId', isEqualTo: uid)
+              .where('status', isEqualTo: 'pending')
+              .snapshots(),
+          builder: (context, requestSnapshot) {
+            final bool hasPendingRequest =
+                requestSnapshot.hasData &&
+                    requestSnapshot.data!.docs.isNotEmpty;
+
+            if (closed) {
+              return _btn("Registration Closed", Colors.grey, null);
+            }
+
+            if (notStarted) {
+              return Column(
+                children: [
+                  _btn("Create Team Post (Opening Soon)", Colors.grey, null),
+                  const SizedBox(height: 12),
+                  _outlinedBtn("Join Existing Team (Opening Soon)", Colors.grey, null),
+                ],
+              );
+            }
+
+            if (hasPendingRequest) {
+              return Column(
+                children: [
+                  Container(
+                    width: double.infinity,
+                    padding: const EdgeInsets.all(12),
+                    margin: const EdgeInsets.only(bottom: 12),
+                    decoration: BoxDecoration(
+                      color: Colors.orange.shade50,
+                      borderRadius: BorderRadius.circular(12),
+                      border: Border.all(color: Colors.orange.shade200),
+                    ),
+                    child: const Text(
+                      "You already sent a join request for a team in this hackathon. Please wait for the team leader's response.",
+                      style: TextStyle(
+                        fontSize: 12,
+                        fontWeight: FontWeight.w500,
+                        color: Colors.orange,
+                      ),
                     ),
                   ),
-                ).then((_) => setState(() {})),
-              ),
-              const SizedBox(height: 12),
-              _outlinedBtn(
-                "Join Existing Team",
-                _purple,
-                () => Navigator.push(
-                  context,
-                  MaterialPageRoute(
-                    builder: (context) => teams_view.ExploreTeamsView(
-                      hackathonId: hid,
-                      hackathonTeamSize: widget.hackathon.teamSize,
+                  _btn("Create Team Post", Colors.grey, null),
+                  const SizedBox(height: 12),
+                  _outlinedBtn("Request Pending", Colors.orange, null),
+                ],
+              );
+            }
+
+            return Column(
+              children: [
+                _btn(
+                  "Create Team Post",
+                  _purple,
+                      () => Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (context) => CreateTeamPostScreen(
+                        hackathonId: hid,
+                        hackathonTeamSize: widget.hackathon.teamSize,
+                      ),
                     ),
-                  ),
-                ).then((_) => setState(() {})),
-              ),
-            ],
-          ],
+                  ).then((_) => setState(() {})),
+                ),
+                const SizedBox(height: 12),
+                _outlinedBtn(
+                  "Join Existing Team",
+                  _purple,
+                      () => Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (context) => teams_view.ExploreTeamsView(
+                        hackathonId: hid,
+                        hackathonTeamSize: widget.hackathon.teamSize,
+                      ),
+                    ),
+                  ).then((_) => setState(() {})),
+                ),
+              ],
+            );
+          },
         );
       },
     );

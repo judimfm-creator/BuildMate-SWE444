@@ -259,22 +259,19 @@ Text(
           
           _btn("View Full Details", _purple, () => Navigator.push(context, MaterialPageRoute(builder: (context) => HackathonDetailsView(hackathon: h)))),
           const SizedBox(height: 10),
-          
-       if (currentUid != null)
+
+          if (currentUid != null)
             StreamBuilder<QuerySnapshot<Map<String, dynamic>>>(
-              // 📡 مراقبة مباشرة لقاعدة البيانات
               stream: FirebaseFirestore.instance
                   .collection('team_posts')
                   .where('hackathonId', isEqualTo: h.id)
                   .where('members', arrayContains: currentUid)
                   .snapshots(),
               builder: (context, snapshot) {
-                // 1. حالة التحميل
                 if (snapshot.connectionState == ConnectionState.waiting) {
                   return const SizedBox(height: 42);
                 }
 
-                // 2. ✅ إذا وجد فريق للمستخدم في هذا الهاكاثون
                 if (snapshot.hasData && snapshot.data!.docs.isNotEmpty) {
                   final teamDoc = snapshot.data!.docs.first;
                   final bool isOwner = teamDoc.data()['createdBy'] == currentUid;
@@ -282,7 +279,7 @@ Text(
                   return _outlinedBtn(
                     isOwner ? "Manage My Team" : "View My Team",
                     _purple,
-                    () {
+                        () {
                       Navigator.push(
                         context,
                         MaterialPageRoute(
@@ -299,64 +296,133 @@ Text(
                   );
                 }
 
-                // 3. ❌ إذا لم يجد فريق، تظهر الأزرار العادية
-                return Row(
-                  children: [
-                    if (regClosed)
-                      Expanded(child: _outlinedBtn("Registration Closed", Colors.grey, null))
-                    else if (regNotStarted)
-                      Expanded(child: _outlinedBtn("Registration Upcoming Soon", Colors.grey, null))
-                    else ...[
-                      // زر إنشاء فريق
-                      Expanded(
-                        child: _outlinedBtn(
-                          "Create Team",
-                          _purple,
-                          () {
-                            Navigator.push(
-                              context,
-                              MaterialPageRoute(
-                                builder: (context) => CreateTeamPostScreen(
-                                  hackathonId: h.id ?? "",
-                                  hackathonTeamSize: h.teamSize,
+                return StreamBuilder<QuerySnapshot<Map<String, dynamic>>>(
+                  stream: FirebaseFirestore.instance
+                      .collection('join_requests')
+                      .where('hackathonId', isEqualTo: h.id)
+                      .where('requesterId', isEqualTo: currentUid)
+                      .where('status', isEqualTo: 'pending')
+                      .snapshots(),
+                  builder: (context, requestSnapshot) {
+                    final bool hasPendingRequest =
+                        requestSnapshot.hasData &&
+                            requestSnapshot.data!.docs.isNotEmpty;
+
+                    if (regClosed) {
+                      return _outlinedBtn(
+                        "Registration Closed",
+                        Colors.grey,
+                        null,
+                      );
+                    }
+
+                    if (regNotStarted) {
+                      return _outlinedBtn(
+                        "Registration Upcoming Soon",
+                        Colors.grey,
+                        null,
+                      );
+                    }
+
+                    if (hasPendingRequest) {
+                      return Column(
+                        children: [
+                          Container(
+                            width: double.infinity,
+                            padding: const EdgeInsets.all(10),
+                            decoration: BoxDecoration(
+                              color: Colors.orange.shade50,
+                              borderRadius: BorderRadius.circular(12),
+                              border: Border.all(color: Colors.orange.shade200),
+                            ),
+                            child: const Text(
+                              "You already sent a join request for a team in this hackathon.",
+                              textAlign: TextAlign.center,
+                              style: TextStyle(
+                                fontSize: 11,
+                                fontWeight: FontWeight.w600,
+                                color: Colors.orange,
+                              ),
+                            ),
+                          ),
+                          const SizedBox(height: 10),
+                          Row(
+                            children: [
+                              Expanded(
+                                child: _outlinedBtn(
+                                  "Create Team",
+                                  Colors.grey,
+                                  null,
                                 ),
                               ),
-                            ).then((dynamic res) async {
-                              if (res == true && mounted) {
-                                // تأخير بسيط لضمان استقرار الواجهة ثم الانتقال للهوم
-                                await Future.delayed(const Duration(milliseconds: 300));
-                                homeScreenState?.changeTab(0);
-                              }
-                            });
-                          },
-                        ),
-                      ),
-                      const SizedBox(width: 8),
-                      // زر الانضمام لفريق
-                      Expanded(
-                        child: _outlinedBtn(
-                          "Join Team",
-                          _purple,
-                          () {
-                            Navigator.push(
-                              context,
-                              MaterialPageRoute(
-                                builder: (context) => teams_view.ExploreTeamsView(
-                                  hackathonId: h.id ?? "",
-                                  hackathonTeamSize: h.teamSize,
+                              const SizedBox(width: 8),
+                              Expanded(
+                                child: _outlinedBtn(
+                                  "Request Pending",
+                                  Colors.orange,
+                                  null,
                                 ),
                               ),
-                            ).then((dynamic res) async {
-                              if (res == true && mounted) {
-                                await Future.delayed(const Duration(milliseconds: 300));
-                                homeScreenState?.changeTab(0);
-                              }
-                            });
-                          },
+                            ],
+                          ),
+                        ],
+                      );
+                    }
+
+                    return Row(
+                      children: [
+                        Expanded(
+                          child: _outlinedBtn(
+                            "Create Team",
+                            _purple,
+                                () {
+                              Navigator.push(
+                                context,
+                                MaterialPageRoute(
+                                  builder: (context) => CreateTeamPostScreen(
+                                    hackathonId: h.id ?? "",
+                                    hackathonTeamSize: h.teamSize,
+                                  ),
+                                ),
+                              ).then((dynamic res) async {
+                                if (res == true && mounted) {
+                                  await Future.delayed(
+                                    const Duration(milliseconds: 300),
+                                  );
+                                  homeScreenState?.changeTab(0);
+                                }
+                              });
+                            },
+                          ),
                         ),
-                      ),
-                    ]
-                  ],
+                        const SizedBox(width: 8),
+                        Expanded(
+                          child: _outlinedBtn(
+                            "Join Team",
+                            _purple,
+                                () {
+                              Navigator.push(
+                                context,
+                                MaterialPageRoute(
+                                  builder: (context) => teams_view.ExploreTeamsView(
+                                    hackathonId: h.id ?? "",
+                                    hackathonTeamSize: h.teamSize,
+                                  ),
+                                ),
+                              ).then((dynamic res) async {
+                                if (res == true && mounted) {
+                                  await Future.delayed(
+                                    const Duration(milliseconds: 300),
+                                  );
+                                  homeScreenState?.changeTab(0);
+                                }
+                              });
+                            },
+                          ),
+                        ),
+                      ],
+                    );
+                  },
                 );
               },
             ),
@@ -369,24 +435,73 @@ Text(
   Widget _buildTeamsList() {
     final currentUid = FirebaseAuth.instance.currentUser?.uid ?? '';
     return StreamBuilder<List<Map<String, dynamic>>>(
-      stream: FirebaseFirestore.instance.collection('team_posts').orderBy('createdAt', descending: true).snapshots().asyncMap((snapshot) async {
-        final userTeamsSnapshot = await FirebaseFirestore.instance.collection('team_posts').where('members', arrayContains: currentUid).get();
-        final joinedIds = userTeamsSnapshot.docs.map((doc) => doc.data()['hackathonId'] as String?).toSet();
+      stream: FirebaseFirestore.instance
+          .collection('team_posts')
+          .orderBy('createdAt', descending: true)
+          .snapshots()
+          .asyncMap((snapshot) async {
+        final userTeamsSnapshot = await FirebaseFirestore.instance
+            .collection('team_posts')
+            .where('members', arrayContains: currentUid)
+            .get();
+
+        final joinedIds = userTeamsSnapshot.docs
+            .map((doc) => doc.data()['hackathonId'] as String?)
+            .toSet();
+
+        final pendingRequestsSnapshot = await FirebaseFirestore.instance
+            .collection('join_requests')
+            .where('requesterId', isEqualTo: currentUid)
+            .where('status', isEqualTo: 'pending')
+            .get();
+
+        final pendingHackathonIds = pendingRequestsSnapshot.docs
+            .map((doc) => doc.data()['hackathonId'] as String?)
+            .whereType<String>()
+            .toSet();
+
+        final excludedHackathonIds = {...joinedIds, ...pendingHackathonIds};
 
         final futures = snapshot.docs.map((doc) async {
           final data = doc.data() as Map<String, dynamic>;
           final team = TeamPostModel.fromMap(doc.id, data);
-          if (joinedIds.contains(team.hackathonId)) return null;
-          final hDoc = await FirebaseFirestore.instance.collection('hackathons').doc(team.hackathonId).get();
+
+          if (excludedHackathonIds.contains(team.hackathonId)) return null;
+
+          final hDoc = await FirebaseFirestore.instance
+              .collection('hackathons')
+              .doc(team.hackathonId)
+              .get();
+
           if (!hDoc.exists) return null;
+
           final h = Hackathon.fromFirestore(hDoc);
+
           if (team.members.length >= h.teamSize) return null;
-          final teamDeadline = DateTime(h.applicationDeadline.year, h.applicationDeadline.month, h.applicationDeadline.day, 23, 59, 59);
+
+          final teamDeadline = DateTime(
+            h.applicationDeadline.year,
+            h.applicationDeadline.month,
+            h.applicationDeadline.day,
+            23,
+            59,
+            59,
+          );
+
           if (DateTime.now().isAfter(teamDeadline)) return null;
-          return {'team': team, 'hackathon': h, 'hackathonName': h.name};
+
+          return {
+            'team': team,
+            'hackathon': h,
+            'hackathonName': h.name,
+          };
         });
+
         final results = await Future.wait(futures);
-        return results.where((item) => item != null).cast<Map<String, dynamic>>().toList();
+        return results
+            .where((item) => item != null)
+            .cast<Map<String, dynamic>>()
+            .toList();
       }),
       builder: (context, snapshot) {
         if (snapshot.connectionState == ConnectionState.waiting) return const Center(child: CircularProgressIndicator(color: _purple));

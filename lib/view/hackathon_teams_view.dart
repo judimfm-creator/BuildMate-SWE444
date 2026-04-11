@@ -65,238 +65,298 @@ class ExploreTeamsView extends StatelessWidget {
       ),
       body: StreamBuilder<QuerySnapshot<Map<String, dynamic>>>(
         stream: FirebaseFirestore.instance
-            .collection('team_posts')
+            .collection('join_requests')
             .where('hackathonId', isEqualTo: hackathonId)
+            .where('requesterId', isEqualTo: currentUserId)
+            .where('status', isEqualTo: 'pending')
             .snapshots(),
-        builder: (context, snapshot) {
-          if (snapshot.connectionState == ConnectionState.waiting) {
+        builder: (context, pendingSnapshot) {
+          if (pendingSnapshot.connectionState == ConnectionState.waiting) {
             return const Center(
               child: CircularProgressIndicator(color: _purple),
             );
           }
 
-          final docs = (snapshot.data?.docs ?? []).where((doc) {
-            final data = doc.data();
-            final List members = data['members'] ?? [];
+          final bool hasPendingInHackathon =
+              pendingSnapshot.hasData && pendingSnapshot.data!.docs.isNotEmpty;
 
-            if (teamId != null) {
-              return doc.id == teamId;
-            }
-
-            return data['createdBy'] != currentUserId &&
-                !members.contains(currentUserId);
-          }).toList();
-
-          if (docs.isEmpty) {
-            return const Center(child: Text("No open teams available."));
-          }
-
-          return ListView.builder(
-            padding: const EdgeInsets.all(16),
-            itemCount: docs.length,
-            itemBuilder: (context, index) {
-              final data = docs[index].data();
-              final String teamId = docs[index].id;
-              final List memberIds = data['members'] ?? [];
-              final Map<String, dynamic> memberRolesMap =
-                  data['memberRoles'] ?? {};
-              final List<String> roles = _parseStringList(data['neededRoles']);
-
-              final bool isFull = memberIds.length >= hackathonTeamSize;
-              final bool isRegistered = data['submittedToInstitution'] == true;
-
-              return Container(
-                margin: const EdgeInsets.only(bottom: 20),
-                decoration: BoxDecoration(
-                  color: Colors.white,
-                  borderRadius: BorderRadius.circular(24),
-                  border: Border.all(color: Colors.grey.shade200),
-                  boxShadow: [
-                    BoxShadow(
-                      color: _purple.withOpacity(0.06),
-                      blurRadius: 16,
-                      offset: const Offset(0, 8),
-                    ),
-                  ],
-                ),
-                child: Padding(
+          if (hasPendingInHackathon) {
+            return Center(
+              child: Padding(
+                padding: const EdgeInsets.all(24),
+                child: Container(
+                  width: double.infinity,
                   padding: const EdgeInsets.all(20),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
+                  decoration: BoxDecoration(
+                    color: Colors.white,
+                    borderRadius: BorderRadius.circular(18),
+                    border: Border.all(color: Colors.grey.shade200),
+                  ),
+                  child: const Column(
+                    mainAxisSize: MainAxisSize.min,
                     children: [
-                      Row(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Expanded(
-                            child: Text(
-                              data['teamName'] ?? 'Team',
-                              style: const TextStyle(
-                                fontSize: 18,
-                                fontWeight: FontWeight.bold,
-                                color: Colors.black,
-                              ),
-                              maxLines: 1,
-                              overflow: TextOverflow.ellipsis,
-                            ),
-                          ),
-                          _badge(
-                            "${memberIds.length} / $hackathonTeamSize Members",
-                            isFull ? Colors.red : _purple,
-                          ),
-                        ],
+                      Icon(
+                        Icons.hourglass_top_rounded,
+                        color: _purple,
+                        size: 42,
                       ),
-                      const SizedBox(height: 16),
-                      const Divider(height: 1),
-                      const SizedBox(height: 16),
-                      const Text(
-                        "Team Members",
+                      SizedBox(height: 12),
+                      Text(
+                        "Request Already Sent",
                         style: TextStyle(
+                          fontSize: 17,
                           fontWeight: FontWeight.bold,
-                          fontSize: 13,
-                          color: Colors.grey,
-                        ),
-                      ),
-                      const SizedBox(height: 10),
-                      FutureBuilder<List<Map<String, dynamic>>>(
-                        future: _getMemberData(
-                          memberIds,
-                          data['createdBy'],
-                          data['myRole'] ?? 'Leader',
-                          memberRolesMap,
-                        ),
-                        builder: (context, snap) {
-                          if (!snap.hasData) {
-                            return const Padding(
-                              padding: EdgeInsets.symmetric(vertical: 8),
-                              child: LinearProgressIndicator(color: _purple),
-                            );
-                          }
-
-                          return Column(
-                            children: snap.data!
-                                .map(
-                                  (m) => _memberTile(
-                                context,
-                                m['uid'].toString(),
-                                m['name'].toString(),
-                                m['isLeader'] == true,
-                                m['role'].toString(),
-                              ),
-                            )
-                                .toList(),
-                          );
-                        },
-                      ),
-                      const SizedBox(height: 14),
-                      const Text(
-                        "Project Idea",
-                        style: TextStyle(
-                          fontWeight: FontWeight.bold,
-                          fontSize: 14,
-                        ),
-                      ),
-                      const SizedBox(height: 6),
-                      Container(
-                        width: double.infinity,
-                        padding: const EdgeInsets.all(12),
-                        decoration: BoxDecoration(
-                          color: const Color(0xFFF8F9FD),
-                          borderRadius: BorderRadius.circular(12),
-                          border: Border.all(color: Colors.grey.shade200),
-                        ),
-                        child: Text(
-                          (data['projectIdea'] == null ||
-                              data['projectIdea'].toString().isEmpty)
-                              ? "No project idea added yet."
-                              : data['projectIdea'],
-                          style: TextStyle(
-                            color: (data['projectIdea'] == null ||
-                                data['projectIdea'].toString().isEmpty)
-                                ? Colors.grey
-                                : Colors.black87,
-                            fontSize: 13,
-                            height: 1.4,
-                            fontStyle: (data['projectIdea'] == null ||
-                                data['projectIdea'].toString().isEmpty)
-                                ? FontStyle.italic
-                                : FontStyle.normal,
-                          ),
-                          maxLines: 3,
-                          overflow: TextOverflow.ellipsis,
-                        ),
-                      ),
-                      const SizedBox(height: 14),
-                      const Text(
-                        "Looking For",
-                        style: TextStyle(
-                          fontWeight: FontWeight.bold,
-                          fontSize: 14,
                           color: _purple,
                         ),
                       ),
-                      const SizedBox(height: 8),
-                      _buildRolesList(roles),
-                      const SizedBox(height: 22),
-
-                      StreamBuilder<QuerySnapshot<Map<String, dynamic>>>(
-                        stream: FirebaseFirestore.instance
-                            .collection('join_requests')
-                            .where('teamPostId', isEqualTo: teamId)
-                            .where('requesterId', isEqualTo: currentUserId)
-                            .where('status', isEqualTo: 'pending')
-                            .snapshots(),
-                        builder: (context, requestSnapshot) {
-                          final bool hasPendingRequest =
-                              requestSnapshot.hasData &&
-                                  requestSnapshot.data!.docs.isNotEmpty;
-
-                          return SizedBox(
-                            width: double.infinity,
-                            height: 50,
-                            child: ElevatedButton(
-                              style: ElevatedButton.styleFrom(
-                                backgroundColor:
-                                (isFull ||
-                                    isRegistered ||
-                                    hasPendingRequest)
-                                    ? Colors.grey.shade300
-                                    : _purple,
-                                shape: RoundedRectangleBorder(
-                                  borderRadius: BorderRadius.circular(15),
-                                ),
-                                elevation: 0,
-                              ),
-                              onPressed:
-                              (isFull ||
-                                  isRegistered ||
-                                  hasPendingRequest)
-                                  ? null
-                                  : () => _showJoinDialog(
-                                context,
-                                teamId,
-                                data['teamName'],
-                                roles,
-                              ),
-                              child: Text(
-                                hasPendingRequest
-                                    ? "REQUESTED"
-                                    : (isRegistered
-                                    ? "TEAM FULL"
-                                    : (isFull
-                                    ? "TEAM FULL"
-                                    : "JOIN TEAM")),
-                                style: const TextStyle(
-                                  color: Colors.white,
-                                  fontWeight: FontWeight.bold,
-                                ),
-                              ),
-                            ),
-                          );
-                        },
+                      SizedBox(height: 8),
+                      Text(
+                        "You already have a pending join request for a team in this hackathon. You cannot view or join other teams until your request is accepted or rejected.",
+                        textAlign: TextAlign.center,
+                        style: TextStyle(
+                          fontSize: 13,
+                          color: Colors.grey,
+                          height: 1.5,
+                        ),
                       ),
                     ],
                   ),
                 ),
+              ),
+            );
+          }
+
+          return StreamBuilder<QuerySnapshot<Map<String, dynamic>>>(
+            stream: FirebaseFirestore.instance
+                .collection('team_posts')
+                .where('hackathonId', isEqualTo: hackathonId)
+                .snapshots(),
+            builder: (context, snapshot) {
+              if (snapshot.connectionState == ConnectionState.waiting) {
+                return const Center(
+                  child: CircularProgressIndicator(color: _purple),
+                );
+              }
+
+              final docs = (snapshot.data?.docs ?? []).where((doc) {
+                final data = doc.data();
+                final List members = data['members'] ?? [];
+
+                if (teamId != null) {
+                  return doc.id == teamId;
+                }
+
+                return data['createdBy'] != currentUserId &&
+                    !members.contains(currentUserId);
+              }).toList();
+
+              if (docs.isEmpty) {
+                return const Center(child: Text("No open teams available."));
+              }
+
+              return ListView.builder(
+                padding: const EdgeInsets.all(16),
+                itemCount: docs.length,
+                itemBuilder: (context, index) {
+                  final data = docs[index].data();
+                  final String teamId = docs[index].id;
+                  final List memberIds = data['members'] ?? [];
+                  final Map<String, dynamic> memberRolesMap =
+                      data['memberRoles'] ?? {};
+                  final List<String> roles = _parseStringList(data['neededRoles']);
+
+                  final bool isFull = memberIds.length >= hackathonTeamSize;
+                  final bool isRegistered = data['submittedToInstitution'] == true;
+
+                  return Container(
+                    margin: const EdgeInsets.only(bottom: 20),
+                    decoration: BoxDecoration(
+                      color: Colors.white,
+                      borderRadius: BorderRadius.circular(24),
+                      border: Border.all(color: Colors.grey.shade200),
+                      boxShadow: [
+                        BoxShadow(
+                          color: _purple.withOpacity(0.06),
+                          blurRadius: 16,
+                          offset: const Offset(0, 8),
+                        ),
+                      ],
+                    ),
+                    child: Padding(
+                      padding: const EdgeInsets.all(20),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Row(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Expanded(
+                                child: Text(
+                                  data['teamName'] ?? 'Team',
+                                  style: const TextStyle(
+                                    fontSize: 18,
+                                    fontWeight: FontWeight.bold,
+                                    color: Colors.black,
+                                  ),
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
+                                ),
+                              ),
+                              _badge(
+                                "${memberIds.length} / $hackathonTeamSize Members",
+                                isFull ? Colors.red : _purple,
+                              ),
+                            ],
+                          ),
+                          const SizedBox(height: 16),
+                          const Divider(height: 1),
+                          const SizedBox(height: 16),
+                          const Text(
+                            "Team Members",
+                            style: TextStyle(
+                              fontWeight: FontWeight.bold,
+                              fontSize: 13,
+                              color: Colors.grey,
+                            ),
+                          ),
+                          const SizedBox(height: 10),
+                          FutureBuilder<List<Map<String, dynamic>>>(
+                            future: _getMemberData(
+                              memberIds,
+                              data['createdBy'],
+                              data['myRole'] ?? 'Leader',
+                              memberRolesMap,
+                            ),
+                            builder: (context, snap) {
+                              if (!snap.hasData) {
+                                return const Padding(
+                                  padding: EdgeInsets.symmetric(vertical: 8),
+                                  child: LinearProgressIndicator(color: _purple),
+                                );
+                              }
+
+                              return Column(
+                                children: snap.data!
+                                    .map(
+                                      (m) => _memberTile(
+                                    context,
+                                    m['uid'].toString(),
+                                    m['name'].toString(),
+                                    m['isLeader'] == true,
+                                    m['role'].toString(),
+                                  ),
+                                )
+                                    .toList(),
+                              );
+                            },
+                          ),
+                          const SizedBox(height: 14),
+                          const Text(
+                            "Project Idea",
+                            style: TextStyle(
+                              fontWeight: FontWeight.bold,
+                              fontSize: 14,
+                            ),
+                          ),
+                          const SizedBox(height: 6),
+                          Container(
+                            width: double.infinity,
+                            padding: const EdgeInsets.all(12),
+                            decoration: BoxDecoration(
+                              color: const Color(0xFFF8F9FD),
+                              borderRadius: BorderRadius.circular(12),
+                              border: Border.all(color: Colors.grey.shade200),
+                            ),
+                            child: Text(
+                              (data['projectIdea'] == null ||
+                                  data['projectIdea'].toString().isEmpty)
+                                  ? "No project idea added yet."
+                                  : data['projectIdea'],
+                              style: TextStyle(
+                                color: (data['projectIdea'] == null ||
+                                    data['projectIdea'].toString().isEmpty)
+                                    ? Colors.grey
+                                    : Colors.black87,
+                                fontSize: 13,
+                                height: 1.4,
+                                fontStyle: (data['projectIdea'] == null ||
+                                    data['projectIdea'].toString().isEmpty)
+                                    ? FontStyle.italic
+                                    : FontStyle.normal,
+                              ),
+                              maxLines: 3,
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                          ),
+                          const SizedBox(height: 14),
+                          const Text(
+                            "Looking For",
+                            style: TextStyle(
+                              fontWeight: FontWeight.bold,
+                              fontSize: 14,
+                              color: _purple,
+                            ),
+                          ),
+                          const SizedBox(height: 8),
+                          _buildRolesList(roles),
+                          const SizedBox(height: 22),
+
+                          StreamBuilder<QuerySnapshot<Map<String, dynamic>>>(
+                            stream: FirebaseFirestore.instance
+                                .collection('join_requests')
+                                .where('teamPostId', isEqualTo: teamId)
+                                .where('requesterId', isEqualTo: currentUserId)
+                                .where('status', isEqualTo: 'pending')
+                                .snapshots(),
+                            builder: (context, requestSnapshot) {
+                              final bool hasPendingRequest =
+                                  requestSnapshot.hasData &&
+                                      requestSnapshot.data!.docs.isNotEmpty;
+
+                              return SizedBox(
+                                width: double.infinity,
+                                height: 50,
+                                child: ElevatedButton(
+                                  style: ElevatedButton.styleFrom(
+                                    backgroundColor:
+                                    (isFull || isRegistered || hasPendingRequest)
+                                        ? Colors.grey.shade300
+                                        : _purple,
+                                    shape: RoundedRectangleBorder(
+                                      borderRadius: BorderRadius.circular(15),
+                                    ),
+                                    elevation: 0,
+                                  ),
+                                  onPressed:
+                                  (isFull || isRegistered || hasPendingRequest)
+                                      ? null
+                                      : () => _showJoinDialog(
+                                    context,
+                                    teamId,
+                                    hackathonId,
+                                    data['teamName'],
+                                    roles,
+                                  ),
+                                  child: Text(
+                                    hasPendingRequest
+                                        ? "REQUESTED"
+                                        : (isRegistered
+                                        ? "TEAM REGISTERED"
+                                        : (isFull ? "TEAM FULL" : "JOIN TEAM")),
+                                    style: const TextStyle(
+                                      color: Colors.white,
+                                      fontWeight: FontWeight.bold,
+                                    ),
+                                  ),
+                                ),
+                              );
+                            },
+                          ),
+                        ],
+                      ),
+                    ),
+                  );
+                },
               );
             },
           );
@@ -469,6 +529,7 @@ class ExploreTeamsView extends StatelessWidget {
   void _showJoinDialog(
       BuildContext context,
       String teamId,
+      String hackathinId,
       String? name,
       List<String> roles,
       ) {
@@ -539,6 +600,7 @@ class ExploreTeamsView extends StatelessWidget {
                       .collection('join_requests')
                       .add({
                     'teamPostId': teamId,
+                    'hackathonId': hackathinId,
                     'requesterId': uid,
                     'desiredRole': selected,
                     'status': 'pending',
