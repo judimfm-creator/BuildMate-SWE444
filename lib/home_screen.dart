@@ -1,3 +1,4 @@
+import 'package:buildmate/view/teams_groups_view.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:firebase_auth/firebase_auth.dart';
@@ -10,7 +11,7 @@ import 'package:buildmate/view/profile_page.dart';
 import 'package:buildmate/view/org_profile_page.dart';
 import 'package:buildmate/view/explore_user_view.dart';
 import 'package:buildmate/view/user_home_page.dart';
-
+import 'package:buildmate/view/teams_groups_view.dart';
 // ✅ إضافة هذا السطر لتمكين الصفحات الأخرى من تغيير التبويب
 _HomeScreenState? homeScreenState;
 
@@ -72,7 +73,7 @@ class _HomeScreenState extends State<HomeScreen> {
     final List<Widget> userPages = [
       const UserHomePage(),     // 0
       const ExploreUserView(),  // 1
-      const Center(child: Text("Teams")),     // 2
+      const TeamsGroupsView(),     // 2
       const ProfilePage(),                   // 3
     ];
 
