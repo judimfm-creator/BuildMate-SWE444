@@ -19,11 +19,11 @@ class ExploreTeamsView extends StatelessWidget {
   static const Color _lightPurple = Color(0xFFF0EEFF);
 
   Future<List<Map<String, dynamic>>> _getMemberData(
-      List<dynamic> ids,
-      String leaderId,
-      String leaderRole,
-      Map<String, dynamic> memberRolesMap,
-      ) async {
+    List<dynamic> ids,
+    String leaderId,
+    String leaderRole,
+    Map<String, dynamic> memberRolesMap,
+  ) async {
     List<Map<String, dynamic>> members = [];
 
     for (var id in ids) {
@@ -34,7 +34,7 @@ class ExploreTeamsView extends StatelessWidget {
 
       String name = doc.data()?['fullName'] ?? 'User';
       String role =
-      (id == leaderId) ? leaderRole : (memberRolesMap[id] ?? 'Member');
+          (id == leaderId) ? leaderRole : (memberRolesMap[id] ?? 'Member');
 
       members.add({
         'uid': id,
@@ -163,10 +163,17 @@ class ExploreTeamsView extends StatelessWidget {
                   final List memberIds = data['members'] ?? [];
                   final Map<String, dynamic> memberRolesMap =
                       data['memberRoles'] ?? {};
-                  final List<String> roles = _parseStringList(data['neededRoles']);
+                  final List<String> roles =
+                      _parseStringList(data['neededRoles']);
 
                   final bool isFull = memberIds.length >= hackathonTeamSize;
-                  final bool isRegistered = data['submittedToInstitution'] == true;
+                  final bool isRegistered =
+                      data['submittedToInstitution'] == true;
+
+                  final String projectIdea =
+                      (data['projectIdea'] ?? data['idea'] ?? '')
+                          .toString()
+                          .trim();
 
                   return Container(
                     margin: const EdgeInsets.only(bottom: 20),
@@ -231,7 +238,9 @@ class ExploreTeamsView extends StatelessWidget {
                               if (!snap.hasData) {
                                 return const Padding(
                                   padding: EdgeInsets.symmetric(vertical: 8),
-                                  child: LinearProgressIndicator(color: _purple),
+                                  child: LinearProgressIndicator(
+                                    color: _purple,
+                                  ),
                                 );
                               }
 
@@ -239,13 +248,13 @@ class ExploreTeamsView extends StatelessWidget {
                                 children: snap.data!
                                     .map(
                                       (m) => _memberTile(
-                                    context,
-                                    m['uid'].toString(),
-                                    m['name'].toString(),
-                                    m['isLeader'] == true,
-                                    m['role'].toString(),
-                                  ),
-                                )
+                                        context,
+                                        m['uid'].toString(),
+                                        m['name'].toString(),
+                                        m['isLeader'] == true,
+                                        m['role'].toString(),
+                                      ),
+                                    )
                                     .toList(),
                               );
                             },
@@ -268,19 +277,16 @@ class ExploreTeamsView extends StatelessWidget {
                               border: Border.all(color: Colors.grey.shade200),
                             ),
                             child: Text(
-                              (data['projectIdea'] == null ||
-                                  data['projectIdea'].toString().isEmpty)
+                              projectIdea.isEmpty
                                   ? "No project idea added yet."
-                                  : data['projectIdea'],
+                                  : projectIdea,
                               style: TextStyle(
-                                color: (data['projectIdea'] == null ||
-                                    data['projectIdea'].toString().isEmpty)
+                                color: projectIdea.isEmpty
                                     ? Colors.grey
                                     : Colors.black87,
                                 fontSize: 13,
                                 height: 1.4,
-                                fontStyle: (data['projectIdea'] == null ||
-                                    data['projectIdea'].toString().isEmpty)
+                                fontStyle: projectIdea.isEmpty
                                     ? FontStyle.italic
                                     : FontStyle.normal,
                               ),
@@ -300,12 +306,12 @@ class ExploreTeamsView extends StatelessWidget {
                           const SizedBox(height: 8),
                           _buildRolesList(roles),
                           const SizedBox(height: 22),
-
                           StreamBuilder<QuerySnapshot<Map<String, dynamic>>>(
                             stream: FirebaseFirestore.instance
                                 .collection('join_requests')
                                 .where('teamPostId', isEqualTo: teamId)
-                                .where('requesterId', isEqualTo: currentUserId)
+                                .where('requesterId',
+                                    isEqualTo: currentUserId)
                                 .where('status', isEqualTo: 'pending')
                                 .snapshots(),
                             builder: (context, requestSnapshot) {
@@ -319,30 +325,37 @@ class ExploreTeamsView extends StatelessWidget {
                                 child: ElevatedButton(
                                   style: ElevatedButton.styleFrom(
                                     backgroundColor:
-                                    (isFull || isRegistered || hasPendingRequest)
-                                        ? Colors.grey.shade300
-                                        : _purple,
+                                        (isFull ||
+                                                isRegistered ||
+                                                hasPendingRequest)
+                                            ? Colors.grey.shade300
+                                            : _purple,
                                     shape: RoundedRectangleBorder(
-                                      borderRadius: BorderRadius.circular(15),
+                                      borderRadius:
+                                          BorderRadius.circular(15),
                                     ),
                                     elevation: 0,
                                   ),
                                   onPressed:
-                                  (isFull || isRegistered || hasPendingRequest)
-                                      ? null
-                                      : () => _showJoinDialog(
-                                    context,
-                                    teamId,
-                                    hackathonId,
-                                    data['teamName'],
-                                    roles,
-                                  ),
+                                      (isFull ||
+                                              isRegistered ||
+                                              hasPendingRequest)
+                                          ? null
+                                          : () => _showJoinDialog(
+                                                context,
+                                                teamId,
+                                                hackathonId,
+                                                data['teamName'],
+                                                roles,
+                                              ),
                                   child: Text(
                                     hasPendingRequest
                                         ? "REQUESTED"
                                         : (isRegistered
-                                        ? "TEAM REGISTERED"
-                                        : (isFull ? "TEAM FULL" : "JOIN TEAM")),
+                                            ? "TEAM REGISTERED"
+                                            : (isFull
+                                                ? "TEAM FULL"
+                                                : "JOIN TEAM")),
                                     style: const TextStyle(
                                       color: Colors.white,
                                       fontWeight: FontWeight.bold,
@@ -403,12 +416,12 @@ class ExploreTeamsView extends StatelessWidget {
   }
 
   Widget _memberTile(
-      BuildContext context,
-      String memberId,
-      String name,
-      bool isLeader,
-      String role,
-      ) {
+    BuildContext context,
+    String memberId,
+    String name,
+    bool isLeader,
+    String role,
+  ) {
     return InkWell(
       borderRadius: BorderRadius.circular(12),
       onTap: () {
@@ -506,33 +519,36 @@ class ExploreTeamsView extends StatelessWidget {
       children: roles
           .map(
             (role) => Container(
-          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-          decoration: BoxDecoration(
-            color: _lightPurple,
-            borderRadius: BorderRadius.circular(8),
-            border: Border.all(color: _purple.withOpacity(0.2)),
-          ),
-          child: Text(
-            role,
-            style: const TextStyle(
-              fontSize: 11,
-              color: _purple,
-              fontWeight: FontWeight.bold,
+              padding: const EdgeInsets.symmetric(
+                horizontal: 10,
+                vertical: 4,
+              ),
+              decoration: BoxDecoration(
+                color: _lightPurple,
+                borderRadius: BorderRadius.circular(8),
+                border: Border.all(color: _purple.withOpacity(0.2)),
+              ),
+              child: Text(
+                role,
+                style: const TextStyle(
+                  fontSize: 11,
+                  color: _purple,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
             ),
-          ),
-        ),
-      )
+          )
           .toList(),
     );
   }
 
   void _showJoinDialog(
-      BuildContext context,
-      String teamId,
-      String hackathinId,
-      String? name,
-      List<String> roles,
-      ) {
+    BuildContext context,
+    String teamId,
+    String hackathinId,
+    String? name,
+    List<String> roles,
+  ) {
     String? selected;
     bool isSubmitting = false;
 
@@ -565,65 +581,94 @@ class ExploreTeamsView extends StatelessWidget {
               onPressed: (selected == null || isSubmitting)
                   ? null
                   : () async {
-                final messenger = ScaffoldMessenger.of(context);
-                final String uid =
-                    FirebaseAuth.instance.currentUser!.uid;
+                      final messenger = ScaffoldMessenger.of(context);
+                      final String uid =
+                          FirebaseAuth.instance.currentUser!.uid;
 
-                try {
-                  setDialogState(() {
-                    isSubmitting = true;
-                  });
+                      try {
+                        setDialogState(() {
+                          isSubmitting = true;
+                        });
 
-                  final existingRequest = await FirebaseFirestore.instance
-                      .collection('join_requests')
-                      .where('teamPostId', isEqualTo: teamId)
-                      .where('requesterId', isEqualTo: uid)
-                      .limit(1)
-                      .get();
+                        final existingRequest = await FirebaseFirestore.instance
+                            .collection('join_requests')
+                            .where('teamPostId', isEqualTo: teamId)
+                            .where('requesterId', isEqualTo: uid)
+                            .limit(1)
+                            .get();
 
-                  if (existingRequest.docs.isNotEmpty) {
-                    if (ctx.mounted) {
-                      Navigator.pop(ctx);
-                    }
+                        if (existingRequest.docs.isNotEmpty) {
+                          if (ctx.mounted) {
+                            Navigator.pop(ctx);
+                          }
 
-                    messenger.showSnackBar(
-                      const SnackBar(
-                        content: Text(
-                          "You already sent a request to this team.",
-                        ),
-                      ),
-                    );
-                    return;
-                  }
+                          messenger.showSnackBar(
+                            const SnackBar(
+                              content: Text(
+                                "You already sent a request to this team.",
+                              ),
+                            ),
+                          );
+                          return;
+                        }
 
-                  await FirebaseFirestore.instance
-                      .collection('join_requests')
-                      .add({
-                    'teamPostId': teamId,
-                    'hackathonId': hackathinId,
-                    'requesterId': uid,
-                    'desiredRole': selected,
-                    'status': 'pending',
-                    'createdAt': FieldValue.serverTimestamp(),
-                  });
+                        await FirebaseFirestore.instance
+                            .collection('join_requests')
+                            .add({
+                          'teamPostId': teamId,
+                          'hackathonId': hackathinId,
+                          'requesterId': uid,
+                          'desiredRole': selected,
+                          'status': 'pending',
+                          'createdAt': FieldValue.serverTimestamp(),
+                        });
 
-                  if (ctx.mounted) {
-                    Navigator.pop(ctx, true);
-                  }
+                        final teamDoc = await FirebaseFirestore.instance
+                            .collection('team_posts')
+                            .doc(teamId)
+                            .get();
 
-                  messenger.showSnackBar(
-                    const SnackBar(
-                      content: Text(
-                        "Join request sent successfully.",
-                      ),
-                    ),
-                  );
-                } catch (e) {
-                  messenger.showSnackBar(
-                    SnackBar(content: Text("Error joining: $e")),
-                  );
-                }
-              },
+                        final teamData = teamDoc.data();
+
+                        if (teamData != null) {
+                          final String leaderId =
+                              (teamData['createdBy'] ?? '').toString();
+
+                          if (leaderId.isNotEmpty) {
+                            await FirebaseFirestore.instance
+                                .collection('notifications')
+                                .add({
+                              'receiverId': leaderId,
+                              'type': 'join_request',
+                              'teamPostId': teamId,
+                              'hackathonId': hackathinId,
+                              'senderId': uid,
+                              'title': 'New join request',
+                              'message':
+                                  'A new user requested to join your team.',
+                              'isRead': false,
+                              'createdAt': FieldValue.serverTimestamp(),
+                            });
+                          }
+                        }
+
+                        if (ctx.mounted) {
+                          Navigator.pop(ctx, true);
+                        }
+
+                        messenger.showSnackBar(
+                          const SnackBar(
+                            content: Text(
+                              "Join request sent successfully.",
+                            ),
+                          ),
+                        );
+                      } catch (e) {
+                        messenger.showSnackBar(
+                          SnackBar(content: Text("Error joining: $e")),
+                        );
+                      }
+                    },
               child: const Text(
                 "Confirm Join",
                 style: TextStyle(color: Colors.white),

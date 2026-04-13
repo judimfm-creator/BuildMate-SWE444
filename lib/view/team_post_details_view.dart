@@ -28,6 +28,9 @@ class _TeamPostDetailsViewState extends State<TeamPostDetailsView> {
 
   @override
   Widget build(BuildContext context) {
+    // ✅ التعديل هنا فقط
+    final idea = widget.team.idea.trim();
+
     return Scaffold(
       backgroundColor: Colors.white,
       appBar: BuildMateAppBar(
@@ -40,23 +43,29 @@ class _TeamPostDetailsViewState extends State<TeamPostDetailsView> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // 1️⃣ حالة الفريق واسمه (نفس ترتيب الهاكاثون)
             _buildSimpleStatusBadge(),
             const SizedBox(height: 12),
 
             Text(
               "Hackathon Team",
-              style: TextStyle(fontWeight: FontWeight.bold, color: _purple.withOpacity(0.7), fontSize: 13),
+              style: TextStyle(
+                fontWeight: FontWeight.bold,
+                color: _purple.withOpacity(0.7),
+                fontSize: 13,
+              ),
             ),
             const SizedBox(height: 4),
             Text(
               widget.team.teamName,
-              style: const TextStyle(fontSize: 24, fontWeight: FontWeight.bold, color: Colors.black),
+              style: const TextStyle(
+                fontSize: 24,
+                fontWeight: FontWeight.bold,
+                color: Colors.black,
+              ),
             ),
 
             const SizedBox(height: 22),
 
-            // 2️⃣ تفاصيل بوست الفريق في كرت بنفسجي
             _sectionTitle("Team Post Details"),
             _infoCard([
               _row(Icons.person_outline, "Leader's Role", widget.team.myRole),
@@ -64,13 +73,18 @@ class _TeamPostDetailsViewState extends State<TeamPostDetailsView> {
               _row(Icons.calendar_today_outlined, "Posted On", _formatDate(widget.team.createdAt)),
             ]),
 
-            if (widget.team.idea.isNotEmpty) ...[
+            // ✅ التعديل هنا
+            if (idea.isNotEmpty) ...[
               const SizedBox(height: 16),
               _sectionTitle("Project Idea"),
               _infoCard([
                 Text(
-                  widget.team.idea,
-                  style: TextStyle(fontSize: 14, color: Colors.grey.shade700, height: 1.5),
+                  idea,
+                  style: TextStyle(
+                    fontSize: 14,
+                    color: Colors.grey.shade700,
+                    height: 1.5,
+                  ),
                 ),
               ]),
             ],
@@ -79,24 +93,37 @@ class _TeamPostDetailsViewState extends State<TeamPostDetailsView> {
             Divider(color: Colors.grey.shade200, thickness: 1),
             const SizedBox(height: 24),
 
-            // 3️⃣ سياق الهاكاثون
             Text(
               "By ${widget.hackathon.organizationName ?? 'Organizer'}",
-              style: TextStyle(fontWeight: FontWeight.bold, color: _purple.withOpacity(0.7), fontSize: 13),
+              style: TextStyle(
+                fontWeight: FontWeight.bold,
+                color: _purple.withOpacity(0.7),
+                fontSize: 13,
+              ),
             ),
             const SizedBox(height: 4),
             Text(
               widget.hackathon.name,
-              style: const TextStyle(fontSize: 24, fontWeight: FontWeight.bold, color: Colors.black),
+              style: const TextStyle(
+                fontSize: 24,
+                fontWeight: FontWeight.bold,
+                color: Colors.black,
+              ),
             ),
 
             const SizedBox(height: 16),
             _sectionTitle("Description"),
-            Text(widget.hackathon.description, style: TextStyle(fontSize: 14, color: Colors.grey.shade700, height: 1.6)),
+            Text(
+              widget.hackathon.description,
+              style: TextStyle(
+                fontSize: 14,
+                color: Colors.grey.shade700,
+                height: 1.6,
+              ),
+            ),
 
             const SizedBox(height: 22),
 
-            // 4️⃣ تفاصيل الهاكاثون في كرت بنفسجي
             _sectionTitle("Event Details"),
             _infoCard([
               _row(Icons.category_outlined, "Domain", widget.hackathon.domain),
@@ -104,14 +131,18 @@ class _TeamPostDetailsViewState extends State<TeamPostDetailsView> {
               _row(Icons.location_city_outlined, "City", widget.hackathon.city),
               if (widget.hackathon.location.isNotEmpty)
                 _row(Icons.place_outlined, "Location", widget.hackathon.location),
-              _row(Icons.groups_outlined, "Team Size",
-                  widget.hackathon.teamSize > 2 ? "2 - ${widget.hackathon.teamSize} members" : "2 members"),
+              _row(
+                Icons.groups_outlined,
+                "Team Size",
+                widget.hackathon.teamSize > 2
+                    ? "2 - ${widget.hackathon.teamSize} members"
+                    : "2 members",
+              ),
               _row(Icons.school_outlined, "Education", widget.hackathon.educationCriteria),
             ]),
 
             const SizedBox(height: 22),
 
-            // 5️⃣ التواريخ المهمة في كرت بنفسجي
             _sectionTitle("Important Dates"),
             _infoCard([
               _row(Icons.calendar_month_outlined, "Registration Starts", _formatDate(widget.hackathon.applicationOpenDate)),
@@ -122,7 +153,6 @@ class _TeamPostDetailsViewState extends State<TeamPostDetailsView> {
 
             const SizedBox(height: 16),
 
-            // 6️⃣ الأدوار المطلوبة
             if (widget.hackathon.rolesNeeded.isNotEmpty) ...[
               _sectionTitle("Roles Needed"),
               _buildRolesSection(),
@@ -130,7 +160,6 @@ class _TeamPostDetailsViewState extends State<TeamPostDetailsView> {
 
             const SizedBox(height: 40),
 
-// 🔴 التعديل في ملف team_post_details_view.dart 🔴
             _btn("Join Team", _purple, () {
               Navigator.push(
                 context,
@@ -138,12 +167,11 @@ class _TeamPostDetailsViewState extends State<TeamPostDetailsView> {
                   builder: (c) => teams_view.ExploreTeamsView(
                     hackathonId: widget.hackathon.id ?? "",
                     hackathonTeamSize: widget.hackathon.teamSize,
-                    teamId: widget.team.id, // 👈 التعديل هنا: تمرير الـ id حق الفريق الحالي
+                    teamId: widget.team.id,
                   ),
                 ),
               );
             }),
-
 
             const SizedBox(height: 40),
           ],
@@ -152,14 +180,19 @@ class _TeamPostDetailsViewState extends State<TeamPostDetailsView> {
     );
   }
 
-  // --- UI Helpers المطابقة لشاشة الهاكاثون ---
-
   Widget _buildSimpleStatusBadge() {
     return Row(
       children: [
         const Icon(Icons.person_search, color: _purple, size: 16),
         const SizedBox(width: 6),
-        const Text("Looking for Members", style: TextStyle(color: _purple, fontWeight: FontWeight.bold, fontSize: 13)),
+        const Text(
+          "Looking for Members",
+          style: TextStyle(
+            color: _purple,
+            fontWeight: FontWeight.bold,
+            fontSize: 13,
+          ),
+        ),
       ],
     );
   }
@@ -168,9 +201,18 @@ class _TeamPostDetailsViewState extends State<TeamPostDetailsView> {
     return Container(
       width: double.infinity,
       padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(color: _lightPurple, borderRadius: BorderRadius.circular(14)),
+      decoration: BoxDecoration(
+        color: _lightPurple,
+        borderRadius: BorderRadius.circular(14),
+      ),
       child: Column(
-          children: rows.expand((w) => [w, if (w != rows.last) Divider(color: _purple.withOpacity(0.1), height: 16)]).toList()
+        children: rows
+            .expand((w) => [
+                  w,
+                  if (w != rows.last)
+                    Divider(color: _purple.withOpacity(0.1), height: 16)
+                ])
+            .toList(),
       ),
     );
   }
@@ -186,40 +228,51 @@ class _TeamPostDetailsViewState extends State<TeamPostDetailsView> {
 
   Widget _btn(String l, Color c, VoidCallback? a) {
     return SizedBox(
-        width: double.infinity,
-        height: 50,
-        child: ElevatedButton(
-            style: ElevatedButton.styleFrom(
-                backgroundColor: c,
-                foregroundColor: Colors.white,
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12))
-            ),
-            onPressed: a,
-            child: Text(l, style: const TextStyle(fontWeight: FontWeight.bold))
-        )
+      width: double.infinity,
+      height: 50,
+      child: ElevatedButton(
+        style: ElevatedButton.styleFrom(
+          backgroundColor: c,
+          foregroundColor: Colors.white,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(12),
+          ),
+        ),
+        onPressed: a,
+        child: Text(l, style: const TextStyle(fontWeight: FontWeight.bold)),
+      ),
     );
   }
 
   Widget _sectionTitle(String title) {
     return Padding(
-        padding: const EdgeInsets.only(bottom: 8, top: 12),
-        child: Text(title, style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold))
+      padding: const EdgeInsets.only(bottom: 8, top: 12),
+      child: Text(title, style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
     );
   }
 
   Widget _buildRolesSection() {
     return Wrap(
-        spacing: 8,
-        runSpacing: 8,
-        children: widget.hackathon.rolesNeeded.map((r) => Container(
-            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-            decoration: BoxDecoration(
-                color: Colors.white,
-                borderRadius: BorderRadius.circular(20),
-                border: Border.all(color: _purple.withOpacity(0.3))
+      spacing: 8,
+      runSpacing: 8,
+      children: widget.hackathon.rolesNeeded.map((r) {
+        return Container(
+          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+          decoration: BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.circular(20),
+            border: Border.all(color: _purple.withOpacity(0.3)),
+          ),
+          child: Text(
+            r,
+            style: const TextStyle(
+              fontSize: 12,
+              color: _purple,
+              fontWeight: FontWeight.w500,
             ),
-            child: Text(r, style: const TextStyle(fontSize: 12, color: _purple, fontWeight: FontWeight.w500))
-        )).toList()
+          ),
+        );
+      }).toList(),
     );
   }
 }

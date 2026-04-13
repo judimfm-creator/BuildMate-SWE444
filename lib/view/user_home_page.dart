@@ -477,156 +477,185 @@ class _UserHomePageState extends State<UserHomePage> {
               ),
             ),
             const SizedBox(height: 10),
-          if (currentUid != null)
-        StreamBuilder<QuerySnapshot>(
-        stream: _getUserTeamStream(currentUid, hid),
-    builder: (context, teamSnap) {
-    if (teamSnap.connectionState == ConnectionState.waiting) {
-    return const SizedBox(height: 38);
-    }
+            if (currentUid != null)
+              StreamBuilder<QuerySnapshot>(
+                stream: _getUserTeamStream(currentUid, hid),
+                builder: (context, teamSnap) {
+                  if (teamSnap.connectionState == ConnectionState.waiting) {
+                    return const SizedBox(height: 38);
+                  }
 
-    if (teamSnap.hasData && teamSnap.data!.docs.isNotEmpty) {
-    final teamDoc = teamSnap.data!.docs.first;
-    final bool isOwner = teamDoc['createdBy'] == currentUid;
+                  if (teamSnap.hasData && teamSnap.data!.docs.isNotEmpty) {
+                    final teamDoc = teamSnap.data!.docs.first;
+                    final bool isOwner = teamDoc['createdBy'] == currentUid;
 
-    return _buildActionBtnOutlined(
-    label: isOwner ? "Manage My Team" : "View My Team",
-    icon: isOwner
-    ? Icons.edit_note_rounded
-        : Icons.visibility_outlined,
-    color: _purple,
-    onTap: () => Navigator.push(
-    context,
-    MaterialPageRoute(
-    builder: (context) => MyTeamPostView(
-    teamPostId: teamDoc.id,
-    hackathonId: hid,
-    hackathonTeamSize: h.teamSize,
-    ),
-    ),
-    ),
-    );
-    }
+                    if (isOwner) {
+                      return StreamBuilder<QuerySnapshot>(
+                        stream: FirebaseFirestore.instance
+                            .collection('join_requests')
+                            .where('teamPostId', isEqualTo: teamDoc.id)
+                            .where('status', isEqualTo: 'pending')
+                            .snapshots(),
+                        builder: (context, requestCountSnapshot) {
+                          final int count =
+                              requestCountSnapshot.data?.docs.length ?? 0;
 
-    if (regClosed) {
-    return _buildActionBtnOutlined(
-    label: "Registration Closed",
-    icon: Icons.lock_outline,
-    color: Colors.grey,
-    onTap: () {},
-    );
-    }
+                          return _buildActionBtnOutlined(
+                            label: "Manage My Team",
+                            icon: Icons.edit_note_rounded,
+                            color: _purple,
+                            onTap: () => Navigator.push(
+                              context,
+                              MaterialPageRoute(
+                                builder: (context) => MyTeamPostView(
+                                  teamPostId: teamDoc.id,
+                                  hackathonId: hid,
+                                  hackathonTeamSize: h.teamSize,
+                                ),
+                              ),
+                            ),
+                            badgeCount: count,
+                          );
+                        },
+                      );
+                    }
 
-    return StreamBuilder<QuerySnapshot<Map<String, dynamic>>>(
-    stream: FirebaseFirestore.instance
-        .collection('join_requests')
-        .where('hackathonId', isEqualTo: hid)
-        .where('requesterId', isEqualTo: currentUid)
-        .where('status', isEqualTo: 'pending')
-        .snapshots(),
-    builder: (context, requestSnapshot) {
-    final bool hasPendingRequest =
-    requestSnapshot.hasData &&
-    requestSnapshot.data!.docs.isNotEmpty;
+                    return _buildActionBtnOutlined(
+                      label: "View My Team",
+                      icon: Icons.visibility_outlined,
+                      color: _purple,
+                      onTap: () => Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (context) => MyTeamPostView(
+                            teamPostId: teamDoc.id,
+                            hackathonId: hid,
+                            hackathonTeamSize: h.teamSize,
+                          ),
+                        ),
+                      ),
+                    );
+                  }
 
-    if (hasPendingRequest) {
-    return Column(
-    children: [
-    Container(
-    width: double.infinity,
-    padding: const EdgeInsets.all(8),
-    decoration: BoxDecoration(
-    color: Colors.orange.shade50,
-    borderRadius: BorderRadius.circular(10),
-    border: Border.all(
-    color: Colors.orange.shade200,
-    ),
-    ),
-    child: const Text(
-    "Request already sent.",
-    textAlign: TextAlign.center,
-    style: TextStyle(
-    fontSize: 10,
-    fontWeight: FontWeight.bold,
-    color: Colors.orange,
-    ),
-    ),
-    ),
-    const SizedBox(height: 8),
-    Row(
-    children: [
-    Expanded(
-    child: _buildActionBtnOutlined(
-    label: "Create Team",
-    icon: Icons.add_circle_outline,
-    color: Colors.grey,
-    onTap: () {},
-    ),
-    ),
-    const SizedBox(width: 8),
-    Expanded(
-    child: _buildActionBtnOutlined(
-    label: "Pending",
-    icon: Icons.hourglass_top_rounded,
-    color: Colors.orange,
-    onTap: () {},
-    ),
-    ),
-    ],
-    ),
-    ],
-    );
-    }
+                  if (regClosed) {
+                    return _buildActionBtnOutlined(
+                      label: "Registration Closed",
+                      icon: Icons.lock_outline,
+                      color: Colors.grey,
+                      onTap: () {},
+                    );
+                  }
 
-    return Row(
-    children: [
-    Expanded(
-    child: _buildActionBtnOutlined(
-    label: "Create Team",
-    icon: Icons.add_circle_outline,
-    color: regNotStarted ? Colors.grey : _purple,
-    onTap: regNotStarted
-    ? () {}
-        : () => Navigator.push(
-    context,
-    MaterialPageRoute(
-    builder: (context) =>
-    CreateTeamPostScreen(
-    hackathonId: hid,
-    hackathonTeamSize: h.teamSize,
-    ),
-    ),
-    ),
-    ),
-    ),
-    const SizedBox(width: 8),
-    Expanded(
-    child: _buildActionBtnOutlined(
-    label: "Join Team",
-    icon: Icons.person_add_alt_1_outlined,
-    color: regNotStarted ? Colors.grey : _purple,
-    onTap: regNotStarted
-    ? () {}
-        : () => Navigator.push(
-    context,
-    MaterialPageRoute(
-    builder: (context) =>
-    teams_view.ExploreTeamsView(
-    hackathonId: hid,
-    hackathonTeamSize: h.teamSize,
-    ),
-    ),
-    ),
-    ),
-    ),
-    ],
-    );
-    },
-    );
-    },
-    ),
-    ],
-    ),
+                  return StreamBuilder<QuerySnapshot<Map<String, dynamic>>>(
+                    stream: FirebaseFirestore.instance
+                        .collection('join_requests')
+                        .where('hackathonId', isEqualTo: hid)
+                        .where('requesterId', isEqualTo: currentUid)
+                        .where('status', isEqualTo: 'pending')
+                        .snapshots(),
+                    builder: (context, requestSnapshot) {
+                      final bool hasPendingRequest =
+                          requestSnapshot.hasData &&
+                              requestSnapshot.data!.docs.isNotEmpty;
+
+                      if (hasPendingRequest) {
+                        return Column(
+                          children: [
+                            Container(
+                              width: double.infinity,
+                              padding: const EdgeInsets.all(8),
+                              decoration: BoxDecoration(
+                                color: Colors.orange.shade50,
+                                borderRadius: BorderRadius.circular(10),
+                                border: Border.all(
+                                  color: Colors.orange.shade200,
+                                ),
+                              ),
+                              child: const Text(
+                                "Request already sent.",
+                                textAlign: TextAlign.center,
+                                style: TextStyle(
+                                  fontSize: 10,
+                                  fontWeight: FontWeight.bold,
+                                  color: Colors.orange,
+                                ),
+                              ),
+                            ),
+                            const SizedBox(height: 8),
+                            Row(
+                              children: [
+                                Expanded(
+                                  child: _buildActionBtnOutlined(
+                                    label: "Create Team",
+                                    icon: Icons.add_circle_outline,
+                                    color: Colors.grey,
+                                    onTap: () {},
+                                  ),
+                                ),
+                                const SizedBox(width: 8),
+                                Expanded(
+                                  child: _buildActionBtnOutlined(
+                                    label: "Pending",
+                                    icon: Icons.hourglass_top_rounded,
+                                    color: Colors.orange,
+                                    onTap: () {},
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ],
+                        );
+                      }
+
+                      return Row(
+                        children: [
+                          Expanded(
+                            child: _buildActionBtnOutlined(
+                              label: "Create Team",
+                              icon: Icons.add_circle_outline,
+                              color: regNotStarted ? Colors.grey : _purple,
+                              onTap: regNotStarted
+                                  ? () {}
+                                  : () => Navigator.push(
+                                        context,
+                                        MaterialPageRoute(
+                                          builder: (context) =>
+                                              CreateTeamPostScreen(
+                                            hackathonId: hid,
+                                            hackathonTeamSize: h.teamSize,
+                                          ),
+                                        ),
+                                      ),
+                            ),
+                          ),
+                          const SizedBox(width: 8),
+                          Expanded(
+                            child: _buildActionBtnOutlined(
+                              label: "Join Team",
+                              icon: Icons.person_add_alt_1_outlined,
+                              color: regNotStarted ? Colors.grey : _purple,
+                              onTap: regNotStarted
+                                  ? () {}
+                                  : () => Navigator.push(
+                                        context,
+                                        MaterialPageRoute(
+                                          builder: (context) =>
+                                              teams_view.ExploreTeamsView(
+                                            hackathonId: hid,
+                                            hackathonTeamSize: h.teamSize,
+                                          ),
+                                        ),
+                                      ),
+                            ),
+                          ),
+                        ],
+                      );
+                    },
+                  );
+                },
+              ),
+          ],
+        ),
       ),
     );
   }
@@ -715,37 +744,84 @@ class _UserHomePageState extends State<UserHomePage> {
               "Event: ${hackathon.startDate.day} ${_getMonthName(hackathon.startDate.month)}",
             ),
             const SizedBox(height: 16),
-            SizedBox(
-              width: double.infinity,
-              height: 38,
-              child: ElevatedButton(
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: _purple,
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(10),
+            StreamBuilder<QuerySnapshot>(
+              stream: FirebaseFirestore.instance
+                  .collection('join_requests')
+                  .where('teamPostId', isEqualTo: team.id)
+                  .where('status', isEqualTo: 'pending')
+                  .snapshots(),
+              builder: (context, snapshot) {
+                final int count = snapshot.data?.docs.length ?? 0;
+
+                return SizedBox(
+                  width: double.infinity,
+                  height: 38,
+                  child: Stack(
+                    clipBehavior: Clip.none,
+                    children: [
+                      Positioned.fill(
+                        child: ElevatedButton(
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: _purple,
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(10),
+                            ),
+                            elevation: 0,
+                            padding: EdgeInsets.zero,
+                          ),
+                          onPressed: () => Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                              builder: (context) => MyTeamPostView(
+                                teamPostId: team.id ?? "",
+                                hackathonId: hackathon.id ?? "",
+                                hackathonTeamSize: hackathon.teamSize,
+                              ),
+                            ),
+                          ),
+                          child: Text(
+                            isLeader ? "Manage Team" : "View Team",
+                            style: const TextStyle(
+                              color: Colors.white,
+                              fontSize: 11,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                        ),
+                      ),
+                      if (isLeader && count > 0)
+                        Positioned(
+                          right: -4,
+                          top: -6,
+                          child: Container(
+                            constraints: const BoxConstraints(minWidth: 20),
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 6,
+                              vertical: 2,
+                            ),
+                            decoration: BoxDecoration(
+                              color: Colors.red,
+                              borderRadius: BorderRadius.circular(20),
+                              border: Border.all(
+                                color: Colors.white,
+                                width: 2,
+                              ),
+                            ),
+                            child: Text(
+                              count > 99 ? '99+' : count.toString(),
+                              textAlign: TextAlign.center,
+                              style: const TextStyle(
+                                color: Colors.white,
+                                fontSize: 9,
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
+                          ),
+                        ),
+                    ],
                   ),
-                  elevation: 0,
-                  padding: EdgeInsets.zero,
-                ),
-                onPressed: () => Navigator.push(
-                  context,
-                  MaterialPageRoute(
-                    builder: (context) => MyTeamPostView(
-                      teamPostId: team.id ?? "",
-                      hackathonId: hackathon.id ?? "",
-                      hackathonTeamSize: hackathon.teamSize,
-                    ),
-                  ),
-                ),
-                child: Text(
-                  isLeader ? "Manage Team" : "View Team",
-                  style: const TextStyle(
-                    color: Colors.white,
-                    fontSize: 11,
-                    fontWeight: FontWeight.bold,
-                  ),
-                ),
-              ),
+                );
+              },
             ),
           ],
         ),
@@ -758,25 +834,62 @@ class _UserHomePageState extends State<UserHomePage> {
     required IconData icon,
     required Color color,
     required VoidCallback onTap,
+    int badgeCount = 0,
   }) {
     return SizedBox(
       height: 38,
       width: double.infinity,
-      child: OutlinedButton.icon(
-        onPressed: onTap,
-        icon: Icon(icon, size: 14),
-        label: Text(
-          label,
-          style: const TextStyle(fontSize: 10, fontWeight: FontWeight.bold),
-        ),
-        style: OutlinedButton.styleFrom(
-          foregroundColor: color,
-          side: BorderSide(color: color, width: 1.2),
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(10),
+      child: Stack(
+        clipBehavior: Clip.none,
+        children: [
+          Positioned.fill(
+            child: OutlinedButton.icon(
+              onPressed: onTap,
+              icon: Icon(icon, size: 14),
+              label: Text(
+                label,
+                style: const TextStyle(
+                  fontSize: 10,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+              style: OutlinedButton.styleFrom(
+                foregroundColor: color,
+                side: BorderSide(color: color, width: 1.2),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(10),
+                ),
+                padding: EdgeInsets.zero,
+              ),
+            ),
           ),
-          padding: EdgeInsets.zero,
-        ),
+          if (badgeCount > 0)
+            Positioned(
+              right: -4,
+              top: -6,
+              child: Container(
+                constraints: const BoxConstraints(minWidth: 20),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 6,
+                  vertical: 2,
+                ),
+                decoration: BoxDecoration(
+                  color: Colors.red,
+                  borderRadius: BorderRadius.circular(20),
+                  border: Border.all(color: Colors.white, width: 2),
+                ),
+                child: Text(
+                  badgeCount > 99 ? '99+' : badgeCount.toString(),
+                  textAlign: TextAlign.center,
+                  style: const TextStyle(
+                    color: Colors.white,
+                    fontSize: 9,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+              ),
+            ),
+        ],
       ),
     );
   }

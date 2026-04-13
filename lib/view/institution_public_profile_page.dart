@@ -1,101 +1,196 @@
 import 'dart:io';
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 import 'package:buildmate/model/org_model.dart';
+import '../model/hackathon.dart';
 
-class InstitutionPublicProfilePage extends StatelessWidget {
+class InstitutionPublicProfilePage extends StatefulWidget {
   final OrgModel org;
+  final String orgId;
 
   const InstitutionPublicProfilePage({
     super.key,
     required this.org,
+    required this.orgId,
   });
 
+  @override
+  State<InstitutionPublicProfilePage> createState() =>
+      _InstitutionPublicProfilePageState();
+}
+
+class _InstitutionPublicProfilePageState
+    extends State<InstitutionPublicProfilePage>
+    with SingleTickerProviderStateMixin {
   static const Color _primaryPurple = Color(0xFF7A62B3);
   static const Color _lightPurpleBG = Color(0xFFF5F3FF);
 
+  late TabController _tabController;
+
+  @override
+  void initState() {
+    super.initState();
+    _tabController = TabController(length: 2, vsync: this);
+  }
+
+  @override
+  void dispose() {
+    _tabController.dispose();
+    super.dispose();
+  }
+
+  Future<List<Hackathon>> _getOrgHackathons() async {
+    final snapshot = await FirebaseFirestore.instance
+        .collection('hackathons')
+        .where('organizationId', isEqualTo: widget.orgId)
+        .get();
+
+    final hackathons = snapshot.docs
+        .map((doc) => Hackathon.fromFirestore(doc))
+        .toList();
+
+    hackathons.sort((a, b) => b.startDate.compareTo(a.startDate));
+    return hackathons;
+  }
+
   @override
   Widget build(BuildContext context) {
-    return DefaultTabController(
-      length: 1,
-      child: Scaffold(
-        backgroundColor: Colors.white,
-        body: CustomScrollView(
-          physics: const BouncingScrollPhysics(),
-          slivers: [
-            SliverAppBar(
-              pinned: false,
-              floating: false,
-              backgroundColor: _primaryPurple.withOpacity(0.05),
-              surfaceTintColor: _primaryPurple.withOpacity(0.05),
-              elevation: 0,
-              toolbarHeight: 38,
-              expandedHeight: 38,
-              automaticallyImplyLeading: false,
-              leading: IconButton(
-                icon: const Icon(
-                  Icons.arrow_back_ios,
-                  color: _primaryPurple,
-                ),
-                onPressed: () => Navigator.pop(context),
+    return Scaffold(
+      backgroundColor: Colors.white,
+      body: CustomScrollView(
+        physics: const BouncingScrollPhysics(),
+        slivers: [
+          SliverAppBar(
+            pinned: false,
+            floating: false,
+            backgroundColor: _primaryPurple.withOpacity(0.05),
+            surfaceTintColor: _primaryPurple.withOpacity(0.05),
+            elevation: 0,
+            toolbarHeight: 38,
+            expandedHeight: 38,
+            automaticallyImplyLeading: false,
+            leading: IconButton(
+              icon: const Icon(
+                Icons.arrow_back_ios,
+                color: _primaryPurple,
               ),
-              primary: false,
-              flexibleSpace: FlexibleSpaceBar(
-                centerTitle: true,
-                titlePadding: EdgeInsets.zero,
-                title: Container(
-                  alignment: Alignment.center,
-                  child: Text(
-                    org.orgName?.isNotEmpty == true
-                        ? org.orgName!
-                        : "Organization Profile",
-                    style: const TextStyle(
-                      color: _primaryPurple,
-                      fontWeight: FontWeight.w800,
-                      fontSize: 16,
-                      letterSpacing: 0.5,
-                    ),
+              onPressed: () => Navigator.pop(context),
+            ),
+            primary: false,
+            flexibleSpace: FlexibleSpaceBar(
+              centerTitle: true,
+              titlePadding: EdgeInsets.zero,
+              title: Container(
+                alignment: Alignment.center,
+                child: Text(
+                  widget.org.orgName?.isNotEmpty == true
+                      ? widget.org.orgName!
+                      : "Organization Profile",
+                  style: const TextStyle(
+                    color: _primaryPurple,
+                    fontWeight: FontWeight.w800,
+                    fontSize: 16,
+                    letterSpacing: 0.5,
                   ),
                 ),
               ),
             ),
+          ),
 
-            SliverToBoxAdapter(
-              child: Column(
-                children: [
-                  const SizedBox(height: 20),
-                  _buildOrgHeader(),
-                  const SizedBox(height: 28),
-                  _buildContactSection(),
-                  const SizedBox(height: 32),
-                  _buildAboutSection(),
-                  const SizedBox(height: 32),
-                ],
-              ),
+          SliverToBoxAdapter(
+            child: Column(
+              children: [
+                const SizedBox(height: 20),
+                _buildOrgHeader(),
+                const SizedBox(height: 28),
+                _buildContactSection(),
+                const SizedBox(height: 32),
+                _buildAboutSection(),
+                const SizedBox(height: 28),
+                _buildHackathonTabs(),
+                const SizedBox(height: 18),
+                SizedBox(
+                  height: MediaQuery.of(context).size.height * 0.62,
+                  child: FutureBuilder<List<Hackathon>>(
+                    future: _getOrgHackathons(),
+                    builder: (context, snapshot) {
+                      if (snapshot.connectionState == ConnectionState.waiting) {
+                        return const Center(
+                          child: CircularProgressIndicator(
+                            color: _primaryPurple,
+                          ),
+                        );
+                      }
+
+                      final allHackathons = snapshot.data ?? [];
+                      final now = DateTime.now();
+
+                      final ongoing = allHackathons.where((hackathon) {
+                        return !hackathon.endDate.isBefore(now);
+                      }).toList();
+
+                      final previous = allHackathons.where((hackathon) {
+                        return hackathon.endDate.isBefore(now);
+                      }).toList();
+
+                      return TabBarView(
+                        controller: _tabController,
+                        children: [
+                          _buildHackathonList(
+                            hackathons: ongoing,
+                            emptyText: "No ongoing hackathons",
+                            isPrevious: false,
+                          ),
+                          _buildHackathonList(
+                            hackathons: previous,
+                            emptyText: "No previous hackathons",
+                            isPrevious: true,
+                          ),
+                        ],
+                      );
+                    },
+                  ),
+                ),
+                const SizedBox(height: 28),
+              ],
             ),
-          ],
-        ),
+          ),
+        ],
       ),
     );
   }
 
   Widget _buildOrgHeader() {
-    final bool hasPhoto = (org.profilePhotoPath?.isNotEmpty ?? false);
+    final bool hasPhoto = (widget.org.profilePhotoPath?.isNotEmpty ?? false);
+
+    ImageProvider? profileImage;
+    if (hasPhoto) {
+      final path = widget.org.profilePhotoPath!;
+      if (path.startsWith('http')) {
+        profileImage = NetworkImage(path);
+      } else {
+        final file = File(path);
+        if (file.existsSync()) {
+          profileImage = FileImage(file);
+        }
+      }
+    }
 
     return Column(
       children: [
         CircleAvatar(
           radius: 55,
           backgroundColor: _lightPurpleBG,
-          backgroundImage: hasPhoto
-              ? FileImage(File(org.profilePhotoPath!))
-              : null,
-          child: !hasPhoto
+          backgroundImage: profileImage,
+          child: profileImage == null
               ? const Icon(Icons.business, size: 55, color: _primaryPurple)
               : null,
         ),
         const SizedBox(height: 15),
         Text(
-          org.orgName?.isNotEmpty == true ? org.orgName! : "Organization",
+          widget.org.orgName?.isNotEmpty == true
+              ? widget.org.orgName!
+              : "Organization",
           style: const TextStyle(
             fontSize: 22,
             fontWeight: FontWeight.bold,
@@ -106,7 +201,7 @@ class InstitutionPublicProfilePage extends StatelessWidget {
         ),
         const SizedBox(height: 8),
         Text(
-          "@${(org.username?.isNotEmpty == true) ? org.username! : "organization"}",
+          "@${(widget.org.username?.isNotEmpty == true) ? widget.org.username! : "organization"}",
           style: TextStyle(
             fontSize: 15,
             color: Colors.grey.shade600,
@@ -116,8 +211,8 @@ class InstitutionPublicProfilePage extends StatelessWidget {
         Padding(
           padding: const EdgeInsets.symmetric(horizontal: 40, vertical: 12),
           child: Text(
-            (org.biography?.isNotEmpty == true)
-                ? org.biography!
+            (widget.org.biography?.isNotEmpty == true)
+                ? widget.org.biography!
                 : "No biography available.",
             textAlign: TextAlign.center,
             style: TextStyle(
@@ -142,21 +237,21 @@ class InstitutionPublicProfilePage extends StatelessWidget {
             child: _buildContactItem(
               Icons.location_on_rounded,
               "Location",
-              _safeValue(org.location),
+              _safeValue(widget.org.location),
             ),
           ),
           Expanded(
             child: _buildContactItem(
               Icons.email_rounded,
               "Email",
-              _safeValue(org.email),
+              _safeValue(widget.org.email),
             ),
           ),
           Expanded(
             child: _buildContactItem(
               Icons.phone_iphone_rounded,
               "Contact",
-              _safeValue(org.phoneNumber),
+              _safeValue(widget.org.phoneNumber),
             ),
           ),
         ],
@@ -233,8 +328,8 @@ class InstitutionPublicProfilePage extends StatelessWidget {
             ),
             const SizedBox(height: 10),
             Text(
-              (org.biography?.isNotEmpty == true)
-                  ? org.biography!
+              (widget.org.biography?.isNotEmpty == true)
+                  ? widget.org.biography!
                   : "No additional information available.",
               style: TextStyle(
                 fontSize: 14,
@@ -246,6 +341,168 @@ class InstitutionPublicProfilePage extends StatelessWidget {
         ),
       ),
     );
+  }
+
+  Widget _buildHackathonTabs() {
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 20),
+      child: Container(
+        decoration: BoxDecoration(
+          color: _lightPurpleBG,
+          borderRadius: BorderRadius.circular(30),
+        ),
+        child: TabBar(
+          controller: _tabController,
+          indicatorSize: TabBarIndicatorSize.tab,
+          indicator: BoxDecoration(
+            color: _primaryPurple,
+            borderRadius: BorderRadius.circular(30),
+          ),
+          labelColor: Colors.white,
+          unselectedLabelColor: _primaryPurple,
+          dividerColor: Colors.transparent,
+          tabs: const [
+            Tab(text: "Ongoing"),
+            Tab(text: "Previous"),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildHackathonList({
+    required List<Hackathon> hackathons,
+    required String emptyText,
+    required bool isPrevious,
+  }) {
+    if (hackathons.isEmpty) {
+      return Center(
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(
+              isPrevious ? Icons.history : Icons.rocket_launch_outlined,
+              size: 42,
+              color: Colors.grey.shade300,
+            ),
+            const SizedBox(height: 10),
+            Text(
+              emptyText,
+              style: TextStyle(
+                color: Colors.grey.shade400,
+                fontSize: 14,
+              ),
+            ),
+          ],
+        ),
+      );
+    }
+
+    return ListView.separated(
+      padding: const EdgeInsets.fromLTRB(20, 10, 20, 24),
+      itemCount: hackathons.length,
+      separatorBuilder: (_, __) => const SizedBox(height: 12),
+      itemBuilder: (context, index) {
+        final hackathon = hackathons[index];
+        return _buildHackathonCard(hackathon, isPrevious: isPrevious);
+      },
+    );
+  }
+
+  Widget _buildHackathonCard(Hackathon hackathon, {required bool isPrevious}) {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: _lightPurpleBG,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: _primaryPurple.withOpacity(0.08)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            hackathon.name,
+            style: const TextStyle(
+              fontSize: 16,
+              fontWeight: FontWeight.bold,
+              color: _primaryPurple,
+            ),
+          ),
+          const SizedBox(height: 8),
+          _infoRow(Icons.category_outlined, "Domain", hackathon.domain),
+          const SizedBox(height: 6),
+          _infoRow(Icons.location_on_outlined, "Location", hackathon.location),
+          const SizedBox(height: 6),
+          _infoRow(
+            Icons.groups_outlined,
+            "Team Size",
+            hackathon.teamSize > 2
+                ? "2 - ${hackathon.teamSize} members"
+                : "2 members",
+          ),
+          const SizedBox(height: 6),
+          _infoRow(
+            Icons.event_outlined,
+            isPrevious ? "Ended" : "Ends",
+            _formatDate(hackathon.endDate),
+          ),
+          const SizedBox(height: 12),
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+            decoration: BoxDecoration(
+              color: isPrevious
+                  ? Colors.grey.shade200
+                  : Colors.green.withOpacity(0.12),
+              borderRadius: BorderRadius.circular(20),
+            ),
+            child: Text(
+              isPrevious ? "Previous Hackathon" : "Ongoing Hackathon",
+              style: TextStyle(
+                fontSize: 12,
+                fontWeight: FontWeight.w700,
+                color: isPrevious ? Colors.grey.shade700 : Colors.green.shade700,
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _infoRow(IconData icon, String label, String value) {
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Icon(icon, size: 17, color: _primaryPurple),
+        const SizedBox(width: 8),
+        Text(
+          "$label: ",
+          style: const TextStyle(
+            fontSize: 13,
+            fontWeight: FontWeight.bold,
+            color: Colors.black87,
+          ),
+        ),
+        Expanded(
+          child: Text(
+            value,
+            style: TextStyle(
+              fontSize: 13,
+              color: Colors.grey.shade700,
+              height: 1.35,
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+
+  String _formatDate(DateTime date) {
+    final day = date.day.toString().padLeft(2, '0');
+    final month = date.month.toString().padLeft(2, '0');
+    final year = date.year.toString();
+    return "$day/$month/$year";
   }
 
   String _safeValue(String? value) {

@@ -75,11 +75,14 @@ class _HackathonDetailsViewState extends State<HackathonDetailsView> {
       Navigator.push(
         context,
         MaterialPageRoute(
-          builder: (_) => InstitutionPublicProfilePage(org: org),
+          builder: (_) => InstitutionPublicProfilePage(
+            org: org,
+            orgId: orgId,
+          ),
         ),
       );
     } catch (e) {
-      // نخليها ساكتة عشان ما نخرب شيء
+      // keep silent to avoid breaking UI
     }
   }
 
@@ -96,7 +99,8 @@ class _HackathonDetailsViewState extends State<HackathonDetailsView> {
     );
 
     final bool isEventEnded = widget.hackathon.endDate.isBefore(now);
-    final bool regNotStarted = now.isBefore(widget.hackathon.applicationOpenDate);
+    final bool regNotStarted =
+        now.isBefore(widget.hackathon.applicationOpenDate);
     final bool regClosed = now.isAfter(deadlineDateTime);
     final String? currentUid = FirebaseAuth.instance.currentUser?.uid;
 
@@ -407,17 +411,50 @@ class _HackathonDetailsViewState extends State<HackathonDetailsView> {
         }
 
         if (teamSnap.hasData && teamSnap.data != null) {
-          final bool isOwner = teamSnap.data!.data()['createdBy'] == uid;
+          final teamData = teamSnap.data!.data();
+          final String teamPostId = teamSnap.data!.id;
+          final bool isOwner = teamData['createdBy'] == uid;
+
+          if (isOwner) {
+            return StreamBuilder<QuerySnapshot<Map<String, dynamic>>>(
+              stream: FirebaseFirestore.instance
+                  .collection('join_requests')
+                  .where('teamPostId', isEqualTo: teamPostId)
+                  .where('status', isEqualTo: 'pending')
+                  .snapshots(),
+              builder: (context, requestSnapshot) {
+                final int pendingCount = requestSnapshot.data?.docs.length ?? 0;
+
+                return _btn(
+                  "Manage My Team",
+                  _purple,
+                  () {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (context) => MyTeamPostView(
+                          teamPostId: teamPostId,
+                          hackathonId: hid,
+                          hackathonTeamSize: widget.hackathon.teamSize,
+                        ),
+                      ),
+                    ).then((_) => setState(() {}));
+                  },
+                  badgeCount: pendingCount,
+                );
+              },
+            );
+          }
 
           return _btn(
-            isOwner ? "Manage My Team" : "View My Team",
+            "View My Team",
             _purple,
             () {
               Navigator.push(
                 context,
                 MaterialPageRoute(
                   builder: (context) => MyTeamPostView(
-                    teamPostId: teamSnap.data!.id,
+                    teamPostId: teamPostId,
                     hackathonId: hid,
                     hackathonTeamSize: widget.hackathon.teamSize,
                   ),
@@ -448,7 +485,11 @@ class _HackathonDetailsViewState extends State<HackathonDetailsView> {
                 children: [
                   _btn("Create Team Post (Opening Soon)", Colors.grey, null),
                   const SizedBox(height: 12),
-                  _outlinedBtn("Join Existing Team (Opening Soon)", Colors.grey, null),
+                  _outlinedBtn(
+                    "Join Existing Team (Opening Soon)",
+                    Colors.grey,
+                    null,
+                  ),
                 ],
               );
             }
@@ -486,7 +527,7 @@ class _HackathonDetailsViewState extends State<HackathonDetailsView> {
                 _btn(
                   "Create Team Post",
                   _purple,
-                      () => Navigator.push(
+                  () => Navigator.push(
                     context,
                     MaterialPageRoute(
                       builder: (context) => CreateTeamPostScreen(
@@ -500,7 +541,7 @@ class _HackathonDetailsViewState extends State<HackathonDetailsView> {
                 _outlinedBtn(
                   "Join Existing Team",
                   _purple,
-                      () => Navigator.push(
+                  () => Navigator.push(
                     context,
                     MaterialPageRoute(
                       builder: (context) => teams_view.ExploreTeamsView(
@@ -518,22 +559,61 @@ class _HackathonDetailsViewState extends State<HackathonDetailsView> {
     );
   }
 
-  Widget _btn(String l, Color c, VoidCallback? a) => SizedBox(
+  Widget _btn(
+    String l,
+    Color c,
+    VoidCallback? a, {
+    int badgeCount = 0,
+  }) =>
+      SizedBox(
         width: double.infinity,
         height: 50,
-        child: ElevatedButton(
-          style: ElevatedButton.styleFrom(
-            backgroundColor: c,
-            foregroundColor: Colors.white,
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(12),
+        child: Stack(
+          clipBehavior: Clip.none,
+          children: [
+            Positioned.fill(
+              child: ElevatedButton(
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: c,
+                  foregroundColor: Colors.white,
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                ),
+                onPressed: a,
+                child: Text(
+                  l,
+                  style: const TextStyle(fontWeight: FontWeight.bold),
+                ),
+              ),
             ),
-          ),
-          onPressed: a,
-          child: Text(
-            l,
-            style: const TextStyle(fontWeight: FontWeight.bold),
-          ),
+            if (badgeCount > 0)
+              Positioned(
+                right: -4,
+                top: -6,
+                child: Container(
+                  constraints: const BoxConstraints(minWidth: 22),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 7,
+                    vertical: 3,
+                  ),
+                  decoration: BoxDecoration(
+                    color: Colors.red,
+                    borderRadius: BorderRadius.circular(20),
+                    border: Border.all(color: Colors.white, width: 2),
+                  ),
+                  child: Text(
+                    badgeCount > 99 ? '99+' : badgeCount.toString(),
+                    textAlign: TextAlign.center,
+                    style: const TextStyle(
+                      color: Colors.white,
+                      fontSize: 10,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                ),
+              ),
+          ],
         ),
       );
 
