@@ -1,5 +1,6 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
+import 'group_chat_view.dart';
 
 class TeamWorkspaceView extends StatelessWidget {
   final String teamPostId;
@@ -12,7 +13,6 @@ class TeamWorkspaceView extends StatelessWidget {
   });
 
   static const Color _purple = Color(0xFF6D56B3);
-  static const Color _lightPurple = Color(0xFFF0EEFF);
   static const Color _lightBlue = Color(0xFFD9F3F7);
   static const Color _pageBg = Color(0xFFF8F9FD);
 
@@ -92,11 +92,23 @@ class TeamWorkspaceView extends StatelessWidget {
                 ),
                 const SizedBox(height: 16),
 
+                // ─── Group Chat — يفتح GroupChatView الحين ───────────────
                 _clickCard(
                   context: context,
                   title: "Group Chat",
-                  subtitle: "This feature will be added in the next sprint.",
+                  subtitle: "Connect with your BuildMates!",
                   icon: Icons.chat_bubble_outline_rounded,
+                  onTap: () {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (_) => GroupChatView(
+                          teamPostId: teamPostId,
+                          teamName: teamName,
+                        ),
+                      ),
+                    );
+                  },
                 ),
                 const SizedBox(height: 16),
 
@@ -157,16 +169,11 @@ class TeamWorkspaceView extends StatelessWidget {
     required String title,
     required String subtitle,
     required IconData icon,
+    required VoidCallback onTap,
   }) {
     return InkWell(
       borderRadius: BorderRadius.circular(18),
-      onTap: () {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text("This feature will be available later."),
-          ),
-        );
-      },
+      onTap: onTap,
       child: Container(
         width: double.infinity,
         padding: const EdgeInsets.all(16),
@@ -218,26 +225,18 @@ class _TaskRow extends StatelessWidget {
   final String title;
   final String deadline;
 
-  const _TaskRow({
-    required this.title,
-    required this.deadline,
-  });
+  const _TaskRow({required this.title, required this.deadline});
 
   @override
   Widget build(BuildContext context) {
     return Row(
       children: [
-        const Icon(
-          Icons.radio_button_unchecked,
-          size: 18,
-          color: Color(0xFF6D56B3),
-        ),
+        const Icon(Icons.radio_button_unchecked,
+            size: 18, color: Color(0xFF6D56B3)),
         const SizedBox(width: 10),
         Expanded(
-          child: Text(
-            title,
-            style: const TextStyle(fontWeight: FontWeight.w500),
-          ),
+          child: Text(title,
+              style: const TextStyle(fontWeight: FontWeight.w500)),
         ),
         Text(
           deadline,
@@ -255,27 +254,19 @@ class _TaskRow extends StatelessWidget {
 class _DocumentRow extends StatelessWidget {
   final String fileName;
 
-  const _DocumentRow({
-    required this.fileName,
-  });
+  const _DocumentRow({required this.fileName});
 
   @override
   Widget build(BuildContext context) {
     return Row(
       children: [
-        const Icon(
-          Icons.insert_drive_file_outlined,
-          size: 18,
-          color: Color(0xFF6D56B3),
-        ),
+        const Icon(Icons.insert_drive_file_outlined,
+            size: 18, color: Color(0xFF6D56B3)),
         const SizedBox(width: 10),
         Expanded(
           child: Text(
             fileName,
-            style: const TextStyle(
-              fontSize: 13,
-              fontWeight: FontWeight.w500,
-            ),
+            style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w500),
           ),
         ),
       ],
