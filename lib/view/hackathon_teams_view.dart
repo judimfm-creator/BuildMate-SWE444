@@ -102,7 +102,7 @@ class ExploreTeamsView extends StatelessWidget {
                       ),
                       SizedBox(height: 12),
                       Text(
-                        "Request Already Sent",
+                        "Request Sent",
                         style: TextStyle(
                           fontSize: 17,
                           fontWeight: FontWeight.bold,
@@ -111,7 +111,7 @@ class ExploreTeamsView extends StatelessWidget {
                       ),
                       SizedBox(height: 8),
                       Text(
-                        "You already have a pending join request for a team in this hackathon. You cannot view or join other teams until your request is accepted or rejected.",
+                        "Your join request has been sent successfully. Please wait for the team leader to accept or reject your request",
                         textAlign: TextAlign.center,
                         style: TextStyle(
                           fontSize: 13,

@@ -58,6 +58,98 @@ class MyTeamPostView extends StatelessWidget {
         .map((snapshot) => snapshot.docs.length);
   }
 
+  Future<void> _deleteTeamPost(BuildContext context) async {
+    try {
+      final firestore = FirebaseFirestore.instance;
+
+      final teamRef = firestore.collection('team_posts').doc(teamPostId);
+      final teamDoc = await teamRef.get();
+
+      if (!teamDoc.exists) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Team post not found.'),
+            backgroundColor: Colors.red,
+          ),
+        );
+        return;
+      }
+
+      final data = teamDoc.data() ?? {};
+      final bool isSubmitted = data['submittedToInstitution'] == true;
+
+      if (isSubmitted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('You cannot delete a team after registration.'),
+            backgroundColor: Colors.red,
+          ),
+        );
+        return;
+      }
+
+      final batch = firestore.batch();
+
+      final joinRequests = await firestore
+          .collection('join_requests')
+          .where('teamPostId', isEqualTo: teamPostId)
+          .get();
+
+      for (final doc in joinRequests.docs) {
+        batch.delete(doc.reference);
+      }
+
+      batch.delete(teamRef);
+
+      await batch.commit();
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Team deleted successfully.'),
+          backgroundColor: Colors.green,
+        ),
+      );
+
+      Navigator.pop(context);
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Error deleting team: $e'),
+          backgroundColor: Colors.red,
+        ),
+      );
+    }
+  }
+
+  Future<void> _showDeleteConfirmation(BuildContext context) async {
+    final confirm = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Delete Team'),
+        content: const Text(
+          'Are you sure you want to delete this team before registration?',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: const Text('Cancel'),
+          ),
+          TextButton(
+            onPressed: () => Navigator.pop(context, true),
+            child: const Text(
+              'Delete',
+              style: TextStyle(color: Colors.red),
+            ),
+          ),
+        ],
+      ),
+    );
+
+    if (confirm == true) {
+      await _deleteTeamPost(context);
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final String? currentUserId = FirebaseAuth.instance.currentUser?.uid;
@@ -261,6 +353,16 @@ class MyTeamPostView extends StatelessWidget {
                           }
                         : null,
                   ),
+
+                  if (!isSubmitted) ...[
+                    const SizedBox(height: 12),
+                    _actionButton(
+                      label: 'Delete Team',
+                      icon: Icons.delete_outline,
+                      color: Colors.red,
+                      onPressed: () => _showDeleteConfirmation(context),
+                    ),
+                  ],
 
                   if (!isSubmitted)
                     Padding(

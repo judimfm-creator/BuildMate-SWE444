@@ -3,12 +3,30 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'team_workspace_view.dart';
 
+
 class TeamsGroupsView extends StatelessWidget {
   const TeamsGroupsView({super.key});
 
   static const Color _purple = Color(0xFF6D56B3);
   static const Color _lightPurple = Color(0xFFF0EEFF);
   static const Color _pageBg = Color(0xFFF8F9FD);
+
+  Future<String> _getHackathonName(String hackathonId) async {
+    if (hackathonId.isEmpty) return 'Unknown Hackathon';
+
+    final doc = await FirebaseFirestore.instance
+        .collection('hackathons')
+        .doc(hackathonId)
+        .get();
+
+    if (!doc.exists) return 'Unknown Hackathon';
+
+    final data = doc.data() ?? {};
+    return data['hackathonName'] ??
+        data['title'] ??
+        data['name'] ??
+        'Unknown Hackathon';
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -118,9 +136,22 @@ class TeamsGroupsView extends StatelessWidget {
                       fontSize: 16,
                     ),
                   ),
-                  subtitle: Text(
-                    "${members.length} members",
-                    style: TextStyle(color: Colors.grey.shade700),
+                  subtitle: FutureBuilder<String>(
+                    future: _getHackathonName(hackathonId),
+                    builder: (context, snapshot) {
+                      final hackathonName = snapshot.data ?? 'Loading...';
+
+                      return Text(
+                        "$hackathonName • ${members.length} members",
+                        style: TextStyle(
+                          color: Colors.grey.shade700,
+                          fontSize: 13,
+                          fontWeight: FontWeight.w500,
+                        ),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                      );
+                    },
                   ),
                   trailing: const Icon(
                     Icons.arrow_forward_ios_rounded,

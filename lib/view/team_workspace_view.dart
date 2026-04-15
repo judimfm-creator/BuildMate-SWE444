@@ -2,6 +2,10 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 import 'group_chat_view.dart';
 
+import 'my_team_post_view.dart';
+
+
+
 class TeamWorkspaceView extends StatelessWidget {
   final String teamPostId;
   final String hackathonId;
@@ -76,6 +80,29 @@ class TeamWorkspaceView extends StatelessWidget {
                   ),
                 ),
                 const SizedBox(height: 18),
+
+
+                _clickCard(
+                  context: context,
+                  title: "View Team Details",
+                  subtitle: "View members, roles, and team info",
+                  icon: Icons.groups_outlined,
+                  onTap: () {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (_) => MyTeamPostView(
+                          teamPostId: teamPostId,
+                          hackathonId: hackathonId,
+                          hackathonTeamSize: data['hackathonTeamSize'] ?? 5,
+                        ),
+                      ),
+                    );
+                  },
+                ),
+
+                const SizedBox(height: 16),
+
 
                 _sectionCard(
                   title: "Tasks",
