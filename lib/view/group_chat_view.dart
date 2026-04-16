@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import '../model/user_model.dart';
 import '../services/chat_service.dart';
+import 'video_call_view.dart';
 
 class GroupChatView extends StatefulWidget {
   final String teamPostId;
@@ -299,10 +300,16 @@ class _GroupChatViewState extends State<GroupChatView> {
           icon: const Icon(Icons.videocam_outlined, color: Colors.white),
           tooltip: 'Video Call',
           onPressed: () {
-            ScaffoldMessenger.of(context).showSnackBar(
-              const SnackBar(
-                content: Text('Soon...'),
-                duration: Duration(seconds: 2),
+            if (_currentUser == null) return;
+
+            Navigator.push(
+              context,
+              MaterialPageRoute(
+                builder: (context) => VideoCallView(
+                  callID: widget.teamPostId, // نفس أيدي القروب عشان تدخلون نفس الروم
+                  userID: _currentUser!.uid,
+                  userName: _currentUser!.fullName,
+                ),
               ),
             );
           },
