@@ -47,6 +47,7 @@ class ChatService {
       'senderName': senderName,
       'senderPhoto': senderPhoto,
       'createdAt': FieldValue.serverTimestamp(),
+      'readBy': [],
     });
   }
 

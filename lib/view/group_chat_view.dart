@@ -52,11 +52,37 @@ class _GroupChatViewState extends State<GroupChatView> {
     _loadCurrentUser();
   }
 
+
+
   @override
   void dispose() {
     _messageController.dispose();
     _scrollController.dispose();
     super.dispose();
+  }
+
+  void _markMessagesAsRead(List<QueryDocumentSnapshot<Map<String, dynamic>>> docs) {
+    if (_currentUser == null) return;
+
+    final batch = FirebaseFirestore.instance.batch();
+    bool hasUpdates = false;
+
+    for (var doc in docs) {
+      final data = doc.data();
+      final List readBy = data['readBy'] ?? [];
+
+      // إذا لست أنا المرسل، ومعرفي غير موجود في قائمة القراء
+      if (data['senderId'] != _currentUser!.uid && !readBy.contains(_currentUser!.uid)) {
+        batch.update(doc.reference, {
+          'readBy': FieldValue.arrayUnion([_currentUser!.uid])
+        });
+        hasUpdates = true;
+      }
+    }
+
+    if (hasUpdates) {
+      batch.commit();
+    }
   }
 
   Future<void> _loadCurrentUser() async {
@@ -141,18 +167,23 @@ class _GroupChatViewState extends State<GroupChatView> {
   String _formatDateDivider(Timestamp timestamp) {
     final dt = timestamp.toDate();
     final now = DateTime.now();
+
+    // التحقق إذا كان اليوم
     if (dt.year == now.year &&
         dt.month == now.month &&
         dt.day == now.day) {
       return 'Today';
     }
+
+    // التحقق إذا كان الأمس
     final yesterday = now.subtract(const Duration(days: 1));
     if (dt.year == yesterday.year &&
         dt.month == yesterday.month &&
         dt.day == yesterday.day) {
       return 'Yesterday';
     }
-    return DateFormat('d MMM yyyy', 'ar').format(dt);
+
+    return DateFormat('d MMM yyyy').format(dt);
   }
 
   @override
@@ -171,6 +202,36 @@ class _GroupChatViewState extends State<GroupChatView> {
     );
   }
 
+  Widget _buildAvatarCircle(Color bgColor, String label, {bool isCount = false}) {
+    return Container(
+      width: 30,
+      height: 30,
+      decoration: BoxDecoration(
+        color: bgColor,
+        shape: BoxShape.circle,
+        border: Border.all(color: _purple, width: 1.5), // إطار بلون التطبيق للفصل بين الدوائر
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.1),
+            blurRadius: 2,
+            offset: const Offset(0, 1),
+          ),
+        ],
+      ),
+      child: Center(
+        child: Text(
+          label,
+          style: TextStyle(
+            fontSize: isCount ? 10 : 12, // تصغير الخط إذا كان عدداً
+            fontWeight: FontWeight.bold,
+            color: isCount ? Colors.black54 : _purple,
+          ),
+        ),
+      ),
+    );
+  }
+
+
   // AppBar
   AppBar _buildAppBar() {
     return AppBar(
@@ -181,15 +242,32 @@ class _GroupChatViewState extends State<GroupChatView> {
       leading: const BackButton(color: Colors.white),
       title: Row(
         children: [
-          Container(
-            width: 34,
+          SizedBox(
+            width: 65, // عرض كافٍ لثلاث دوائر متداخلة
             height: 34,
-            decoration: const BoxDecoration(
-              color: Color(0xFFF0EEFF),
-              shape: BoxShape.circle,
-            ),
-            child: const Center(
-              child: Text('🚀', style: TextStyle(fontSize: 16)),
+            child: Stack(
+              alignment: Alignment.centerLeft,
+              children: [
+                // الدائرة الثالثة (التي تخبرنا بوجود أعضاء إضافيين)
+                Positioned(
+                  left: 28,
+                  child: _buildAvatarCircle(
+                    const Color(0xFFE0E0E0), // لون رمادي فاتح
+                    "   +", // هنا يمكنك وضع عدد الأعضاء المتبقي
+                    isCount: true,
+                  ),
+                ),
+                // الدائرة الثانية
+                Positioned(
+                  left: 14,
+                  child: _buildAvatarCircle(const Color(0xFFE6F1FB), "A"),
+                ),
+                // الدائرة الأولى (بالواجهة)
+                Positioned(
+                  left: 0,
+                  child: _buildAvatarCircle(const Color(0xFFF0EEFF), "B"),
+                ),
+              ],
             ),
           ),
           const SizedBox(width: 10),
@@ -249,6 +327,10 @@ class _GroupChatViewState extends State<GroupChatView> {
         }
 
         final docs = snapshot.data?.docs ?? [];
+
+        if (docs.isNotEmpty) {
+          _markMessagesAsRead(docs);
+        }
 
         if (docs.isEmpty) {
           return Center(
@@ -328,6 +410,12 @@ class _GroupChatViewState extends State<GroupChatView> {
     final text = data['text'] as String? ?? '';
     final timestamp = data['createdAt'] as Timestamp?;
     final senderPhoto = data['senderPhoto'] as String?;
+
+    // --- الجزء الخاص بحالة القراءة (الصح والصحين) ---
+    final List readBy = data['readBy'] ?? [];
+    // نعتبر الرسالة مقروءة إذا كان هناك أي شخص في القائمة غير المرسل
+    bool isRead = readBy.any((uid) => uid != senderId);
+    // --------------------------------------------
 
     return Padding(
       padding: const EdgeInsets.only(bottom: 8),
@@ -412,8 +500,11 @@ class _GroupChatViewState extends State<GroupChatView> {
                     ),
                     if (isMe) ...[
                       const SizedBox(width: 3),
-                      const Icon(Icons.done_all,
-                          size: 13, color: Color(0xFF888780)),
+                      // التعديل هنا: إذا قرأها أحد تظهر صحين زرقاء، وإلا صح واحد رمادي
+                      Icon(
+                        isRead ? Icons.done_all : Icons.done,
+                        size: 13,
+                      ),
                     ],
                   ],
                 ),
@@ -483,7 +574,7 @@ class _GroupChatViewState extends State<GroupChatView> {
               controller: _messageController,
               maxLines: 4,
               minLines: 1,
-              textAlign: TextAlign.right,
+              textAlign: TextAlign.left,
               style: const TextStyle(fontSize: 13),
               decoration: InputDecoration(
                 hintText: 'Write a message...',
