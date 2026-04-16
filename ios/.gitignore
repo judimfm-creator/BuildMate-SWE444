@@ -1,3 +1,33 @@
+# ========================
+# Flutter / Dart
+# ========================
+.dart_tool/
+.packages
+.pub/
+build/
+.flutter-plugins
+.flutter-plugins-dependencies
+.pub-cache/
+
+# ========================
+# Generated files
+# ========================
+**/GeneratedPluginRegistrant.*
+**/generated_plugin_registrant.*
+**/flutter_export_environment.sh
+**/Generated.xcconfig
+**/ephemeral/
+
+# ========================
+# Android
+# ========================
+android/.gradle/
+android/app/build/
+**/local.properties
+
+# ========================
+# iOS / macOS (اللي عندك + مرتب)
+# ========================
 **/dgph
 *.mode1v3
 *.mode2v3
@@ -27,8 +57,37 @@ Flutter/flutter_export_environment.sh
 ServiceDefinitions.json
 Runner/GeneratedPluginRegistrant.*
 
-# Exceptions to above rules.
+# Exceptions
 !default.mode1v3
 !default.mode2v3
 !default.pbxuser
 !default.perspectivev3
+
+# ========================
+# Windows / Linux
+# ========================
+linux/flutter/ephemeral/
+windows/flutter/ephemeral/
+
+# ========================
+# Firebase Functions
+# ========================
+functions/node_modules/
+functions/.firebase/
+
+# ========================
+# IDE
+# ========================
+.vscode/
+.idea/
+
+# ========================
+# Logs
+# ========================
+*.log
+
+# ========================
+# OS files
+# ========================
+.DS_Store
+Thumbs.db
