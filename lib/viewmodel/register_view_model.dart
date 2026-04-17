@@ -3,7 +3,10 @@ import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:onesignal_flutter/onesignal_flutter.dart';
+
 import '../services/auth_service.dart';
+import '../services/notification_service.dart';
 import '../model/org_model.dart';
 import '../model/user_model.dart';
 
@@ -35,28 +38,37 @@ class RegisterViewModel extends ChangeNotifier {
     }
   }
 
-  // تسجيل المنظمات
-  Future<void> registerOrg(OrgModel org, String password, BuildContext context) async {
+  Future<void> registerOrg(
+    OrgModel org,
+    String password,
+    BuildContext context,
+  ) async {
     _setLoading(true);
     try {
-      // 1. 🔥 الفحص السحري: نتحقق إذا الرقم موجود عند (يوزر) أو (منشأة)
-      bool exists = await _isPhoneNumberAlreadyExists(org.phoneNumber);
-      
+      final bool exists = await _isPhoneNumberAlreadyExists(org.phoneNumber);
+
       if (exists) {
         if (context.mounted) {
-          _showSnackBar(context, "This phone number is already registered ", Colors.red);
+          _showSnackBar(
+            context,
+            "This phone number is already registered",
+            Colors.red,
+          );
         }
         _setLoading(false);
-        return; // نوقف العملية هنا تماماً
+        return;
       }
 
-      // 2. إذا الرقم سليم، نكمل التسجيل
       await _authService.signUpOrg(org, password.trim());
-      
+
       if (context.mounted) {
         clearPickedImage();
         Navigator.pushReplacementNamed(context, '/orgHome');
-        _showSnackBar(context, "Welcome! Organization Registered ✅", Colors.green);
+        _showSnackBar(
+          context,
+          "Welcome! Organization Registered ✅",
+          Colors.green,
+        );
       }
     } catch (e) {
       if (context.mounted) {
@@ -67,43 +79,58 @@ class RegisterViewModel extends ChangeNotifier {
     }
   }
 
- // تسجيل المستخدم (المتسابق)
-  Future<void> registerUser(UserModel user, String password, BuildContext context) async {
+  Future<void> registerUser(
+    UserModel user,
+    String password,
+    BuildContext context,
+  ) async {
     _setLoading(true);
     try {
-      // 1. Check if Phone Number exists
-      bool phoneExists = await _isPhoneNumberAlreadyExists(user.phoneNumber);
+      final bool phoneExists = await _isPhoneNumberAlreadyExists(
+        user.phoneNumber,
+      );
       if (phoneExists) {
-        _showSnackBar(context, "This phone number is already registered", Colors.red);
+        _showSnackBar(
+          context,
+          "This phone number is already registered",
+          Colors.red,
+        );
         _setLoading(false);
-        return; 
+        return;
       }
 
-      // 2. 🔥 NEW: Check if Username exists
-bool usernameExists = await isUsernameAlreadyExists(user.username);      if (usernameExists) {
-        _showSnackBar(context, "Username is already taken, try another one", Colors.red);
+      final bool usernameExists = await isUsernameAlreadyExists(user.username);
+      if (usernameExists) {
+        _showSnackBar(
+          context,
+          "Username is already taken, try another one",
+          Colors.red,
+        );
         _setLoading(false);
-        return; 
+        return;
       }
 
-      // 3. If everything is unique, create the account
-      UserCredential cred = await FirebaseAuth.instance.createUserWithEmailAndPassword(
-          email: user.email.trim(),
-          password: password.trim()
+      final UserCredential cred =
+          await FirebaseAuth.instance.createUserWithEmailAndPassword(
+        email: user.email.trim(),
+        password: password.trim(),
       );
 
-      String photoPath = _pickedImage?.path ?? "";
+      final String photoPath = _pickedImage?.path ?? "";
 
-      await FirebaseFirestore.instance.collection('users').doc(cred.user!.uid).set({
+      await FirebaseFirestore.instance
+          .collection('users')
+          .doc(cred.user!.uid)
+          .set({
         'uid': cred.user!.uid,
         'email': user.email.trim(),
         'fullName': user.fullName.trim(),
-        'username': user.username.trim(), // Stored here
+        'username': user.username.trim(),
         'phoneNumber': user.phoneNumber.trim(),
         'role': 'user',
         'bio': '',
-        'skills': [], 
-        'profilePhotoPath': photoPath, 
+        'skills': [],
+        'profilePhotoPath': photoPath,
         'linkedin': '',
         'github': '',
         'profileSetupComplete': false,
@@ -112,7 +139,11 @@ bool usernameExists = await isUsernameAlreadyExists(user.username);      if (use
 
       if (context.mounted) {
         Navigator.pushReplacementNamed(context, '/completeProfile');
-        _showSnackBar(context, "Account Created! Let's complete your profile 🚀", Colors.green);
+        _showSnackBar(
+          context,
+          "Account Created! Let's complete your profile 🚀",
+          Colors.green,
+        );
       }
     } catch (e) {
       if (context.mounted) {
@@ -123,96 +154,109 @@ bool usernameExists = await isUsernameAlreadyExists(user.username);      if (use
     }
   }
 
-  // ✅ التعديل هنا: حذفنا الـ Navigator عشان ما تطلعين للهوم بيج
-Future<void> updateProfile({
-  String? name,
-  String? username,
-  String? phone,
-  required String bio,
-  required dynamic skills,
-  required String city,
-  required String gender,
-  required String linkedin,
-  required String github,
-  required BuildContext context,
-  bool isDemoMode = false,
-  bool deletePhoto = false, // هذا المتغير اللي أضفناه للتحكم بالحذف
-}) async {
-  _setLoading(true);
+  Future<void> updateProfile({
+    String? name,
+    String? username,
+    String? phone,
+    required String bio,
+    required dynamic skills,
+    required String city,
+    required String gender,
+    required String linkedin,
+    required String github,
+    required BuildContext context,
+    bool isDemoMode = false,
+    bool deletePhoto = false,
+  }) async {
+    _setLoading(true);
 
-  try {
-    final user = FirebaseAuth.instance.currentUser;
+    try {
+      final user = FirebaseAuth.instance.currentUser;
 
-    if (user == null) {
-      _showSnackBar(context, "User not logged in ❌", Colors.red);
+      if (user == null) {
+        _showSnackBar(context, "User not logged in ❌", Colors.red);
+        _setLoading(false);
+        return;
+      }
+
+      final Map<String, dynamic> dataToUpdate = {
+        'bio': bio.trim(),
+        'skills': skills,
+        'city': city.trim(),
+        'gender': gender,
+        'linkedin': linkedin.trim(),
+        'github': github.trim(),
+        'profileSetupComplete': true,
+        'updatedAt': FieldValue.serverTimestamp(),
+      };
+
+      if (name != null && name.isNotEmpty) {
+        dataToUpdate['fullName'] = name.trim();
+      }
+
+      if (username != null && username.isNotEmpty) {
+        dataToUpdate['username'] = username.trim();
+      }
+
+      if (phone != null && phone.isNotEmpty) {
+        dataToUpdate['phoneNumber'] = phone.trim();
+      }
+
+      if (deletePhoto) {
+        dataToUpdate['profilePhotoPath'] = FieldValue.delete();
+      } else if (_pickedImage != null) {
+        dataToUpdate['profilePhotoPath'] = _pickedImage!.path;
+      }
+
+      await FirebaseFirestore.instance.collection('users').doc(user.uid).set(
+            dataToUpdate,
+            SetOptions(merge: true),
+          );
+
+      if (context.mounted) {
+        clearPickedImage();
+        _showSnackBar(context, "Profile updated successfully ✅", Colors.green);
+      }
+    } catch (e) {
+      if (context.mounted) {
+        _showSnackBar(context, "Update failed: ${e.toString()}", Colors.red);
+      }
+    } finally {
       _setLoading(false);
-      return;
     }
-    Map<String, dynamic> dataToUpdate = {
-      'bio': bio.trim(),
-      'skills': skills,
-      'city': city.trim(),
-      'gender': gender,
-      'linkedin': linkedin.trim(),
-      'github': github.trim(),
-      'profileSetupComplete': true,
-      'updatedAt': FieldValue.serverTimestamp(),
-    };
-
-    if (name != null && name.isNotEmpty) {
-      dataToUpdate['fullName'] = name.trim();
-    }
-    if (username != null && username.isNotEmpty) {
-      dataToUpdate['username'] = username.trim();
-    }
-
-    if (phone != null && phone.isNotEmpty) {
-      dataToUpdate['phoneNumber'] = phone.trim();
-    }
-
-    if (deletePhoto) {
-      dataToUpdate['profilePhotoPath'] = FieldValue.delete(); // يحذف فقط لو أرسلنا deletePhoto = true
-    } else if (_pickedImage != null) {
-      dataToUpdate['profilePhotoPath'] = _pickedImage!.path; // يحدث لو اخترنا صورة جديدة
-    }
-    // لو ما اخترنا صورة وما طلبنا حذف، حقل الصورة لن يتأثر (سيبقى القديم)
-    // --- نهاية التعديل ---
-
-    await FirebaseFirestore.instance.collection('users').doc(user.uid).set(
-      dataToUpdate, 
-      SetOptions(merge: true)
-    );
-
-    if (context.mounted) {
-      clearPickedImage();
-      _showSnackBar(context, "Profile updated successfully ✅", Colors.green);
-      //Navigator.pushReplacementNamed(context, '/');
-    }
-
-  } catch (e) {
-    if (context.mounted) {
-      _showSnackBar(context, "Update failed: ${e.toString()}", Colors.red);
-    }
-  } finally {
-    _setLoading(false);
   }
-}
-  // تسجيل الدخول
-  Future<void> login(String email, String password, BuildContext context) async {
-    final cleanEmail = email.trim();
-    final cleanPassword = password;
+
+  Future<void> login(
+    String email,
+    String password,
+    BuildContext context,
+  ) async {
+    final String cleanEmail = email.trim();
+    final String cleanPassword = password;
 
     if (cleanEmail.isEmpty || cleanPassword.trim().isEmpty) {
-      _showSnackBar(context, "Please enter your email and password", Colors.orange);
+      _showSnackBar(
+        context,
+        "Please enter your email and password",
+        Colors.orange,
+      );
       return;
     }
 
     _setLoading(true);
     try {
-      final userCredential = await _authService.signIn(cleanEmail, cleanPassword);
-      final uid = userCredential.user?.uid;
+      final userCredential = await _authService.signIn(
+        cleanEmail,
+        cleanPassword,
+      );
+      final String? uid = userCredential.user?.uid;
 
-      if (uid == null) throw "User session not found.";
+      if (uid == null) {
+        throw "User session not found.";
+      }
+
+      await NotificationService.instance.init();
+      OneSignal.login(uid);
 
       final firestore = FirebaseFirestore.instance;
 
@@ -246,17 +290,25 @@ Future<void> updateProfile({
 
   Future<void> logout(BuildContext context) async {
     await _authService.signOut();
+    OneSignal.logout();
+
     if (context.mounted) {
-      Navigator.of(context).pushNamedAndRemoveUntil('/loginUser', (route) => false);
+      Navigator.of(context).pushNamedAndRemoveUntil(
+        '/loginUser',
+        (route) => false,
+      );
     }
   }
 
   String _getCleanErrorMessage(Object error) {
     if (error is FirebaseAuthException) {
       switch (error.code) {
-        case 'email-already-in-use': return "Email already registered.";
-        case 'invalid-credential': return "Incorrect email or password.";
-        default: return "Error: ${error.code}";
+        case 'email-already-in-use':
+          return "Email already registered.";
+        case 'invalid-credential':
+          return "Incorrect email or password.";
+        default:
+          return "Error: ${error.code}";
       }
     }
     return "Something went wrong. Please try again.";
@@ -264,50 +316,56 @@ Future<void> updateProfile({
 
   void _showSnackBar(BuildContext context, String message, Color color) {
     ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text(message), backgroundColor: color),
+      SnackBar(
+        content: Text(message),
+        backgroundColor: color,
+      ),
     );
   }
+
   Future<bool> _isPhoneNumberAlreadyExists(String phoneNumber) async {
-  // 1. فحص في جدول اليوزرز
-  final userQuery = await FirebaseFirestore.instance
-      .collection('users')
-      .where('phoneNumber', isEqualTo: phoneNumber.trim())
-      .get();
-  if (userQuery.docs.isNotEmpty) return true;
+    final userQuery = await FirebaseFirestore.instance
+        .collection('users')
+        .where('phoneNumber', isEqualTo: phoneNumber.trim())
+        .get();
 
-  // 2. فحص في جدول المنشآت
-  final orgQuery = await FirebaseFirestore.instance
-      .collection('organizations')
-      .where('phoneNumber', isEqualTo: phoneNumber.trim())
-      .get();
-  return orgQuery.docs.isNotEmpty;
-}
-// Check if username exists in either collection
-// Change _isUsernameAlreadyExists to isUsernameAlreadyExists (Remove the _)
-// This is the function that was missing!
+    if (userQuery.docs.isNotEmpty) return true;
+
+    final orgQuery = await FirebaseFirestore.instance
+        .collection('organizations')
+        .where('phoneNumber', isEqualTo: phoneNumber.trim())
+        .get();
+
+    return orgQuery.docs.isNotEmpty;
+  }
+
   Future<bool> isUsernameAlreadyExists(String username) async {
-    // الكلمة اللي دخلها اليوزر نحولها لسمول عشان نقارنها
-    String searchName = username.trim().toLowerCase();
+    final String searchName = username.trim().toLowerCase();
 
-    // 1. نجيب اليوزرات من الداتابيس ونخلي الفلتر (دارت) يقارنها
-    final userQuery = await FirebaseFirestore.instance.collection('users').get();
-    for (var doc in userQuery.docs) {
-      // ناخذ اليوزرنيم المخزن ونحوله سمول وقت المقارنة فقط
-      String dbUsername = (doc.data()['username'] ?? '').toString().toLowerCase();
+    final userQuery =
+        await FirebaseFirestore.instance.collection('users').get();
+
+    for (final doc in userQuery.docs) {
+      final String dbUsername =
+          (doc.data()['username'] ?? '').toString().toLowerCase();
+
       if (dbUsername == searchName) {
-        return true; // لقينا تطابق! (اليوزرنيم مأخوذ)
+        return true;
       }
     }
 
-    // 2. نجيب المنشآت من الداتابيس ونقارنها
-    final orgQuery = await FirebaseFirestore.instance.collection('organizations').get();
-    for (var doc in orgQuery.docs) {
-      String dbUsername = (doc.data()['username'] ?? '').toString().toLowerCase();
+    final orgQuery =
+        await FirebaseFirestore.instance.collection('organizations').get();
+
+    for (final doc in orgQuery.docs) {
+      final String dbUsername =
+          (doc.data()['username'] ?? '').toString().toLowerCase();
+
       if (dbUsername == searchName) {
-        return true; // لقينا تطابق! (اليوزرنيم مأخوذ)
+        return true;
       }
     }
 
-    return false; // اليوزرنيم متاح ومافي أحد ماخذه
+    return false;
   }
 }

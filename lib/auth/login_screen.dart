@@ -27,15 +27,16 @@ class _LoginScreenState extends State<LoginScreen> {
     super.dispose();
   }
 
-  void _handleLogin() {
+  Future<void> _handleLogin() async {
     final authVM = context.read<RegisterViewModel>();
-    if (_formKey.currentState!.validate()) {
-      authVM.login(
-        _emailController.text.trim(),
-        _passwordController.text.trim(),
-        context,
-      );
-    }
+
+    if (!_formKey.currentState!.validate()) return;
+
+    await authVM.login(
+      _emailController.text.trim(),
+      _passwordController.text.trim(),
+      context,
+    );
   }
 
   @override
@@ -63,7 +64,10 @@ class _LoginScreenState extends State<LoginScreen> {
 
                 const Text(
                   "Welcome Back!",
-                  style: TextStyle(fontSize: 28, fontWeight: FontWeight.bold),
+                  style: TextStyle(
+                    fontSize: 28,
+                    fontWeight: FontWeight.bold,
+                  ),
                 ),
                 const SizedBox(height: 8),
                 const Text("Login to continue to BuildMate"),
@@ -72,14 +76,17 @@ class _LoginScreenState extends State<LoginScreen> {
                 TextFormField(
                   controller: _emailController,
                   enabled: !authVM.isLoading,
-keyboardType: TextInputType.emailAddress, // ✅ تطلع لوحة مفاتيح الإيميل (@)
-  maxLines: 2,
-  minLines: 1,
-  maxLength: 40,
+                  keyboardType: TextInputType.emailAddress,
+                  maxLines: 2,
+                  minLines: 1,
+                  maxLength: 40,
                   decoration: InputDecoration(
                     labelText: "Email",
-                    counterText: "", // ✅ عشان ما يطلع رقم 0/40 تحت الحقل ويخرب الشكل
-                    prefixIcon: const Icon(Icons.email_outlined, color: purple),
+                    counterText: "",
+                    prefixIcon: const Icon(
+                      Icons.email_outlined,
+                      color: purple,
+                    ),
                     border: OutlineInputBorder(
                       borderRadius: BorderRadius.circular(12),
                     ),
@@ -106,9 +113,11 @@ keyboardType: TextInputType.emailAddress, // ✅ تطلع لوحة مفاتيح 
                     suffixIcon: IconButton(
                       onPressed: authVM.isLoading
                           ? null
-                          : () => setState(() {
+                          : () {
+                              setState(() {
                                 _isPasswordVisible = !_isPasswordVisible;
-                              }),
+                              });
+                            },
                       icon: Icon(
                         _isPasswordVisible
                             ? Icons.visibility
