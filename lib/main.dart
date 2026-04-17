@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:firebase_core/firebase_core.dart';
+import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:provider/provider.dart';
 import 'package:intl/date_symbol_data_local.dart';
 
@@ -19,13 +20,22 @@ import 'package:buildmate/view/complete_profile_view.dart';
 import 'package:buildmate/home_screen.dart';
 import 'package:buildmate/org_home_screen.dart';
 
+// Notification Service
+import 'package:buildmate/services/notification_service.dart';
 
-
+@pragma('vm:entry-point')
+Future<void> firebaseMessagingBackgroundHandler(RemoteMessage message) async {
+  await Firebase.initializeApp();
+}
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   await Firebase.initializeApp();
   await initializeDateFormatting();
+
+  FirebaseMessaging.onBackgroundMessage(firebaseMessagingBackgroundHandler);
+
+  await NotificationService.instance.init();
 
   runApp(
     MultiProvider(
@@ -45,7 +55,6 @@ class MyApp extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    // اللون البنفسجي المعتمد في المشروع
     const primaryColor = Color(0xFF6D56B3);
 
     return MaterialApp(
@@ -58,16 +67,13 @@ class MyApp extends StatelessWidget {
           style: ElevatedButton.styleFrom(
             backgroundColor: primaryColor,
             foregroundColor: Colors.white,
-            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(12),
+            ),
           ),
         ),
       ),
-
-      // نقطة البداية المعتمدة هي صفحة الترحيب (Welcome Screen)
       initialRoute: '/welcome',
-
-
-
       routes: {
         '/welcome': (context) => const WelcomeScreen(),
         '/loginUser': (context) => const LoginScreen(),
@@ -77,8 +83,6 @@ class MyApp extends StatelessWidget {
         '/home': (context) => const HomeScreen(),
         '/orgHome': (context) => const InstitutionHomeScreen(),
         '/completeProfile': (context) => const CompleteProfileView(),
-
-
       },
     );
   }

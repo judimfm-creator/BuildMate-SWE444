@@ -11,27 +11,19 @@ dependencies:
   flutter:
     sdk: flutter
 
+  firebase_core: ^3.6.0
+  firebase_messaging: ^15.1.3
+  flutter_local_notifications: ^17.2.3
+  cloud_firestore: ^5.4.4
+  firebase_auth: ^5.3.1
 
   intl: ^0.19.0
-
-  # مكتبة اختيار الصور من الاستوديو
   image_picker: ^1.0.7
-
-  # المكتبات الأساسية
   provider: ^6.1.1
   cupertino_icons: ^1.0.8
-
-  # مكتبة فتح الروابط الخارجية (تمت إضافتها)
   url_launcher: ^6.2.5
-
-  # المكتبات الأساسية الأخرى
   font_awesome_flutter: ^10.12.0
-
-  # مكتبات Firebase المحدثة
-  firebase_core: ^2.25.4
-  firebase_auth: ^4.17.4
-  cloud_firestore: ^4.15.4
-
+  
 dev_dependencies:
   flutter_test:
     sdk: flutter
