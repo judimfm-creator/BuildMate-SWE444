@@ -77,26 +77,7 @@ class _InstitutionPublicProfilePageState
               onPressed: () => Navigator.pop(context),
             ),
             primary: false,
-            flexibleSpace: FlexibleSpaceBar(
-              centerTitle: true,
-              titlePadding: EdgeInsets.zero,
-              title: Container(
-                alignment: Alignment.center,
-                child: Text(
-                  widget.org.orgName?.isNotEmpty == true
-                      ? widget.org.orgName!
-                      : "Organization Profile",
-                  style: const TextStyle(
-                    color: _primaryPurple,
-                    fontWeight: FontWeight.w800,
-                    fontSize: 16,
-                    letterSpacing: 0.5,
-                  ),
-                ),
-              ),
-            ),
           ),
-
           SliverToBoxAdapter(
             child: Column(
               children: [
@@ -204,7 +185,7 @@ class _InstitutionPublicProfilePageState
           "@${(widget.org.username?.isNotEmpty == true) ? widget.org.username! : "organization"}",
           style: TextStyle(
             fontSize: 15,
-            color: Colors.grey.shade600,
+            color: Colors.grey,
             fontWeight: FontWeight.w600,
           ),
         ),
