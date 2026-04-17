@@ -3,6 +3,7 @@ import 'package:firebase_core/firebase_core.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:provider/provider.dart';
 import 'package:intl/date_symbol_data_local.dart';
+import 'package:onesignal_flutter/onesignal_flutter.dart';
 
 // ViewModels
 import 'package:buildmate/viewmodel/register_view_model.dart';
@@ -30,12 +31,19 @@ Future<void> firebaseMessagingBackgroundHandler(RemoteMessage message) async {
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
+
   await Firebase.initializeApp();
   await initializeDateFormatting();
 
   FirebaseMessaging.onBackgroundMessage(firebaseMessagingBackgroundHandler);
 
   await NotificationService.instance.init();
+
+  OneSignal.Debug.setLogLevel(OSLogLevel.verbose);
+
+  OneSignal.initialize('c398e7ba-119f-4de3-ab62-ff64b114dfce');
+
+  await OneSignal.Notifications.requestPermission(true);
 
   runApp(
     MultiProvider(
