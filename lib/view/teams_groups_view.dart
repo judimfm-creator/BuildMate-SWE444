@@ -12,20 +12,20 @@ class TeamsGroupsView extends StatelessWidget {
   static const Color _pageBg = Colors.white;
 
   Future<String> _getHackathonName(String hackathonId) async {
-    if (hackathonId.isEmpty) return 'Unknown Hackathon';
+    if (hackathonId.isEmpty) return 'Deleted Hackathon';
 
     final doc = await FirebaseFirestore.instance
         .collection('hackathons')
         .doc(hackathonId)
         .get();
 
-    if (!doc.exists) return 'Unknown Hackathon';
+    if (!doc.exists) return 'Deleted Hackathon';
 
     final data = doc.data() ?? {};
     return data['hackathonName'] ??
         data['title'] ??
         data['name'] ??
-        'Unknown Hackathon';
+        'Deleted Hackathon';
   }
 
   @override
