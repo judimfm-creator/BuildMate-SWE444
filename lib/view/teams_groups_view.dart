@@ -9,7 +9,7 @@ class TeamsGroupsView extends StatelessWidget {
 
   static const Color _purple = Color(0xFF6D56B3);
   static const Color _lightPurple = Color(0xFFF0EEFF);
-  static const Color _pageBg = Color(0xFFF8F9FD);
+  static const Color _pageBg = Colors.white;
 
   Future<String> _getHackathonName(String hackathonId) async {
     if (hackathonId.isEmpty) return 'Unknown Hackathon';
@@ -98,16 +98,28 @@ class TeamsGroupsView extends StatelessWidget {
               final String hackathonId = data['hackathonId'] ?? '';
               final List members = data['members'] ?? [];
 
+              // 1. تعريف الألوان الثلاثة (موف، برتقالي، تركواز)
+              final List<Color> brandColors = [
+                const Color(0xFF6D56B3), // الموف
+                const Color(0xFFFFA726), // البرتقالي
+                const Color(0xFF26C6DA), // التركواز
+              ];
+
+              // اختيار اللون بناءً على الترتيب
+              final Color currentColor = brandColors[index % brandColors.length];
+
+              // 2. تصميم البوكس الملون (Container)
               return Container(
                 margin: const EdgeInsets.only(bottom: 16),
                 decoration: BoxDecoration(
                   color: Colors.white,
-                  borderRadius: BorderRadius.circular(18),
-                  border: Border.all(color: Colors.grey.shade200),
+                  borderRadius: BorderRadius.circular(20),
+                  // إطار نحيف جداً بلون الفريق يعطي فخامة
+                  border: Border.all(color: currentColor.withOpacity(0.15)),
                   boxShadow: [
                     BoxShadow(
-                      color: _purple.withOpacity(0.05),
-                      blurRadius: 12,
+                      color: currentColor.withOpacity(0.05),
+                      blurRadius: 10,
                       offset: const Offset(0, 4),
                     ),
                   ],
@@ -115,18 +127,20 @@ class TeamsGroupsView extends StatelessWidget {
                 child: ListTile(
                   contentPadding: const EdgeInsets.symmetric(
                     horizontal: 16,
-                    vertical: 10,
+                    vertical: 12,
                   ),
-                  leading: CircleAvatar(
-                    radius: 24,
-                    backgroundColor: _lightPurple,
-                    child: Text(
-                      teamName.isNotEmpty ? teamName[0].toUpperCase() : "T",
-                      style: const TextStyle(
-                        color: _purple,
-                        fontWeight: FontWeight.bold,
-                        fontSize: 18,
-                      ),
+                  // 3. الأيقونة الجديدة بدلاً من الحرف (Leading)
+                  leading: Container(
+                    width: 52,
+                    height: 52,
+                    decoration: BoxDecoration(
+                      color: currentColor.withOpacity(0.1), // خلفية هادئة من لون الفريق
+                      shape: BoxShape.circle,
+                    ),
+                    child: Icon(
+                      Icons.diversity_3_rounded, // أيقونة "ترابط" احترافية
+                      color: currentColor,
+                      size: 26,
                     ),
                   ),
                   title: Text(
@@ -153,10 +167,11 @@ class TeamsGroupsView extends StatelessWidget {
                       );
                     },
                   ),
-                  trailing: const Icon(
+                  // 4. تغيير لون السهم ليناسب لون الفريق
+                  trailing: Icon(
                     Icons.arrow_forward_ios_rounded,
                     size: 16,
-                    color: _purple,
+                    color: currentColor.withOpacity(0.6),
                   ),
                   onTap: () {
                     Navigator.push(

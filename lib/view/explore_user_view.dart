@@ -34,7 +34,7 @@ class _ExploreUserViewState extends State<ExploreUserView> with SingleTickerProv
 
   static const Color _purple = Color(0xFF6D56B3);
   static const Color _lightBg = Color(0xFFF0EEFF);
-  static const Color _screenBg = Color(0xFFF8F9FD);
+  static const Color _screenBg = Colors.white;
 
   // متغيرات الفلترة
   String? selectedMode;
@@ -211,10 +211,21 @@ class _ExploreUserViewState extends State<ExploreUserView> with SingleTickerProv
     return Container(
       margin: const EdgeInsets.only(bottom: 20),
       decoration: BoxDecoration(
-        color: Colors.white, borderRadius: BorderRadius.circular(24),
-        boxShadow: [BoxShadow(color: _purple.withOpacity(0.08), blurRadius: 15, offset: const Offset(0, 8))],
-      ),
-      child: Padding(
+        color: Colors.white, // 👈 خلفية بيضاء صافية كما طلبتِ
+        borderRadius: BorderRadius.circular(24),
+        // 👈 هذا الإطار هو الذي يعطي "اللمعة" الموف على الأطراف
+        border: Border.all(
+          color: _purple.withOpacity(0.18),
+          width: 1.2,
+        ),
+        boxShadow: [
+          BoxShadow(
+            color: _purple.withOpacity(0.08),
+            blurRadius: 15,
+            offset: const Offset(0, 8),
+          ),
+        ],
+      ),      child: Padding(
         padding: const EdgeInsets.all(20),
         child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
           Row(children: [
@@ -551,7 +562,22 @@ Text(
   Widget _buildTeamCard(TeamPostModel team, Hackathon? hackathon, String hackathonName) {
     return Container(
       margin: const EdgeInsets.only(bottom: 20),
-      decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(24), boxShadow: [BoxShadow(color: _purple.withOpacity(0.08), blurRadius: 15, offset: const Offset(0, 8))]),
+      decoration: BoxDecoration(
+        color: Colors.white, // خلفية بيضاء
+        borderRadius: BorderRadius.circular(24),
+        // 👈 نفس اللمعة الموحدة في كل التطبيق
+        border: Border.all(
+          color: _purple.withOpacity(0.2),
+          width: 1.5,
+        ),
+        boxShadow: [
+          BoxShadow(
+            color: _purple.withOpacity(0.08),
+            blurRadius: 15,
+            offset: const Offset(0, 8),
+          ),
+        ],
+      ),
       child: Padding(
         padding: const EdgeInsets.all(20),
         child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [

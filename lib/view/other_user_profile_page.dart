@@ -341,33 +341,36 @@ class _OtherUserProfilePageState extends State<OtherUserProfilePage>
       padding: const EdgeInsets.symmetric(horizontal: 25),
       child: Wrap(
         alignment: WrapAlignment.center,
-        spacing: 10,
-        runSpacing: 10,
-        children: skills
-            .map(
-              (skill) => Container(
-            padding: const EdgeInsets.symmetric(
-              horizontal: 18,
-              vertical: 10,
-            ),
-            decoration: BoxDecoration(
-              color: primaryPurple.withOpacity(0.1),
-              borderRadius: BorderRadius.circular(20),
-              border: Border.all(
-                color: primaryPurple.withOpacity(0.4),
+        spacing: 25, // مسافة أفقية واسعة تعطي فخامة وتمنع التكدس
+        runSpacing: 18, // مسافة عمودية بين الأسطر
+        children: skills.map((skill) {
+          return Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              // الدائرة الصغيرة الملونة (هي اللي تعطي الشكل الدائري والجمالية)
+              Container(
+                width: 8,
+                height: 8,
+                decoration: BoxDecoration(
+                  color: primaryPurple.withOpacity(0.5), // بنفسجي هادئ جداً
+                  shape: BoxShape.circle,
+                ),
               ),
-            ),
-            child: Text(
-              skill,
-              style: TextStyle(
-                color: primaryPurple,
-                fontSize: 13,
-                fontWeight: FontWeight.bold,
+              const SizedBox(width: 10),
+
+              // نص المهارة (حر تماماً: بدون لون خلفية وبدون إطار)
+              Text(
+                skill,
+                style: TextStyle(
+                  color: Colors.grey.shade800,
+                  fontSize: 15, // حجم خط واضح ومريح
+                  fontWeight: FontWeight.w600,
+                  letterSpacing: 0.3,
+                ),
               ),
-            ),
-          ),
-        )
-            .toList(),
+            ],
+          );
+        }).toList(),
       ),
     );
   }
