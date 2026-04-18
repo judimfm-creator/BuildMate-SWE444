@@ -223,9 +223,9 @@ class OrgHackathonDetailsPage extends StatelessWidget {
       ),
       child: Row(
         children: [
-          CircleAvatar(
+          const CircleAvatar(
             backgroundColor: _lightPurple,
-            child: const Icon(Icons.groups_rounded, color: _purple, size: 20),
+            child: Icon(Icons.groups_rounded, color: _purple, size: 20),
           ),
           const SizedBox(width: 12),
           Expanded(

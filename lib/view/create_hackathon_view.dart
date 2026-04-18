@@ -326,7 +326,9 @@ class _CreateHackathonViewState extends State<CreateHackathonView> {
         applicationOpenDate == null ||
         applicationDeadline == null ||
         startDate == null ||
-        endDate == null) return;
+        endDate == null) {
+      return;
+    }
 
     if (!applicationDeadline!.isAfter(applicationOpenDate!)) {
       setState(() {
@@ -540,7 +542,9 @@ class _CreateHackathonViewState extends State<CreateHackathonView> {
                     maxLines: null,
                     validator: (v) {
                       if (selectedDomain == 'Other' &&
-                          (v == null || v.trim().isEmpty)) return "Required";
+                          (v == null || v.trim().isEmpty)) {
+                        return "Required";
+                      }
                       if (v != null && RegExp(r'^\d+$').hasMatch(v.trim())) {
                         return "Cannot be numbers only";
                       }
@@ -677,7 +681,9 @@ class _CreateHackathonViewState extends State<CreateHackathonView> {
                               selectedRoles = result;
                               rolesError = null;
                               if (!result.contains("Other")) {
-                                for (final c in otherRoleControllers) c.dispose();
+                                for (final c in otherRoleControllers) {
+                                  c.dispose();
+                                }
                                 otherRoleControllers = [TextEditingController()];
                               }
                             });

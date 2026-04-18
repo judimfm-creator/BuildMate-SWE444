@@ -162,7 +162,7 @@ class _ProfileManagementPageState extends State<ProfileManagementPage> {
 
               // 🔴 تعديل: تحويل اليوزرنيم لحروف صغيرة (toLowerCase) لتفادي مشكلة الـ Case Sensitive 🔴
               final newUsername = _controllers["Username"]?.text.trim().toLowerCase() ?? "";
-              final currentUsername = user?.username?.toLowerCase() ?? "";
+              final currentUsername = user?.username.toLowerCase() ?? "";
 
               final String newPhone = _controllers["Phone Number"]?.text.trim() ?? "";
               final String currentPhone = _viewModel.currentUser?.phoneNumber ?? ""; // ✅ جلب الرقم الحالي من المودل
@@ -385,8 +385,9 @@ class _ProfileManagementPageState extends State<ProfileManagementPage> {
     // ✅ النصوص المساعدة (Helper Text) الثابتة
     String? helperText;
     if (canEdit) {
-      if (label == "Full Name") helperText = "Enter your first, middle, last name(Letters only)";
-      else if (label == "Username") helperText = "minimum 3 characters , spaces are not allowed";
+      if (label == "Full Name") {
+        helperText = "Enter your first, middle, last name(Letters only)";
+      } else if (label == "Username") helperText = "minimum 3 characters , spaces are not allowed";
       else if (label == "LinkedIn") helperText = "Example: https://linkedin.com/in/Sara-Mohammed";
       else if (label == "GitHub") helperText = "Example: https://github.com/Sara-Mohammed";
       else if (label == "Phone Number") helperText = "10 digits starting with 05"; // ✅
@@ -435,7 +436,7 @@ class _ProfileManagementPageState extends State<ProfileManagementPage> {
                         counterText: (isBio || isCity) ? null : "",
                         // ✅ إضافة ستايل العداد ليكون متناسقاً باللون الرمادي المزرق
                         counterStyle: const TextStyle(fontSize: 10, color: Colors.blueGrey),
-                        errorStyle: TextStyle(fontSize: 11, color: Colors.red, height: 1.2),
+                        errorStyle: const TextStyle(fontSize: 11, color: Colors.red, height: 1.2),
                         errorMaxLines: 3,
                       ),
                       validator: (value) {

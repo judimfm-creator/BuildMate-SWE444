@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:buildmate/model/org_model.dart';
-import 'package:image_picker/image_picker.dart';
 
 
 class OrgProfileViewModel extends ChangeNotifier {

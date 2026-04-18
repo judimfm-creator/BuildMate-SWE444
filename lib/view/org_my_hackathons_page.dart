@@ -83,7 +83,7 @@ class OrgMyHackathonsPage extends StatelessWidget {
                 padding: const EdgeInsets.fromLTRB(20, 25, 20, 10),
                 child: Row(
                   children: [
-                    Expanded(
+                    const Expanded(
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
@@ -95,8 +95,8 @@ class OrgMyHackathonsPage extends StatelessWidget {
                               color: _titleColor,
                             ),
                           ),
-                          const SizedBox(height: 2),
-                          const Text(
+                          SizedBox(height: 2),
+                          Text(
                             "View your hackathons and manage participating teams",
                             style: TextStyle(
                               fontSize: 11,

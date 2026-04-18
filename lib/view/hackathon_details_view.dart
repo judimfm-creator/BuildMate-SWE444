@@ -157,15 +157,15 @@ class _HackathonDetailsViewState extends State<HackathonDetailsView> {
                               ),
                             ),
                             onPressed: () => _openInstitutionProfile(context),
-                            child: Row(
+                            child: const Row(
                               children: [
-                                const Icon(
+                                Icon(
                                   Icons.business,
                                   color: _purple,
                                   size: 20,
                                 ),
-                                const SizedBox(width: 10),
-                                const Expanded(
+                                SizedBox(width: 10),
+                                Expanded(
                                   child: Text(
                                     "View Organizer Profile",
                                     style: TextStyle(
@@ -175,7 +175,7 @@ class _HackathonDetailsViewState extends State<HackathonDetailsView> {
                                     ),
                                   ),
                                 ),
-                                const Icon(
+                                Icon(
                                   Icons.arrow_forward_ios,
                                   size: 14,
                                   color: _purple,

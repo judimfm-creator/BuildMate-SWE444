@@ -26,7 +26,7 @@ class _GroupChatViewState extends State<GroupChatView> {
   final ChatService _chatService = ChatService();
   final TextEditingController _messageController = TextEditingController();
   final ScrollController _scrollController = ScrollController();
-  bool _showScrollButton = false;
+  final bool _showScrollButton = false;
 
   UserModel? _currentUser;
   bool _loadingUser = true;

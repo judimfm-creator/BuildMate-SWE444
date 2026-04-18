@@ -5,7 +5,6 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:buildmate/viewmodel/org_profile_view_model.dart';
 import 'package:buildmate/model/org_model.dart';
 import 'package:buildmate/view/org_profile_management_page.dart';
-import '../org_home_screen.dart';
 import 'package:buildmate/viewmodel/org_hackathons_view_model.dart';
 import 'package:buildmate/model/hackathon.dart';
 import '../widgets/hackathon_card.dart';
@@ -98,10 +97,10 @@ class _OrgProfilePageState extends State<OrgProfilePage> {
                   ),
                 ),
                 // ✅ عرض الهكاثونات السابقة في التاب
-                SliverFillRemaining(
+                const SliverFillRemaining(
                   child: TabBarView(
                     children: [
-                      const _PastHackathonsTab(),
+                      _PastHackathonsTab(),
                     ],
                   ),
                 ),

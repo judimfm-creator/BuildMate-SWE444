@@ -1,8 +1,6 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
-import 'package:provider/provider.dart';
-import '../../viewmodel/org_hackathons_view_model.dart';
 import '../../model/hackathon.dart';
 import 'hackathon_details_view.dart';
 import 'explore_user_view.dart';
@@ -10,7 +8,6 @@ import 'create_team_post_view.dart';
 import 'hackathon_teams_view.dart' as teams_view;
 import 'my_team_post_view.dart';
 import '../../model/team_post_model.dart';
-import 'team_post_details_view.dart';
 import '../../home_screen.dart';
 
 class UserHomePage extends StatefulWidget {

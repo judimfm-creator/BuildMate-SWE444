@@ -126,10 +126,12 @@ class _CreateTeamPostScreenState extends State<CreateTeamPostScreen> {
                             helper: 'Letters & numbers only',
                           ),
                           validator: (v) {
-                            if (v == null || v.isEmpty)
+                            if (v == null || v.isEmpty) {
                               return 'Letters & numbers only';
-                            if (!RegExp(r'^[a-zA-Z0-9 ]+$').hasMatch(v))
+                            }
+                            if (!RegExp(r'^[a-zA-Z0-9 ]+$').hasMatch(v)) {
                               return 'Letters & numbers only';
+                            }
                             return null;
                           },
                         ),
@@ -139,7 +141,7 @@ class _CreateTeamPostScreenState extends State<CreateTeamPostScreen> {
                       Padding(
                         padding: const EdgeInsets.only(bottom: 12),
                         child: DropdownButtonFormField<String>(
-                          value: _selectedGender,
+                          initialValue: _selectedGender,
                           decoration: _fieldDecoration(
                             label: 'Gender Preference',
                             icon: Icons.wc_rounded,
@@ -159,7 +161,7 @@ class _CreateTeamPostScreenState extends State<CreateTeamPostScreen> {
                       Padding(
                         padding: const EdgeInsets.only(bottom: 12),
                         child: DropdownButtonFormField<String>(
-                          value: _selectedRole,
+                          initialValue: _selectedRole,
                           isExpanded: true,
                           decoration: _fieldDecoration(
                             label: 'My role in the team',

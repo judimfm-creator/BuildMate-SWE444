@@ -169,8 +169,8 @@ class _InstitutionPublicProfilePageState
         ),
         const SizedBox(height: 15),
         Text(
-          widget.org.orgName?.isNotEmpty == true
-              ? widget.org.orgName!
+          widget.org.orgName.isNotEmpty == true
+              ? widget.org.orgName
               : "Organization",
           style: const TextStyle(
             fontSize: 22,
@@ -183,7 +183,7 @@ class _InstitutionPublicProfilePageState
         const SizedBox(height: 8),
         Text(
           "@${(widget.org.username?.isNotEmpty == true) ? widget.org.username! : "organization"}",
-          style: TextStyle(
+          style: const TextStyle(
             fontSize: 15,
             color: Colors.grey,
             fontWeight: FontWeight.w600,

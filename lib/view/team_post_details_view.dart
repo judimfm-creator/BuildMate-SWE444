@@ -181,11 +181,11 @@ class _TeamPostDetailsViewState extends State<TeamPostDetailsView> {
   }
 
   Widget _buildSimpleStatusBadge() {
-    return Row(
+    return const Row(
       children: [
-        const Icon(Icons.person_search, color: _purple, size: 16),
-        const SizedBox(width: 6),
-        const Text(
+        Icon(Icons.person_search, color: _purple, size: 16),
+        SizedBox(width: 6),
+        Text(
           "Looking for Members",
           style: TextStyle(
             color: _purple,

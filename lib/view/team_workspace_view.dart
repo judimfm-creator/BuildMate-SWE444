@@ -107,8 +107,8 @@ class TeamWorkspaceView extends StatelessWidget {
                 _sectionCard(
                   title: "Tasks",
                   color: _purple,
-                  child: Column(
-                    children: const [
+                  child: const Column(
+                    children: [
                       _TaskRow(title: "Task #1", deadline: "Next Sprint"),
                       SizedBox(height: 8),
                       _TaskRow(title: "Task #2", deadline: "Next Sprint"),
@@ -142,8 +142,8 @@ class TeamWorkspaceView extends StatelessWidget {
                 _sectionCard(
                   title: "Uploaded Documents",
                   color: _purple,
-                  child: Column(
-                    children: const [
+                  child: const Column(
+                    children: [
                       _DocumentRow(fileName: "project_plan.pdf"),
                       SizedBox(height: 8),
                       _DocumentRow(fileName: "meeting_notes.docx"),

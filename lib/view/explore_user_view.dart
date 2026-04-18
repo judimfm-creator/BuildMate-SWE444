@@ -463,7 +463,7 @@ Text(
         final excludedHackathonIds = {...joinedIds, ...pendingHackathonIds};
 
         final futures = snapshot.docs.map((doc) async {
-          final data = doc.data() as Map<String, dynamic>;
+          final data = doc.data();
           final team = TeamPostModel.fromMap(doc.id, data);
 
           if (excludedHackathonIds.contains(team.hackathonId)) return null;
@@ -633,7 +633,7 @@ Text(
         const SizedBox(height: 15),
         _filterSectionTitle("Attendance Mode"),
         DropdownButtonFormField<String>(
-          value: selectedMode, hint: const Text("Select Mode"),
+          initialValue: selectedMode, hint: const Text("Select Mode"),
           items: ["Onsite", "Online", "Hybrid"].map((m) => DropdownMenuItem(value: m, child: Text(m))).toList(),
           onChanged: (val) => setDialogState(() => selectedMode = val),
         ),
@@ -644,7 +644,7 @@ Text(
         const SizedBox(height: 15),
         _filterSectionTitle("Education Criteria"),
         DropdownButtonFormField<String>(
-          value: selectedEducation, hint: const Text("Select Level"),
+          initialValue: selectedEducation, hint: const Text("Select Level"),
           items: ["Any", "University Students", "High School", "Professionals"].map((e) => DropdownMenuItem(value: e, child: Text(e))).toList(),
           onChanged: (val) => setDialogState(() => selectedEducation = val),
         ),

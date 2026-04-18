@@ -11,7 +11,6 @@ import 'package:buildmate/view/profile_page.dart';
 import 'package:buildmate/view/org_profile_page.dart';
 import 'package:buildmate/view/explore_user_view.dart';
 import 'package:buildmate/view/user_home_page.dart';
-import 'package:buildmate/view/teams_groups_view.dart';
 // ✅ إضافة هذا السطر لتمكين الصفحات الأخرى من تغيير التبويب
 _HomeScreenState? homeScreenState;
 
