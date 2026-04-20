@@ -368,29 +368,34 @@ class _ProfilePageState extends State<ProfilePage>
       padding: const EdgeInsets.symmetric(horizontal: 25),
       child: Wrap(
         alignment: WrapAlignment.center,
-        spacing: 10,
-        runSpacing: 10,
+        spacing: 25, // مسافة أفقية واسعة تعطي فخامة وتمنع التكدس
+        runSpacing: 18, // مسافة عمودية بين الأسطر
         children: skills.map((skill) {
-          return Container(
-            padding: const EdgeInsets.symmetric(
-              horizontal: 18,
-              vertical: 10,
-            ),
-            decoration: BoxDecoration(
-              color: primaryPurple.withOpacity(0.1),
-              borderRadius: BorderRadius.circular(20),
-              border: Border.all(
-                color: primaryPurple.withOpacity(0.4),
+          return Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              // الدائرة الصغيرة الملونة (هي اللي تعطي الشكل الدائري والجمالية)
+              Container(
+                width: 8,
+                height: 8,
+                decoration: BoxDecoration(
+                  color: primaryPurple.withOpacity(0.5), // بنفسجي هادئ جداً
+                  shape: BoxShape.circle,
+                ),
               ),
-            ),
-            child: Text(
-              skill,
-              style: TextStyle(
-                color: primaryPurple,
-                fontSize: 13,
-                fontWeight: FontWeight.bold,
+              const SizedBox(width: 10),
+
+              // نص المهارة (حر تماماً: بدون لون خلفية وبدون إطار)
+              Text(
+                skill,
+                style: TextStyle(
+                  color: Colors.grey.shade800,
+                  fontSize: 15, // حجم خط واضح ومريح
+                  fontWeight: FontWeight.w600,
+                  letterSpacing: 0.3,
+                ),
               ),
-            ),
+            ],
           );
         }).toList(),
       ),
@@ -433,7 +438,7 @@ class _ProfilePageState extends State<ProfilePage>
         }).toList();
 
         if (ongoing.isEmpty) {
-          return _empty("No ongoing hackathons");
+          return _empty("No ongoing hackathons", Icons.rocket_launch_outlined);
         }
 
         return ListView.builder(
@@ -471,7 +476,7 @@ class _ProfilePageState extends State<ProfilePage>
         }).toList();
 
         if (previous.isEmpty) {
-          return _empty("No previous hackathons");
+          return _empty("No previous hackathons", Icons.history);
         }
 
         return ListView.builder(
@@ -490,11 +495,22 @@ class _ProfilePageState extends State<ProfilePage>
     );
   }
 
-  Widget _empty(String text) {
+  Widget _empty(String text, IconData icon) {
     return Center(
-      child: Text(
-        text,
-        style: TextStyle(color: Colors.grey.shade400),
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          // الأيقونة بنفس الحجم واللون الموجود في الملف الآخر
+          Icon(icon, size: 40, color: Colors.grey.shade300),
+          const SizedBox(height: 10),
+          Text(
+            text,
+            style: TextStyle(
+              color: Colors.grey.shade400,
+              fontSize: 14,
+            ),
+          ),
+        ],
       ),
     );
   }

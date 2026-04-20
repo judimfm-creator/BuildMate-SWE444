@@ -35,7 +35,7 @@ class _ExploreUserViewState extends State<ExploreUserView> with SingleTickerProv
 
   static const Color _purple = Color(0xFF6D56B3);
   static const Color _lightBg = Color(0xFFF0EEFF);
-  static const Color _screenBg = Color(0xFFF8F9FD);
+  static const Color _screenBg = Colors.white;
 
   // متغيرات الفلترة
   String? selectedMode;
@@ -212,10 +212,21 @@ class _ExploreUserViewState extends State<ExploreUserView> with SingleTickerProv
     return Container(
       margin: const EdgeInsets.only(bottom: 20),
       decoration: BoxDecoration(
-        color: Colors.white, borderRadius: BorderRadius.circular(24),
-        boxShadow: [BoxShadow(color: _purple.withOpacity(0.08), blurRadius: 15, offset: const Offset(0, 8))],
-      ),
-      child: Padding(
+        color: Colors.white, // 👈 خلفية بيضاء صافية كما طلبتِ
+        borderRadius: BorderRadius.circular(24),
+        // 👈 هذا الإطار هو الذي يعطي "اللمعة" الموف على الأطراف
+        border: Border.all(
+          color: _purple.withOpacity(0.18),
+          width: 1.2,
+        ),
+        boxShadow: [
+          BoxShadow(
+            color: _purple.withOpacity(0.08),
+            blurRadius: 15,
+            offset: const Offset(0, 8),
+          ),
+        ],
+      ),      child: Padding(
         padding: const EdgeInsets.all(20),
         child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
           Row(children: [
@@ -432,118 +443,214 @@ Text(
     );
   }
 
+  Future<List<Map<String, dynamic>>> _buildFilteredTeams(
+      List<QueryDocumentSnapshot<Map<String, dynamic>>> docs,
+      String currentUid,
+      Set<String> pendingHackathonIds,
+      ) async {
+    final userTeamsSnapshot = await FirebaseFirestore.instance
+        .collection('team_posts')
+        .where('members', arrayContains: currentUid)
+        .get();
+
+    final joinedIds = userTeamsSnapshot.docs
+        .map((doc) => doc.data()['hackathonId'] as String?)
+        .whereType<String>()
+        .toSet();
+
+    final excludedHackathonIds = {...joinedIds, ...pendingHackathonIds};
+
+    final futures = docs.map((doc) async {
+      final data = doc.data();
+      final team = TeamPostModel.fromMap(doc.id, data);
+
+      if (excludedHackathonIds.contains(team.hackathonId)) return null;
+
+      final hDoc = await FirebaseFirestore.instance
+          .collection('hackathons')
+          .doc(team.hackathonId)
+          .get();
+
+      if (!hDoc.exists) return null;
+
+      final h = Hackathon.fromFirestore(hDoc);
+
+      if (team.members.length >= h.teamSize) return null;
+
+      final teamDeadline = DateTime(
+        h.applicationDeadline.year,
+        h.applicationDeadline.month,
+        h.applicationDeadline.day,
+        23,
+        59,
+        59,
+      );
+
+      if (DateTime.now().isAfter(teamDeadline)) return null;
+
+      return {
+        'team': team,
+        'hackathon': h,
+        'hackathonName': h.name,
+      };
+    });
+
+    final results = await Future.wait(futures);
+
+    return results
+        .where((item) => item != null)
+        .cast<Map<String, dynamic>>()
+        .toList();
+  }
+
   // --- قائمة الفرق (من كود 2 مع منطق الاستبعاد) ---
   Widget _buildTeamsList() {
     final currentUid = FirebaseAuth.instance.currentUser?.uid ?? '';
-    return StreamBuilder<List<Map<String, dynamic>>>(
+
+    return StreamBuilder<QuerySnapshot<Map<String, dynamic>>>(
       stream: FirebaseFirestore.instance
-          .collection('team_posts')
-          .orderBy('createdAt', descending: true)
-          .snapshots()
-          .asyncMap((snapshot) async {
-        final userTeamsSnapshot = await FirebaseFirestore.instance
-            .collection('team_posts')
-            .where('members', arrayContains: currentUid)
-            .get();
+          .collection('join_requests')
+          .where('requesterId', isEqualTo: currentUid)
+          .where('status', isEqualTo: 'pending')
+          .snapshots(),
+      builder: (context, requestSnapshot) {
+        if (requestSnapshot.connectionState == ConnectionState.waiting) {
+          return const Center(
+            child: CircularProgressIndicator(color: _purple),
+          );
+        }
 
-        final joinedIds = userTeamsSnapshot.docs
-            .map((doc) => doc.data()['hackathonId'] as String?)
-            .toSet();
-
-        final pendingRequestsSnapshot = await FirebaseFirestore.instance
-            .collection('join_requests')
-            .where('requesterId', isEqualTo: currentUid)
-            .where('status', isEqualTo: 'pending')
-            .get();
-
-        final pendingHackathonIds = pendingRequestsSnapshot.docs
+        final pendingHackathonIds = requestSnapshot.data?.docs
             .map((doc) => doc.data()['hackathonId'] as String?)
             .whereType<String>()
-            .toSet();
+            .toSet() ??
+            <String>{};
 
-        final excludedHackathonIds = {...joinedIds, ...pendingHackathonIds};
+        return StreamBuilder<QuerySnapshot<Map<String, dynamic>>>(
+          stream: FirebaseFirestore.instance
+              .collection('team_posts')
+              .orderBy('createdAt', descending: true)
+              .snapshots(),
+          builder: (context, teamSnapshot) {
+            if (teamSnapshot.connectionState == ConnectionState.waiting) {
+              return const Center(
+                child: CircularProgressIndicator(color: _purple),
+              );
+            }
 
-        final futures = snapshot.docs.map((doc) async {
-          final data = doc.data();
-          final team = TeamPostModel.fromMap(doc.id, data);
+            if (!teamSnapshot.hasData || teamSnapshot.data!.docs.isEmpty) {
+              return const Center(
+                child: Padding(
+                  padding: EdgeInsets.only(top: 40),
+                  child: Text("No teams available right now."),
+                ),
+              );
+            }
 
-          if (excludedHackathonIds.contains(team.hackathonId)) return null;
+            return FutureBuilder<List<Map<String, dynamic>>>(
+              future: _buildFilteredTeams(
+                teamSnapshot.data!.docs,
+                currentUid,
+                pendingHackathonIds,
+              ),
+              builder: (context, filteredSnapshot) {
+                if (filteredSnapshot.connectionState == ConnectionState.waiting) {
+                  return const Center(
+                    child: CircularProgressIndicator(color: _purple),
+                  );
+                }
 
-          final hDoc = await FirebaseFirestore.instance
-              .collection('hackathons')
-              .doc(team.hackathonId)
-              .get();
+                final now = DateTime.now();
+                var list = filteredSnapshot.data ?? [];
 
-          if (!hDoc.exists) return null;
+                list = list.where((item) {
+                  final team = item['team'] as TeamPostModel;
+                  final h = item['hackathon'] as Hackathon?;
+                  final hName = item['hackathonName'] as String;
 
-          final h = Hackathon.fromFirestore(hDoc);
+                  if (h == null) return false;
 
-          if (team.members.length >= h.teamSize) return null;
+                  bool mSearch = _searchController.text.isEmpty ||
+                      team.teamName
+                          .toLowerCase()
+                          .contains(_searchController.text.toLowerCase()) ||
+                      hName.toLowerCase().contains(_searchController.text.toLowerCase());
 
-          final teamDeadline = DateTime(
-            h.applicationDeadline.year,
-            h.applicationDeadline.month,
-            h.applicationDeadline.day,
-            23,
-            59,
-            59,
-          );
+                  bool mCity = _cityController.text.isEmpty ||
+                      h.city.toLowerCase().contains(_cityController.text.toLowerCase());
 
-          if (DateTime.now().isAfter(teamDeadline)) return null;
+                  bool mMode = selectedMode == null || h.mode == selectedMode;
+                  bool mEdu = selectedEducation == null || h.educationCriteria == selectedEducation;
 
-          return {
-            'team': team,
-            'hackathon': h,
-            'hackathonName': h.name,
-          };
-        });
+                  final hEndOfDeadline = DateTime(
+                    h.applicationDeadline.year,
+                    h.applicationDeadline.month,
+                    h.applicationDeadline.day,
+                    23,
+                    59,
+                    59,
+                  );
 
-        final results = await Future.wait(futures);
-        return results
-            .where((item) => item != null)
-            .cast<Map<String, dynamic>>()
-            .toList();
-      }),
-      builder: (context, snapshot) {
-        if (snapshot.connectionState == ConnectionState.waiting) return const Center(child: CircularProgressIndicator(color: _purple));
-        if (!snapshot.hasData || snapshot.data!.isEmpty) return const Center(child: Padding(padding: EdgeInsets.only(top: 40), child: Text("No teams available right now.")));
-        
-        final now = DateTime.now();
-        var list = snapshot.data!.where((item) {
-          final team = item['team'] as TeamPostModel;
-          final h = item['hackathon'] as Hackathon?;
-          final hName = item['hackathonName'] as String;
-          if (h == null) return false;
+                  String currentHStatus = "";
+                  if (now.isBefore(h.applicationOpenDate)) {
+                    currentHStatus = "Registration Upcoming Soon";
+                  } else if (now.isAfter(h.applicationOpenDate) &&
+                      now.isBefore(hEndOfDeadline)) {
+                    currentHStatus = "Registration Open";
+                  } else {
+                    currentHStatus = "Registration Closed";
+                  }
 
-          bool mSearch = _searchController.text.isEmpty || team.teamName.toLowerCase().contains(_searchController.text.toLowerCase()) || hName.toLowerCase().contains(_searchController.text.toLowerCase());
-          bool mCity = _cityController.text.isEmpty || h.city.toLowerCase().contains(_cityController.text.toLowerCase());
-          bool mMode = selectedMode == null || h.mode == selectedMode;
-          bool mEdu = selectedEducation == null || h.educationCriteria == selectedEducation;
+                  bool mStatus = selectedStatuses.isEmpty ||
+                      selectedStatuses.contains(currentHStatus);
 
-          final hEndOfDeadline = DateTime(h.applicationDeadline.year, h.applicationDeadline.month, h.applicationDeadline.day, 23, 59, 59);
-          String currentHStatus = "";
-          if (now.isBefore(h.applicationOpenDate)) {
-            currentHStatus = "Registration Upcoming Soon";
-          } else if (now.isAfter(h.applicationOpenDate) && now.isBefore(hEndOfDeadline)) {
-            currentHStatus = "Registration Open";
-          } else {
-            currentHStatus = "Registration Closed";
-          }
+                  bool mEvStart = selectedStartEventDate == null ||
+                      isSameDay(h.startDate, selectedStartEventDate!);
 
-          bool mStatus = selectedStatuses.isEmpty || selectedStatuses.contains(currentHStatus);
+                  bool mEvEnd = selectedEndEventDate == null ||
+                      isSameDay(h.endDate, selectedEndEventDate!);
 
-          bool mEvStart = selectedStartEventDate == null || isSameDay(h.startDate, selectedStartEventDate!);
-          bool mEvEnd = selectedEndEventDate == null || isSameDay(h.endDate, selectedEndEventDate!);
-          bool mDeadline = selectedEndRegDate == null || isSameDay(h.applicationDeadline, selectedEndRegDate!);
+                  bool mDeadline = selectedEndRegDate == null ||
+                      isSameDay(h.applicationDeadline, selectedEndRegDate!);
 
-          return mSearch && mCity && mMode && mEdu && mStatus && mEvStart && mEvEnd && mDeadline;
-        }).toList();
+                  return mSearch &&
+                      mCity &&
+                      mMode &&
+                      mEdu &&
+                      mStatus &&
+                      mEvStart &&
+                      mEvEnd &&
+                      mDeadline;
+                }).toList();
 
-        if (list.isEmpty) return const Center(child: Padding(padding: EdgeInsets.only(top: 40), child: Text("No teams match your filters.", style: TextStyle(color: Colors.grey))));
-        return ListView.builder(padding: const EdgeInsets.all(16), itemCount: list.length, itemBuilder: (context, index) {
-          final item = list[index];
-          return _buildTeamCard(item['team'], item['hackathon'], item['hackathonName']);
-        });
+                if (list.isEmpty) {
+                  return const Center(
+                    child: Padding(
+                      padding: EdgeInsets.only(top: 40),
+                      child: Text(
+                        "No teams match your filters.",
+                        style: TextStyle(color: Colors.grey),
+                      ),
+                    ),
+                  );
+                }
+
+                return ListView.builder(
+                  padding: const EdgeInsets.all(16),
+                  itemCount: list.length,
+                  itemBuilder: (context, index) {
+                    final item = list[index];
+                    return _buildTeamCard(
+                      item['team'],
+                      item['hackathon'],
+                      item['hackathonName'],
+                    );
+                  },
+                );
+              },
+            );
+          },
+        );
       },
     );
   }
@@ -552,7 +659,22 @@ Text(
   Widget _buildTeamCard(TeamPostModel team, Hackathon? hackathon, String hackathonName) {
     return Container(
       margin: const EdgeInsets.only(bottom: 20),
-      decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(24), boxShadow: [BoxShadow(color: _purple.withOpacity(0.08), blurRadius: 15, offset: const Offset(0, 8))]),
+      decoration: BoxDecoration(
+        color: Colors.white, // خلفية بيضاء
+        borderRadius: BorderRadius.circular(24),
+        // 👈 نفس اللمعة الموحدة في كل التطبيق
+        border: Border.all(
+          color: _purple.withOpacity(0.2),
+          width: 1.5,
+        ),
+        boxShadow: [
+          BoxShadow(
+            color: _purple.withOpacity(0.08),
+            blurRadius: 15,
+            offset: const Offset(0, 8),
+          ),
+        ],
+      ),
       child: Padding(
         padding: const EdgeInsets.all(20),
         child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
