@@ -1,10 +1,12 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:onesignal_flutter/onesignal_flutter.dart';
 
-
-import '../view/register_org_view.dart'; 
-
-import '../org_home_screen.dart'; 
+import '../view/register_org_view.dart';
+import '../org_home_screen.dart';
+import '../services/notification_service.dart';
 
 class OrgLoginScreen extends StatefulWidget {
   const OrgLoginScreen({super.key});
@@ -45,10 +47,38 @@ class _OrgLoginScreenState extends State<OrgLoginScreen> {
     setState(() => _loading = true);
 
     try {
-      await FirebaseAuth.instance.signInWithEmailAndPassword(
+      final credential = await FirebaseAuth.instance.signInWithEmailAndPassword(
         email: email,
         password: pass,
       );
+
+      final uid = credential.user?.uid;
+
+      if (uid != null) {
+        await NotificationService.instance.init();
+        OneSignal.login(uid);
+
+        String? playerId;
+
+        for (int i = 0; i < 5; i++) {
+          playerId = OneSignal.User.pushSubscription.id;
+          if (playerId != null && playerId.isNotEmpty) {
+            break;
+          }
+          await Future.delayed(const Duration(seconds: 1));
+        }
+
+        debugPrint('Organization OneSignal Player ID: $playerId');
+
+        if (playerId != null && playerId.isNotEmpty) {
+          await FirebaseFirestore.instance
+              .collection('organizations')
+              .doc(uid)
+              .set({
+            'oneSignalPlayerId': playerId,
+          }, SetOptions(merge: true));
+        }
+      }
 
       if (!mounted) return;
 
@@ -150,7 +180,9 @@ class _OrgLoginScreenState extends State<OrgLoginScreen> {
                     borderSide: BorderSide.none,
                   ),
                   suffixIcon: IconButton(
-                    onPressed: _loading ? null : () => setState(() => _obscure = !_obscure),
+                    onPressed: _loading
+                        ? null
+                        : () => setState(() => _obscure = !_obscure),
                     icon: Icon(
                       _obscure ? Icons.visibility_off : Icons.visibility,
                       color: Colors.white70,
@@ -192,12 +224,16 @@ class _OrgLoginScreenState extends State<OrgLoginScreen> {
                           width: 18,
                           child: CircularProgressIndicator(
                             strokeWidth: 2,
-                            valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
+                            valueColor:
+                                AlwaysStoppedAnimation<Color>(Colors.white),
                           ),
                         )
                       : const Text(
                           "Login",
-                          style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
+                          style: TextStyle(
+                            fontSize: 16,
+                            fontWeight: FontWeight.w600,
+                          ),
                         ),
                 ),
               ),
@@ -217,7 +253,9 @@ class _OrgLoginScreenState extends State<OrgLoginScreen> {
                         : () {
                             Navigator.push(
                               context,
-                              MaterialPageRoute(builder: (_) => const RegisterOrgView()),
+                              MaterialPageRoute(
+                                builder: (_) => const RegisterOrgView(),
+                              ),
                             );
                           },
                     child: const Text(

@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-import 'package:buildmate/services/notification_service.dart';
 import '../../viewmodel/org_hackathons_view_model.dart';
 import '../../model/hackathon.dart';
 import '../widgets/hackathon_mini_card.dart';
@@ -21,12 +20,10 @@ class _OrgHomePageState extends State<OrgHomePage> {
   @override
   void initState() {
     super.initState();
-    NotificationService.instance.startJoinRequestListener();
   }
 
   @override
   void dispose() {
-    NotificationService.instance.stopJoinRequestListener();
     super.dispose();
   }
 

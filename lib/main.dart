@@ -24,12 +24,16 @@ import 'package:buildmate/org_home_screen.dart';
 // Notification Service
 import 'package:buildmate/services/notification_service.dart';
 
+// Firebase
+import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_auth/firebase_auth.dart';
+
 @pragma('vm:entry-point')
 Future<void> firebaseMessagingBackgroundHandler(RemoteMessage message) async {
   await Firebase.initializeApp();
 }
 
-void main() async {
+Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
   await Firebase.initializeApp();
@@ -39,10 +43,47 @@ void main() async {
 
   await NotificationService.instance.init();
 
+  final FirebaseMessaging messaging = FirebaseMessaging.instance;
+
+  await messaging.requestPermission(
+    alert: true,
+    badge: true,
+    sound: true,
+  );
+
+  await messaging.setForegroundNotificationPresentationOptions(
+    alert: true,
+    badge: true,
+    sound: true,
+  );
+
+  /// 🔥 GET TOKEN
+  final String? fcmToken = await messaging.getToken();
+  debugPrint('FCM Token: $fcmToken');
+
+  /// 🔥 SAVE TOKEN
+  final user = FirebaseAuth.instance.currentUser;
+  if (user != null && fcmToken != null) {
+    await FirebaseFirestore.instance.collection('users').doc(user.uid).set({
+      'fcmToken': fcmToken,
+    }, SetOptions(merge: true));
+  }
+
+  /// 🔥 UPDATE TOKEN
+  FirebaseMessaging.instance.onTokenRefresh.listen((newToken) async {
+    debugPrint('FCM Token refreshed: $newToken');
+
+    final user = FirebaseAuth.instance.currentUser;
+    if (user != null) {
+      await FirebaseFirestore.instance.collection('users').doc(user.uid).set({
+        'fcmToken': newToken,
+      }, SetOptions(merge: true));
+    }
+  });
+
+  /// OneSignal (نخليه زي ما هو عشان ما نخرب شغلك)
   OneSignal.Debug.setLogLevel(OSLogLevel.verbose);
-
   OneSignal.initialize('c398e7ba-119f-4de3-ab62-ff64b114dfce');
-
   await OneSignal.Notifications.requestPermission(true);
 
   runApp(
@@ -58,14 +99,41 @@ void main() async {
   );
 }
 
-class MyApp extends StatelessWidget {
+class MyApp extends StatefulWidget {
   const MyApp({super.key});
+
+  @override
+  State<MyApp> createState() => _MyAppState();
+}
+
+class _MyAppState extends State<MyApp> {
+  final _navigatorKey = GlobalKey<NavigatorState>();
+
+  @override
+  void initState() {
+    super.initState();
+
+    NotificationService.instance.navigatorKey = _navigatorKey;
+
+    /// Foreground FCM → show in-app banner
+    FirebaseMessaging.onMessage.listen((RemoteMessage message) {
+      NotificationService.instance.showNotification(
+        title: message.notification?.title ?? 'New Notification',
+        body: message.notification?.body ?? '',
+      );
+    });
+
+    FirebaseMessaging.onMessageOpenedApp.listen((RemoteMessage message) {
+      debugPrint('Notification clicked: ${message.messageId}');
+    });
+  }
 
   @override
   Widget build(BuildContext context) {
     const primaryColor = Color(0xFF6D56B3);
 
     return MaterialApp(
+      navigatorKey: _navigatorKey,
       debugShowCheckedModeBanner: false,
       title: 'BuildMate',
       theme: ThemeData(

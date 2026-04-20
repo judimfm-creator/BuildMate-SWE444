@@ -11,6 +11,7 @@ import 'package:buildmate/view/profile_page.dart';
 import 'package:buildmate/view/org_profile_page.dart';
 import 'package:buildmate/view/explore_user_view.dart';
 import 'package:buildmate/view/user_home_page.dart';
+import 'package:buildmate/services/notification_service.dart';
 // ✅ إضافة هذا السطر لتمكين الصفحات الأخرى من تغيير التبويب
 _HomeScreenState? homeScreenState;
 
@@ -49,10 +50,19 @@ class _HomeScreenState extends State<HomeScreen> {
           _isOrg = doc.exists;
           _isLoading = false;
         });
+        if (!doc.exists) {
+          NotificationService.instance.startJoinRequestListener();
+        }
       }
     } catch (e) {
       if (mounted) setState(() => _isLoading = false);
     }
+  }
+
+  @override
+  void dispose() {
+    NotificationService.instance.stopJoinRequestListener();
+    super.dispose();
   }
 
   @override

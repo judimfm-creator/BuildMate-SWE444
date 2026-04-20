@@ -1,4 +1,5 @@
 import 'dart:io';
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
@@ -262,6 +263,11 @@ class RegisterViewModel extends ChangeNotifier {
 
       final orgDoc = await firestore.collection('organizations').doc(uid).get();
       if (orgDoc.exists) {
+        await _saveOneSignalPlayerId(
+          collectionName: 'organizations',
+          uid: uid,
+        );
+
         if (context.mounted) {
           Navigator.pushReplacementNamed(context, '/orgHome');
         }
@@ -270,11 +276,21 @@ class RegisterViewModel extends ChangeNotifier {
 
       final userDoc = await firestore.collection('users').doc(uid).get();
       if (userDoc.exists) {
+        await _saveOneSignalPlayerId(
+          collectionName: 'users',
+          uid: uid,
+        );
+
         if (context.mounted) {
           Navigator.pushReplacementNamed(context, '/home');
         }
         return;
       }
+
+      await _saveOneSignalPlayerId(
+        collectionName: 'users',
+        uid: uid,
+      );
 
       if (context.mounted) {
         Navigator.pushReplacementNamed(context, '/home');
@@ -285,6 +301,32 @@ class RegisterViewModel extends ChangeNotifier {
       }
     } finally {
       _setLoading(false);
+    }
+  }
+
+  Future<void> _saveOneSignalPlayerId({
+    required String collectionName,
+    required String uid,
+  }) async {
+    String? playerId;
+
+    for (int i = 0; i < 5; i++) {
+      playerId = OneSignal.User.pushSubscription.id;
+      if (playerId != null && playerId.isNotEmpty) {
+        break;
+      }
+      await Future.delayed(const Duration(seconds: 1));
+    }
+
+    debugPrint('OneSignal Player ID for $uid: $playerId');
+
+    if (playerId != null && playerId.isNotEmpty) {
+      await FirebaseFirestore.instance
+          .collection(collectionName)
+          .doc(uid)
+          .set({
+        'oneSignalPlayerId': playerId,
+      }, SetOptions(merge: true));
     }
   }
 

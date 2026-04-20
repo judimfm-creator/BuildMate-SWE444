@@ -3,7 +3,7 @@ import 'dart:async';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
-import 'package:flutter/foundation.dart';
+import 'package:flutter/material.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 
 class NotificationService {
@@ -16,8 +16,9 @@ class NotificationService {
       FlutterLocalNotificationsPlugin();
 
   StreamSubscription<QuerySnapshot<Map<String, dynamic>>>? _joinRequestsSub;
+  final Set<String> _shownNotificationIds = {};
 
-  final Set<String> _shownJoinRequestIds = {};
+  GlobalKey<NavigatorState>? navigatorKey;
 
   static const AndroidNotificationChannel _channel =
       AndroidNotificationChannel(
@@ -32,45 +33,33 @@ class NotificationService {
     await _initLocalNotifications();
     await _saveTokenToFirestore();
     _listenToTokenRefresh();
-    _listenToForegroundMessages();
   }
 
   Future<void> _requestPermission() async {
-    final NotificationSettings settings = await _messaging.requestPermission(
+    await _messaging.requestPermission(
       alert: true,
       badge: true,
       sound: true,
     );
-
-    debugPrint('Notification permission: ${settings.authorizationStatus}');
   }
 
   Future<void> _initLocalNotifications() async {
     const AndroidInitializationSettings androidSettings =
         AndroidInitializationSettings('@mipmap/ic_launcher');
-
-    const InitializationSettings settings = InitializationSettings(
-      android: androidSettings,
-    );
-
+    const InitializationSettings settings =
+        InitializationSettings(android: androidSettings);
     await _localNotifications.initialize(settings);
-
     final AndroidFlutterLocalNotificationsPlugin? androidPlugin =
         _localNotifications.resolvePlatformSpecificImplementation<
             AndroidFlutterLocalNotificationsPlugin>();
-
     await androidPlugin?.createNotificationChannel(_channel);
   }
 
   Future<void> _saveTokenToFirestore() async {
     final User? user = FirebaseAuth.instance.currentUser;
     if (user == null) return;
-
     final String? token = await _messaging.getToken();
     if (token == null) return;
-
-    debugPrint('FCM TOKEN: $token');
-
     await FirebaseFirestore.instance.collection('users').doc(user.uid).set({
       'fcmToken': token,
       'lastTokenUpdatedAt': FieldValue.serverTimestamp(),
@@ -81,79 +70,43 @@ class NotificationService {
     _messaging.onTokenRefresh.listen((String newToken) async {
       final User? user = FirebaseAuth.instance.currentUser;
       if (user == null) return;
-
       await FirebaseFirestore.instance.collection('users').doc(user.uid).set({
         'fcmToken': newToken,
         'lastTokenUpdatedAt': FieldValue.serverTimestamp(),
       }, SetOptions(merge: true));
-
-      debugPrint('Refreshed token: $newToken');
     });
   }
 
-  void _listenToForegroundMessages() {
-    FirebaseMessaging.onMessage.listen((RemoteMessage message) async {
-      debugPrint('Foreground message received: ${message.data}');
-      await showLocalNotification(message);
-    });
-
-    FirebaseMessaging.onMessageOpenedApp.listen((RemoteMessage message) {
-      debugPrint('Notification clicked: ${message.data}');
-    });
-  }
-
-  Future<void> showLocalNotification(RemoteMessage message) async {
-    final RemoteNotification? notification = message.notification;
-    if (notification == null) return;
-
-    const AndroidNotificationDetails androidDetails =
-        AndroidNotificationDetails(
-      'high_importance_channel',
-      'High Importance Notifications',
-      channelDescription: 'This channel is used for important notifications.',
-      importance: Importance.max,
-      priority: Priority.high,
-      icon: '@mipmap/ic_launcher',
-    );
-
-    const NotificationDetails details = NotificationDetails(
-      android: androidDetails,
-    );
-
-    await _localNotifications.show(
-      notification.hashCode,
-      notification.title,
-      notification.body,
-      details,
-    );
-  }
-
-  Future<void> showManualNotification({
+  // Called from main.dart foreground FCM listener
+  Future<void> showNotification({
     required String title,
     required String body,
   }) async {
-    const AndroidNotificationDetails androidDetails =
-        AndroidNotificationDetails(
-      'high_importance_channel',
-      'High Importance Notifications',
-      channelDescription: 'This channel is used for important notifications.',
-      importance: Importance.max,
-      priority: Priority.high,
-      icon: '@mipmap/ic_launcher',
-    );
-
-    const NotificationDetails details = NotificationDetails(
-      android: androidDetails,
-    );
-
-    await _localNotifications.show(
-      DateTime.now().millisecondsSinceEpoch ~/ 1000,
-      title,
-      body,
-      details,
-    );
+    showInAppBanner(title: title, body: body);
   }
 
+  // Snapchat/Instagram-style in-app banner overlay
+  void showInAppBanner({required String title, required String body}) {
+    final overlay = navigatorKey?.currentState?.overlay;
+    if (overlay == null) return;
+
+    late OverlayEntry entry;
+    entry = OverlayEntry(
+      builder: (_) => _InAppBannerWidget(
+        title: title,
+        body: body,
+        onDismiss: () {
+          try {
+            entry.remove();
+          } catch (_) {}
+        },
+      ),
+    );
+
+    overlay.insert(entry);
+  }
+
+  // Listens to the notifications collection for real-time in-app banners
   void startJoinRequestListener() {
     final User? user = FirebaseAuth.instance.currentUser;
     if (user == null) return;
@@ -161,11 +114,12 @@ class NotificationService {
     _joinRequestsSub?.cancel();
 
     _joinRequestsSub = FirebaseFirestore.instance
-        .collection('join_requests')
-        .where('leaderId', isEqualTo: user.uid)
-        .where('status', isEqualTo: 'pending')
+        .collection('notifications')
+        .where('receiverId', isEqualTo: user.uid)
+        .where('type', isEqualTo: 'join_request')
+        .where('isRead', isEqualTo: false)
         .snapshots()
-        .listen((snapshot) async {
+        .listen((snapshot) {
       for (final change in snapshot.docChanges) {
         if (change.type != DocumentChangeType.added) continue;
 
@@ -173,20 +127,15 @@ class NotificationService {
         final data = doc.data();
         if (data == null) continue;
 
-        final requestId = doc.id;
+        if (_shownNotificationIds.contains(doc.id)) continue;
+        _shownNotificationIds.add(doc.id);
 
-        if (_shownJoinRequestIds.contains(requestId)) continue;
-        _shownJoinRequestIds.add(requestId);
+        final String title =
+            (data['title'] ?? 'New Join Request').toString();
+        final String body =
+            (data['message'] ?? 'Someone wants to join your team').toString();
 
-        final String senderName = (data['fullName'] ?? 'Someone').toString();
-        final String teamName = (data['teamName'] ?? 'your team').toString();
-        final String desiredRole =
-            (data['desiredRole'] ?? 'member').toString();
-
-        await showManualNotification(
-          title: 'New Join Request',
-          body: '$senderName wants to join $teamName as $desiredRole',
-        );
+        showInAppBanner(title: title, body: body);
       }
     });
   }
@@ -194,5 +143,142 @@ class NotificationService {
   Future<void> stopJoinRequestListener() async {
     await _joinRequestsSub?.cancel();
     _joinRequestsSub = null;
+  }
+}
+
+// ─── In-App Banner Widget ────────────────────────────────────────────────────
+
+class _InAppBannerWidget extends StatefulWidget {
+  final String title;
+  final String body;
+  final VoidCallback onDismiss;
+
+  const _InAppBannerWidget({
+    required this.title,
+    required this.body,
+    required this.onDismiss,
+  });
+
+  @override
+  State<_InAppBannerWidget> createState() => _InAppBannerWidgetState();
+}
+
+class _InAppBannerWidgetState extends State<_InAppBannerWidget>
+    with SingleTickerProviderStateMixin {
+  late AnimationController _controller;
+  late Animation<Offset> _slideAnim;
+  bool _dismissed = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _controller = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 380),
+    );
+    _slideAnim = Tween<Offset>(
+      begin: const Offset(0, -1.5),
+      end: Offset.zero,
+    ).animate(
+      CurvedAnimation(parent: _controller, curve: Curves.easeOutBack),
+    );
+
+    _controller.forward();
+    Future.delayed(const Duration(seconds: 4), _dismiss);
+  }
+
+  Future<void> _dismiss() async {
+    if (_dismissed || !mounted) return;
+    _dismissed = true;
+    await _controller.reverse();
+    widget.onDismiss();
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Positioned(
+      top: 0,
+      left: 0,
+      right: 0,
+      child: SafeArea(
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+          child: SlideTransition(
+            position: _slideAnim,
+            child: GestureDetector(
+              onTap: _dismiss,
+              onVerticalDragUpdate: (details) {
+                if (details.primaryDelta != null &&
+                    details.primaryDelta! < -5) {
+                  _dismiss();
+                }
+              },
+              child: Material(
+                elevation: 12,
+                borderRadius: BorderRadius.circular(18),
+                color: const Color(0xFF1C1B1F),
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 16,
+                    vertical: 14,
+                  ),
+                  child: Row(
+                    children: [
+                      Container(
+                        width: 44,
+                        height: 44,
+                        decoration: BoxDecoration(
+                          color: const Color(0xFF6D56B3),
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                        child: const Icon(
+                          Icons.group_add_rounded,
+                          color: Colors.white,
+                          size: 24,
+                        ),
+                      ),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Text(
+                              widget.title,
+                              style: const TextStyle(
+                                color: Colors.white,
+                                fontWeight: FontWeight.w700,
+                                fontSize: 14,
+                                letterSpacing: 0.1,
+                              ),
+                            ),
+                            const SizedBox(height: 3),
+                            Text(
+                              widget.body,
+                              style: const TextStyle(
+                                color: Color(0xFFB0AEC8),
+                                fontSize: 13,
+                              ),
+                              maxLines: 2,
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                          ],
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
   }
 }

@@ -623,16 +623,27 @@ class ExploreTeamsView extends StatelessWidget {
                           'createdAt': FieldValue.serverTimestamp(),
                         });
 
-                        final teamDoc = await FirebaseFirestore.instance
-                            .collection('team_posts')
-                            .doc(teamId)
-                            .get();
+                        final results = await Future.wait([
+                          FirebaseFirestore.instance
+                              .collection('team_posts')
+                              .doc(teamId)
+                              .get(),
+                          FirebaseFirestore.instance
+                              .collection('users')
+                              .doc(uid)
+                              .get(),
+                        ]);
 
-                        final teamData = teamDoc.data();
+                        final teamData = results[0].data();
+                        final requesterName =
+                            (results[1].data()?['fullName'] ?? 'Someone')
+                                .toString();
 
                         if (teamData != null) {
                           final String leaderId =
                               (teamData['createdBy'] ?? '').toString();
+                          final String teamName =
+                              (teamData['teamName'] ?? 'your team').toString();
 
                           if (leaderId.isNotEmpty) {
                             await FirebaseFirestore.instance
@@ -645,7 +656,7 @@ class ExploreTeamsView extends StatelessWidget {
                               'senderId': uid,
                               'title': 'New join request',
                               'message':
-                                  'A new user requested to join your team.',
+                                  '$requesterName wants to join $teamName as $selected',
                               'isRead': false,
                               'createdAt': FieldValue.serverTimestamp(),
                             });
