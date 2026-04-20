@@ -245,33 +245,10 @@ class _GroupChatViewState extends State<GroupChatView> {
       leading: const BackButton(color: Colors.white),
       title: Row(
         children: [
-          SizedBox(
-            width: 65, // عرض كافٍ لثلاث دوائر متداخلة
-            height: 34,
-            child: Stack(
-              alignment: Alignment.centerLeft,
-              children: [
-                // الدائرة الثالثة (التي تخبرنا بوجود أعضاء إضافيين)
-                Positioned(
-                  left: 28,
-                  child: _buildAvatarCircle(
-                    const Color(0xFFE0E0E0), // لون رمادي فاتح
-                    "   +", // هنا يمكنك وضع عدد الأعضاء المتبقي
-                    isCount: true,
-                  ),
-                ),
-                // الدائرة الثانية
-                Positioned(
-                  left: 14,
-                  child: _buildAvatarCircle(const Color(0xFFE6F1FB), "A"),
-                ),
-                // الدائرة الأولى (بالواجهة)
-                Positioned(
-                  left: 0,
-                  child: _buildAvatarCircle(const Color(0xFFF0EEFF), "B"),
-                ),
-              ],
-            ),
+          CircleAvatar(
+            radius: 20,
+            backgroundColor: _purple,
+            child: const Icon(Icons.groups_rounded, color: Colors.white, size: 30),
           ),
           const SizedBox(width: 10),
           Column(
