@@ -310,52 +310,119 @@ class ExploreTeamsView extends StatelessWidget {
                             stream: FirebaseFirestore.instance
                                 .collection('join_requests')
                                 .where('teamPostId', isEqualTo: teamId)
-                                .where('requesterId',
-                                    isEqualTo: currentUserId)
+                                .where('requesterId', isEqualTo: currentUserId)
                                 .where('status', isEqualTo: 'pending')
                                 .snapshots(),
                             builder: (context, requestSnapshot) {
                               final bool hasPendingRequest =
                                   requestSnapshot.hasData &&
                                       requestSnapshot.data!.docs.isNotEmpty;
+                              final String? requestDocId = hasPendingRequest
+                                  ? requestSnapshot.data!.docs.first.id
+                                  : null;
+
+                              if (hasPendingRequest) {
+                                return SizedBox(
+                                  width: double.infinity,
+                                  height: 50,
+                                  child: ElevatedButton(
+                                    style: ElevatedButton.styleFrom(
+                                      backgroundColor: Colors.orange.shade50,
+                                      foregroundColor: Colors.orange.shade800,
+                                      elevation: 0,
+                                      shape: RoundedRectangleBorder(
+                                        borderRadius: BorderRadius.circular(15),
+                                        side: BorderSide(
+                                            color: Colors.orange.shade300),
+                                      ),
+                                    ),
+                                    onPressed: () async {
+                                      final confirm = await showDialog<bool>(
+                                        context: context,
+                                        builder: (_) => AlertDialog(
+                                          title: const Text('Withdraw Request?'),
+                                          content: const Text(
+                                              'Are you sure you want to cancel your join request?'),
+                                          actions: [
+                                            TextButton(
+                                              onPressed: () =>
+                                                  Navigator.pop(context, false),
+                                              child: const Text('No'),
+                                            ),
+                                            TextButton(
+                                              onPressed: () =>
+                                                  Navigator.pop(context, true),
+                                              child: const Text('Yes, Withdraw',
+                                                  style: TextStyle(
+                                                      color: Colors.red)),
+                                            ),
+                                          ],
+                                        ),
+                                      );
+                                      if (confirm == true &&
+                                          requestDocId != null) {
+                                        await FirebaseFirestore.instance
+                                            .collection('join_requests')
+                                            .doc(requestDocId)
+                                            .delete();
+                                        final notifs =
+                                            await FirebaseFirestore.instance
+                                                .collection('notifications')
+                                                .where('senderId',
+                                                    isEqualTo: currentUserId)
+                                                .where('teamPostId',
+                                                    isEqualTo: teamId)
+                                                .where('type',
+                                                    isEqualTo: 'join_request')
+                                                .get();
+                                        for (final doc in notifs.docs) {
+                                          await doc.reference.delete();
+                                        }
+                                        if (context.mounted) {
+                                          ScaffoldMessenger.of(context)
+                                              .showSnackBar(
+                                            const SnackBar(
+                                                content: Text(
+                                                    'Request withdrawn successfully.')),
+                                          );
+                                        }
+                                      }
+                                    },
+                                    child: const Text(
+                                      'WITHDRAW REQUEST',
+                                      style: TextStyle(
+                                          fontWeight: FontWeight.bold),
+                                    ),
+                                  ),
+                                );
+                              }
 
                               return SizedBox(
                                 width: double.infinity,
                                 height: 50,
                                 child: ElevatedButton(
                                   style: ElevatedButton.styleFrom(
-                                    backgroundColor:
-                                        (isFull ||
-                                                isRegistered ||
-                                                hasPendingRequest)
-                                            ? Colors.grey.shade300
-                                            : _purple,
+                                    backgroundColor: (isFull || isRegistered)
+                                        ? Colors.grey.shade300
+                                        : _purple,
                                     shape: RoundedRectangleBorder(
-                                      borderRadius:
-                                          BorderRadius.circular(15),
+                                      borderRadius: BorderRadius.circular(15),
                                     ),
                                     elevation: 0,
                                   ),
-                                  onPressed:
-                                      (isFull ||
-                                              isRegistered ||
-                                              hasPendingRequest)
-                                          ? null
-                                          : () => _showJoinDialog(
-                                                context,
-                                                teamId,
-                                                hackathonId,
-                                                data['teamName'],
-                                                roles,
-                                              ),
+                                  onPressed: (isFull || isRegistered)
+                                      ? null
+                                      : () => _showJoinDialog(
+                                            context,
+                                            teamId,
+                                            hackathonId,
+                                            data['teamName'],
+                                            roles,
+                                          ),
                                   child: Text(
-                                    hasPendingRequest
-                                        ? "REQUESTED"
-                                        : (isRegistered
-                                            ? "TEAM REGISTERED"
-                                            : (isFull
-                                                ? "TEAM FULL"
-                                                : "JOIN TEAM")),
+                                    isRegistered
+                                        ? "TEAM REGISTERED"
+                                        : (isFull ? "TEAM FULL" : "JOIN TEAM"),
                                     style: const TextStyle(
                                       color: Colors.white,
                                       fontWeight: FontWeight.bold,

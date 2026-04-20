@@ -150,6 +150,193 @@ class MyTeamPostView extends StatelessWidget {
     }
   }
 
+  Future<void> _editTeamInfo(
+    BuildContext context,
+    Map<String, dynamic> data,
+  ) async {
+    final nameCtrl = TextEditingController(text: data['teamName'] ?? '');
+    final roleCtrl = TextEditingController(text: data['myRole'] ?? '');
+    String selectedGender = data['genderPreference'] ?? 'Any';
+    const genderOptions = ['Any', 'Male', 'Female', 'Mixed'];
+
+    final confirm = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => StatefulBuilder(
+        builder: (ctx, setS) => AlertDialog(
+          shape:
+              RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+          title: const Text('Edit Team Info',
+              style: TextStyle(fontWeight: FontWeight.bold)),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              TextField(
+                controller: nameCtrl,
+                decoration: const InputDecoration(labelText: 'Team Name'),
+              ),
+              const SizedBox(height: 12),
+              DropdownButtonFormField<String>(
+                value: selectedGender,
+                decoration:
+                    const InputDecoration(labelText: 'Teammate Gender'),
+                items: genderOptions
+                    .map((g) => DropdownMenuItem(value: g, child: Text(g)))
+                    .toList(),
+                onChanged: (v) => setS(() => selectedGender = v!),
+              ),
+              const SizedBox(height: 12),
+              TextField(
+                controller: roleCtrl,
+                decoration: const InputDecoration(labelText: 'Your Role'),
+              ),
+            ],
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(ctx, false),
+              child: const Text('Cancel'),
+            ),
+            ElevatedButton(
+              style: ElevatedButton.styleFrom(backgroundColor: purple),
+              onPressed: () => Navigator.pop(ctx, true),
+              child: const Text('Save',
+                  style: TextStyle(color: Colors.white)),
+            ),
+          ],
+        ),
+      ),
+    );
+
+    if (confirm == true) {
+      try {
+        await FirebaseFirestore.instance
+            .collection('team_posts')
+            .doc(teamPostId)
+            .update({
+          'teamName': nameCtrl.text.trim(),
+          'genderPreference': selectedGender,
+          'myRole': roleCtrl.text.trim(),
+        });
+        if (context.mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('Team info updated.'),
+              backgroundColor: Colors.green,
+            ),
+          );
+        }
+      } catch (e) {
+        if (context.mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text('Error: $e'), backgroundColor: Colors.red),
+          );
+        }
+      }
+    }
+    nameCtrl.dispose();
+    roleCtrl.dispose();
+  }
+
+  Future<void> _removeMember(
+    BuildContext context,
+    String memberId,
+    String memberName,
+  ) async {
+    final confirm = await showDialog<bool>(
+      context: context,
+      builder: (_) => AlertDialog(
+        title: const Text('Remove Member'),
+        content: Text('Remove $memberName from the team?'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: const Text('Cancel'),
+          ),
+          TextButton(
+            onPressed: () => Navigator.pop(context, true),
+            child: const Text('Remove',
+                style: TextStyle(color: Colors.red)),
+          ),
+        ],
+      ),
+    );
+    if (confirm == true) {
+      try {
+        await FirebaseFirestore.instance
+            .collection('team_posts')
+            .doc(teamPostId)
+            .update({
+          'members': FieldValue.arrayRemove([memberId]),
+          'memberRoles.$memberId': FieldValue.delete(),
+        });
+        if (context.mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+                content: Text('Member removed.'),
+                backgroundColor: Colors.green),
+          );
+        }
+      } catch (e) {
+        if (context.mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+                content: Text('Error: $e'), backgroundColor: Colors.red),
+          );
+        }
+      }
+    }
+  }
+
+  Future<void> _leaveTeam(BuildContext context) async {
+    final String? uid = FirebaseAuth.instance.currentUser?.uid;
+    if (uid == null) return;
+
+    final confirm = await showDialog<bool>(
+      context: context,
+      builder: (_) => AlertDialog(
+        title: const Text('Leave Team'),
+        content: const Text('Are you sure you want to leave this team?'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: const Text('Cancel'),
+          ),
+          TextButton(
+            onPressed: () => Navigator.pop(context, true),
+            child:
+                const Text('Leave', style: TextStyle(color: Colors.red)),
+          ),
+        ],
+      ),
+    );
+    if (confirm == true) {
+      try {
+        await FirebaseFirestore.instance
+            .collection('team_posts')
+            .doc(teamPostId)
+            .update({
+          'members': FieldValue.arrayRemove([uid]),
+          'memberRoles.$uid': FieldValue.delete(),
+        });
+        if (context.mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+                content: Text('You have left the team.'),
+                backgroundColor: Colors.green),
+          );
+          Navigator.pop(context);
+        }
+      } catch (e) {
+        if (context.mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+                content: Text('Error: $e'), backgroundColor: Colors.red),
+          );
+        }
+      }
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final String? currentUserId = FirebaseAuth.instance.currentUser?.uid;
@@ -257,6 +444,15 @@ class MyTeamPostView extends StatelessWidget {
                               name: member['name']!,
                               isLeader: member['isLeader'] == 'true',
                               role: member['role']!,
+                              onRemove: (isLeader &&
+                                      !isSubmitted &&
+                                      member['isLeader'] != 'true')
+                                  ? () => _removeMember(
+                                        context,
+                                        member['uid']!,
+                                        member['name']!,
+                                      )
+                                  : null,
                             ),
                           )
                           .toList(),
@@ -297,6 +493,16 @@ class MyTeamPostView extends StatelessWidget {
                         ],
                       ),
                     ),
+
+                  if (!isSubmitted) ...[
+                    _actionButton(
+                      label: 'Edit Team Info',
+                      icon: Icons.edit_outlined,
+                      color: purple,
+                      onPressed: () => _editTeamInfo(context, data),
+                    ),
+                    const SizedBox(height: 12),
+                  ],
 
                   StreamBuilder<int>(
                     stream: _pendingRequestsCountStream(),
@@ -400,6 +606,15 @@ class MyTeamPostView extends StatelessWidget {
                     ),
                 ] else ...[
                   _buildMemberNotice(isSubmitted, currentMembers),
+                  if (!isSubmitted) ...[
+                    const SizedBox(height: 12),
+                    _actionButton(
+                      label: 'Leave Team',
+                      icon: Icons.exit_to_app_rounded,
+                      color: Colors.red,
+                      onPressed: () => _leaveTeam(context),
+                    ),
+                  ],
                 ],
 
                 const SizedBox(height: 40),
@@ -417,40 +632,42 @@ class MyTeamPostView extends StatelessWidget {
     required String name,
     required bool isLeader,
     required String role,
+    VoidCallback? onRemove,
   }) {
-    return InkWell(
-      borderRadius: BorderRadius.circular(12),
-      onTap: () {
-        Navigator.push(
-          context,
-          MaterialPageRoute(
-            builder: (_) => OtherUserProfilePage(userId: uid),
-          ),
-        );
-      },
-      child: Container(
-        margin: const EdgeInsets.only(bottom: 10),
-        padding: const EdgeInsets.all(12),
-        decoration: BoxDecoration(
-          color: Colors.white,
-          borderRadius: BorderRadius.circular(12),
-          border: Border.all(color: Colors.grey.shade200),
-        ),
-        child: Row(
-          children: [
-            CircleAvatar(
+    return Container(
+      margin: const EdgeInsets.only(bottom: 10),
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: Colors.grey.shade200),
+      ),
+      child: Row(
+        children: [
+          GestureDetector(
+            onTap: () => Navigator.push(
+              context,
+              MaterialPageRoute(
+                  builder: (_) => OtherUserProfilePage(userId: uid)),
+            ),
+            child: CircleAvatar(
               backgroundColor: lightPurple,
               radius: 18,
               child: Text(
                 name.isNotEmpty ? name[0] : '?',
                 style: const TextStyle(
-                  color: purple,
-                  fontWeight: FontWeight.bold,
-                ),
+                    color: purple, fontWeight: FontWeight.bold),
               ),
             ),
-            const SizedBox(width: 12),
-            Expanded(
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: GestureDetector(
+              onTap: () => Navigator.push(
+                context,
+                MaterialPageRoute(
+                    builder: (_) => OtherUserProfilePage(userId: uid)),
+              ),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 mainAxisSize: MainAxisSize.min,
@@ -461,9 +678,7 @@ class MyTeamPostView extends StatelessWidget {
                         child: Text(
                           name,
                           style: const TextStyle(
-                            fontWeight: FontWeight.bold,
-                            fontSize: 14,
-                          ),
+                              fontWeight: FontWeight.bold, fontSize: 14),
                           overflow: TextOverflow.ellipsis,
                           maxLines: 1,
                         ),
@@ -472,9 +687,7 @@ class MyTeamPostView extends StatelessWidget {
                         Container(
                           margin: const EdgeInsets.only(left: 8),
                           padding: const EdgeInsets.symmetric(
-                            horizontal: 6,
-                            vertical: 2,
-                          ),
+                              horizontal: 6, vertical: 2),
                           decoration: BoxDecoration(
                             color: purple,
                             borderRadius: BorderRadius.circular(6),
@@ -482,10 +695,9 @@ class MyTeamPostView extends StatelessWidget {
                           child: const Text(
                             "Leader",
                             style: TextStyle(
-                              color: Colors.white,
-                              fontSize: 10,
-                              fontWeight: FontWeight.bold,
-                            ),
+                                color: Colors.white,
+                                fontSize: 10,
+                                fontWeight: FontWeight.bold),
                           ),
                         ),
                     ],
@@ -503,14 +715,19 @@ class MyTeamPostView extends StatelessWidget {
                 ],
               ),
             ),
-            const SizedBox(width: 8),
-            const Icon(
-              Icons.arrow_forward_ios_rounded,
-              size: 14,
-              color: Colors.grey,
-            ),
-          ],
-        ),
+          ),
+          if (onRemove != null)
+            IconButton(
+              icon: const Icon(Icons.remove_circle_outline,
+                  color: Colors.red, size: 20),
+              onPressed: onRemove,
+              padding: EdgeInsets.zero,
+              constraints: const BoxConstraints(),
+            )
+          else
+            const Icon(Icons.arrow_forward_ios_rounded,
+                size: 14, color: Colors.grey),
+        ],
       ),
     );
   }
