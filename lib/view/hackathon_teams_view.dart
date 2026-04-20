@@ -661,23 +661,38 @@ class ExploreTeamsView extends StatelessWidget {
                             .collection('join_requests')
                             .where('teamPostId', isEqualTo: teamId)
                             .where('requesterId', isEqualTo: uid)
-                            .limit(1)
                             .get();
 
+// 2. التحقق من الحالة
                         if (existingRequest.docs.isNotEmpty) {
-                          if (ctx.mounted) {
-                            Navigator.pop(ctx);
-                          }
+                          final doc = existingRequest.docs.first;
+                          final status = doc.data()['status'];
 
-                          messenger.showSnackBar(
-                            const SnackBar(
-                              content: Text(
-                                "You already sent a request to this team.",
-                              ),
-                            ),
-                          );
-                          return;
+                          if (status == 'pending') {
+                            // الحالة: ما زال الطلب قيد الانتظار
+                            if (ctx.mounted) Navigator.pop(ctx);
+                            messenger.showSnackBar(
+                              const SnackBar(content: Text("You already have a pending request.")),
+                            );
+                            return;
+                          } else if (status == 'rejected') {
+                            // الحالة: مرفوض؟ إذاً نقوم بتحديثه ليصبح 'pending' مرة أخرى
+                            await doc.reference.update({
+                              'status': 'pending',
+                              'desiredRole': selected, // تحديث الدور إذا غيره المستخدم
+                              'createdAt': FieldValue.serverTimestamp(),
+                            });
+
+                            // يمكنك هنا إضافة كود إرسال إشعار جديد للقائد مرة أخرى (اختياري)
+
+                            if (ctx.mounted) Navigator.pop(ctx, true);
+                            messenger.showSnackBar(
+                              const SnackBar(content: Text("Request sent successfully (re-applied).")),
+                            );
+                            return;
+                          }
                         }
+
 
                         await FirebaseFirestore.instance
                             .collection('join_requests')

@@ -62,37 +62,61 @@ class _LeaderJoinRequestsViewState extends State<LeaderJoinRequestsView> {
   }
 
   Future<void> _acceptRequest(
-    BuildContext context,
-    String requestDocId,
-    String requesterId,
-    String desiredRole,
-  ) async {
+      BuildContext context,
+      String requestDocId,
+      String requesterId,
+      String desiredRole,
+      ) async {
     final messenger = ScaffoldMessenger.of(context);
     final firestore = FirebaseFirestore.instance;
-    final batch = firestore.batch();
 
-    final requestRef = firestore.collection('join_requests').doc(requestDocId);
-    final teamPostRef = firestore.collection('team_posts').doc(widget.teamPostId);
+    try {
+      // 1. جلب بيانات الفريق للتحقق من العدد الحالي
+      final teamPostDoc = await firestore.collection('team_posts').doc(widget.teamPostId).get();
 
-    batch.update(requestRef, {
-      'status': 'accepted',
-    });
+      if (!teamPostDoc.exists) return;
 
-    batch.update(teamPostRef, {
-      'members': FieldValue.arrayUnion([requesterId]),
-      'memberRoles.$requesterId': desiredRole,
-    });
+      final data = teamPostDoc.data()!;
+      final List<dynamic> currentMembers = data['members'] ?? [];
+      final int maxMembers = data['maxMembers'] ?? 4; // تأكد من اسم الحقل عندك
 
-    await batch.commit();
+      // 2. التحقق من الشرط
+      if (currentMembers.length >= maxMembers) {
+        messenger.showSnackBar(
+          const SnackBar(
+            content: Text('Cannot accept: The team has reached the maximum capacity!'),
+            backgroundColor: Colors.red,
+          ),
+        );
+        return;
+      }
 
-    if (!mounted) return;
+      // 3. إذا كان العدد يسمح، نكمل عملية القبول
+      final batch = firestore.batch();
+      final requestRef = firestore.collection('join_requests').doc(requestDocId);
+      final teamPostRef = firestore.collection('team_posts').doc(widget.teamPostId);
 
-    messenger.showSnackBar(
-      const SnackBar(
-        content: Text('Request accepted ✓'),
-        backgroundColor: _purple,
-      ),
-    );
+      batch.update(requestRef, {'status': 'accepted'});
+      batch.update(teamPostRef, {
+        'members': FieldValue.arrayUnion([requesterId]),
+        'memberRoles.$requesterId': desiredRole,
+      });
+
+      await batch.commit();
+
+      if (!mounted) return;
+      messenger.showSnackBar(
+        const SnackBar(
+          content: Text('Request accepted ✓'),
+          backgroundColor: _purple,
+        ),
+      );
+
+    } catch (e) {
+      messenger.showSnackBar(
+        const SnackBar(content: Text('An error occurred. Please try again.')),
+      );
+    }
   }
 
   Future<void> _rejectRequest(
@@ -358,15 +382,13 @@ class _LeaderJoinRequestsViewState extends State<LeaderJoinRequestsView> {
                                   Expanded(
                                     child: ElevatedButton.icon(
                                       style: ElevatedButton.styleFrom(
-                                        backgroundColor: Colors.green,
+                                        backgroundColor: _purple,
                                         foregroundColor: Colors.white,
                                         elevation: 0,
                                         shape: RoundedRectangleBorder(
                                           borderRadius: BorderRadius.circular(12),
                                         ),
-                                        padding: const EdgeInsets.symmetric(
-                                          vertical: 12,
-                                        ),
+                                        padding: const EdgeInsets.symmetric(vertical: 12),
                                       ),
                                       onPressed: () => _acceptRequest(
                                         context,
@@ -377,9 +399,7 @@ class _LeaderJoinRequestsViewState extends State<LeaderJoinRequestsView> {
                                       icon: const Icon(Icons.check, size: 18),
                                       label: const Text(
                                         'Accept',
-                                        style: TextStyle(
-                                          fontWeight: FontWeight.bold,
-                                        ),
+                                        style: TextStyle(fontWeight: FontWeight.bold),
                                       ),
                                     ),
                                   ),
@@ -387,26 +407,20 @@ class _LeaderJoinRequestsViewState extends State<LeaderJoinRequestsView> {
                                   Expanded(
                                     child: ElevatedButton.icon(
                                       style: ElevatedButton.styleFrom(
-                                        backgroundColor: Colors.red,
-                                        foregroundColor: Colors.white,
+                                        backgroundColor: Colors.white,
+                                        foregroundColor: _purple,
                                         elevation: 0,
+                                        side: const BorderSide(color: _purple, width: 1.5),
                                         shape: RoundedRectangleBorder(
                                           borderRadius: BorderRadius.circular(12),
                                         ),
-                                        padding: const EdgeInsets.symmetric(
-                                          vertical: 12,
-                                        ),
+                                        padding: const EdgeInsets.symmetric(vertical: 12),
                                       ),
-                                      onPressed: () => _rejectRequest(
-                                        context,
-                                        doc.id,
-                                      ),
+                                      onPressed: () => _rejectRequest(context, doc.id),
                                       icon: const Icon(Icons.close, size: 18),
                                       label: const Text(
                                         'Reject',
-                                        style: TextStyle(
-                                          fontWeight: FontWeight.bold,
-                                        ),
+                                        style: TextStyle(fontWeight: FontWeight.bold),
                                       ),
                                     ),
                                   ),

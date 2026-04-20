@@ -28,6 +28,7 @@ class _GroupChatViewState extends State<GroupChatView> {
   final TextEditingController _messageController = TextEditingController();
   final ScrollController _scrollController = ScrollController();
   final bool _showScrollButton = false;
+  final Map<String, String?> _photoCache = {};
 
   UserModel? _currentUser;
   bool _loadingUser = true;
@@ -93,6 +94,7 @@ class _GroupChatViewState extends State<GroupChatView> {
       setState(() {
         _currentUser = user;
         _loadingUser = false;
+        _photoCache.clear();
       });
     }
   }
@@ -108,7 +110,6 @@ class _GroupChatViewState extends State<GroupChatView> {
       text: text,
       senderId: _currentUser!.uid,
       senderName: _currentUser!.fullName,
-      senderPhoto: _currentUser!.profilePhotoPath,
     );
 
     _scrollToBottom();
@@ -411,13 +412,23 @@ class _GroupChatViewState extends State<GroupChatView> {
     );
   }
 
+  Future<String?> _getSenderPhoto(String senderId) async {
+    if (_photoCache.containsKey(senderId)) return _photoCache[senderId];
+    final doc = await FirebaseFirestore.instance
+        .collection('users')
+        .doc(senderId)
+        .get();
+    final photo = doc.data()?['profilePhotoPath'] as String?;
+    _photoCache[senderId] = photo;
+    return photo;
+  }
+
   // msg bubble
   Widget _buildMessageBubble(Map<String, dynamic> data, bool isMe) {
     final senderId = data['senderId'] as String? ?? '';
     final senderName = data['senderName'] as String? ?? 'مجهول';
     final text = data['text'] as String? ?? '';
     final timestamp = data['createdAt'] as Timestamp?;
-    final senderPhoto = data['senderPhoto'] as String?;
 
     // --- الجزء الخاص بحالة القراءة (الصح والصحين) ---
     final List readBy = data['readBy'] ?? [];
@@ -433,11 +444,14 @@ class _GroupChatViewState extends State<GroupChatView> {
         crossAxisAlignment: CrossAxisAlignment.end,
         children: [
           if (!isMe) ...[
-            _buildAvatar(
-              senderId: senderId,
-              senderName: senderName,
-              photoUrl: senderPhoto,
-              size: 28,
+            FutureBuilder<String?>(
+              future: _getSenderPhoto(senderId),
+              builder: (context, snap) => _buildAvatar(
+                senderId: senderId,
+                senderName: senderName,
+                photoUrl: snap.data,
+                size: 28,
+              ),
             ),
             const SizedBox(width: 6),
           ],
@@ -523,11 +537,14 @@ class _GroupChatViewState extends State<GroupChatView> {
           // أفاتار المستخدم الحالي
           if (isMe) ...[
             const SizedBox(width: 6),
-            _buildAvatar(
-              senderId: senderId,
-              senderName: senderName,
-              photoUrl: senderPhoto,
-              size: 28,
+            FutureBuilder<String?>(
+              future: _getSenderPhoto(senderId),
+              builder: (context, snap) => _buildAvatar(
+                senderId: senderId,
+                senderName: senderName,
+                photoUrl: snap.data,
+                size: 28,
+              ),
             ),
           ],
         ],

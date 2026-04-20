@@ -23,7 +23,6 @@ class ChatService {
     required String text,
     required String senderId,
     required String senderName,
-    String? senderPhoto,
   }) async {
 
     final teamDoc = await _firestore
@@ -45,7 +44,6 @@ class ChatService {
       'text': text.trim(),
       'senderId': senderId,
       'senderName': senderName,
-      'senderPhoto': senderPhoto,
       'createdAt': FieldValue.serverTimestamp(),
       'readBy': [],
     });
