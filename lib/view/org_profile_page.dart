@@ -19,7 +19,7 @@ class OrgProfilePage extends StatefulWidget {
 }
 
 class _OrgProfilePageState extends State<OrgProfilePage> {
-  final Color primaryPurple = const Color(0xFF7A62B3);
+  final Color primaryPurple = const Color(0xFF6D56B3);
   final Color lightPurpleBG = const Color(0xFFF5F3FF);
 
   @override
@@ -60,7 +60,7 @@ class _OrgProfilePageState extends State<OrgProfilePage> {
                   automaticallyImplyLeading: false,
                   leading: widget.showBack
                       ? IconButton(
-                    icon: const Icon(Icons.arrow_back_ios, color: Color(0xFF7A62B3)),
+                    icon: const Icon(Icons.arrow_back_ios, color: Color(0xFF6D56B3)),
                     onPressed: () => Navigator.pop(context),
                   )
                       : const SizedBox.shrink(),

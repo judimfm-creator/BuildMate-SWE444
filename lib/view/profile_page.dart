@@ -26,7 +26,7 @@ class _ProfilePageState extends State<ProfilePage>
   late TabController _tabController;
   final ProfileViewModel _viewModel = ProfileViewModel();
 
-  final Color primaryPurple = const Color(0xFF7A62B3);
+  final Color primaryPurple = const Color(0xFF6D56B3);
   final Color lightPurpleBG = const Color(0xFFF5F3FF);
   final Color manageButtonGrey = const Color(0xFFF2F2F2);
   final Color manageButtonText = const Color(0xFF616161);
@@ -302,7 +302,7 @@ class _ProfilePageState extends State<ProfilePage>
               IconButton(
                 icon: const Icon(
                   FontAwesomeIcons.linkedin,
-                  color: Color(0xFF7A62B3),
+                  color: Color(0xFF6D56B3),
                 ),
                 onPressed: () => _launchURL(user.linkedin),
               ),
@@ -310,7 +310,7 @@ class _ProfilePageState extends State<ProfilePage>
               IconButton(
                 icon: const Icon(
                   FontAwesomeIcons.github,
-                  color: Color(0xFF7A62B3),
+                  color: Color(0xFF6D56B3),
                 ),
                 onPressed: () => _launchURL(user.github),
               ),

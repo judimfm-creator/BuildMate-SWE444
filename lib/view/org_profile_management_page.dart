@@ -17,7 +17,7 @@ class OrgProfileManagementPage extends StatefulWidget {
 }
 
 class _OrgProfileManagementPageState extends State<OrgProfileManagementPage> {
-  final Color primaryPurple = const Color(0xFF7A62B3);
+  final Color primaryPurple = const Color(0xFF6D56B3);
   final Color deleteRed = const Color(0xFFD9534F);
 
   final _formKey = GlobalKey<FormState>();

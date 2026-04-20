@@ -29,7 +29,7 @@ class _CompleteProfileViewState extends State<CompleteProfileView> {
   final List<TextEditingController> _otherSkillControllers = [];
 
   String? _selectedGender;
-  final Color deepMediumPurple = const Color(0xFF7A62B3);
+  final Color deepMediumPurple = const Color(0xFF6D56B3);
 
   @override
   void initState() {

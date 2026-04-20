@@ -22,7 +22,7 @@ class InstitutionPublicProfilePage extends StatefulWidget {
 class _InstitutionPublicProfilePageState
     extends State<InstitutionPublicProfilePage>
     with SingleTickerProviderStateMixin {
-  static const Color _primaryPurple = Color(0xFF7A62B3);
+  static const Color _primaryPurple = Color(0xFF6D56B3);
   static const Color _lightPurpleBG = Color(0xFFF5F3FF);
 
   late TabController _tabController;

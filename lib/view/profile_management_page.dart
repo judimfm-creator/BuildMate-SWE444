@@ -20,7 +20,7 @@ class _ProfileManagementPageState extends State<ProfileManagementPage> {
   final _formKey = GlobalKey<FormState>();
   final TextEditingController _skillController = TextEditingController();
 
-  final Color deepMediumPurple = const Color(0xFF7A62B3);
+  final Color deepMediumPurple = const Color(0xFF6D56B3);
   final Color deleteRed = const Color(0xFFD9534F);
 
   bool _isEditMode = false;

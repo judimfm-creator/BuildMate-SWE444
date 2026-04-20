@@ -27,7 +27,7 @@ class _OtherUserProfilePageState extends State<OtherUserProfilePage>
   late TabController _tabController;
   final UserService _userService = UserService();
 
-  final Color primaryPurple = const Color(0xFF7A62B3);
+  final Color primaryPurple = const Color(0xFF6D56B3);
   final Color lightPurpleBG = const Color(0xFFF5F3FF);
 
   @override
@@ -308,7 +308,7 @@ class _OtherUserProfilePageState extends State<OtherUserProfilePage>
               IconButton(
                 icon: const Icon(
                   FontAwesomeIcons.linkedin,
-                  color: Color(0xFF7A62B3),
+                  color: Color(0xFF6D56B3),
                 ),
                 onPressed: () => _launchURL(user.linkedin),
               ),
@@ -316,7 +316,7 @@ class _OtherUserProfilePageState extends State<OtherUserProfilePage>
               IconButton(
                 icon: const Icon(
                   FontAwesomeIcons.github,
-                  color: Color(0xFF7A62B3),
+                  color: Color(0xFF6D56B3),
                 ),
                 onPressed: () => _launchURL(user.github),
               ),
