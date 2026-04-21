@@ -111,8 +111,9 @@ class _GroupChatViewState extends State<GroupChatView> {
 
     setState(() {
       _teamMembersList = membersIds
+          .map((id) => id.toString()) // 👈 السطر السحري: تحويل صريح لنص لمنع الأخطاء الصامتة
           .where((id) => id != _currentUser?.uid)
-          .map((id) => ZegoUIKitUser(id: id, name: "Member")) // 👈 التعديل هنا
+          .map((id) => ZegoUIKitUser(id: id, name: "Member"))
           .toList();
     });
   }
