@@ -701,7 +701,8 @@ class InstitutionTeamPostDetailsView extends StatelessWidget {
           SizedBox(
             width: double.infinity,
             child: OutlinedButton.icon(
-              onPressed: () => _showEditDecisionDialog(context),
+              // ابحثي عن OutlinedButton الخاص بـ Edit Decision وغيري الـ onPressed إلى:
+onPressed: () => _showEditDecisionDialog(context, status), // تمرير الحالة الحالية هنا,
               icon: const Icon(Icons.edit_note, size: 20),
               label: const Text("Edit Decision"),
               style: OutlinedButton.styleFrom(
@@ -769,50 +770,52 @@ class InstitutionTeamPostDetailsView extends StatelessWidget {
     );
   }
 
-Future<void> _showEditDecisionDialog(BuildContext context) async {
+Future<void> _showEditDecisionDialog(BuildContext context, String currentStatus) async {
+    // نحدد الحالة المعاكسة للحالة الحالية
+    final String targetStatus = currentStatus == 'accepted' ? 'rejected' : 'accepted';
+    final bool isAccepting = targetStatus == 'accepted';
+
     final result = await showDialog<String>(
       context: context,
       builder: (dialogContext) => AlertDialog(
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(16),
         ),
-        title: const Text("Edit Decision", style: TextStyle(fontWeight: FontWeight.bold, color: _purple)),
-        content: const Text("Select a new decision for this team."),
+        title: Text(
+          "Change Decision",
+          style: TextStyle(fontWeight: FontWeight.bold, color: _purple),
+        ),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text("This team is currently ${currentStatus.toUpperCase()}."),
+            const SizedBox(height: 12),
+            Text(
+              "Would you like to change it to ${targetStatus.toUpperCase()}?",
+              style: const TextStyle(fontWeight: FontWeight.w600),
+            ),
+          ],
+        ),
         actionsPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
         actions: [
-          Row(
-            children: [
-              Expanded(
-                child: ElevatedButton(
-                  onPressed: () => Navigator.pop(dialogContext, 'accepted'),
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: Colors.green,
-                    foregroundColor: Colors.white,
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-                  ),
-                  child: const Text("Accept"),
-                ),
-              ),
-              const SizedBox(width: 10),
-              Expanded(
-                child: ElevatedButton(
-                  onPressed: () => Navigator.pop(dialogContext, 'rejected'),
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: Colors.red,
-                    foregroundColor: Colors.white,
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-                  ),
-                  child: const Text("Reject"),
-                ),
-              ),
-            ],
+          TextButton(
+            onPressed: () => Navigator.pop(dialogContext),
+            child: const Text("Cancel", style: TextStyle(color: Colors.grey)),
+          ),
+          ElevatedButton(
+            onPressed: () => Navigator.pop(dialogContext, targetStatus),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: isAccepting ? Colors.green : Colors.red,
+              foregroundColor: Colors.white,
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+            ),
+            child: Text(isAccepting ? "Accept Team" : "Reject Team"),
           ),
         ],
       ),
     );
 
-    // This is the CRITICAL part: If the user picked a result, 
-    // trigger the confirmation dialog which then hits the backend.
     if (result != null) {
       if (context.mounted) {
         _showConfirmationDialog(context, result);
