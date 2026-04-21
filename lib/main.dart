@@ -119,6 +119,24 @@ class _MyAppState extends State<MyApp> {
 
     NotificationService.instance.navigatorKey = _navigatorKey;
 
+    // 👇 1. إعطاء Zego صلاحية التنقل لفتح الشاشة
+    ZegoUIKitPrebuiltCallInvitationService().setNavigatorKey(_navigatorKey);
+
+    // 👇 2. تشغيل خدمة الرنين تلقائياً بمجرد دخول المستخدم
+    FirebaseAuth.instance.authStateChanges().listen((User? user) async {
+      if (user != null) {
+        // نحاول جلب اسم المستخدم من قاعدة البيانات
+        final doc = await FirebaseFirestore.instance.collection('users').doc(user.uid).get();
+        final userName = doc.data()?['fullName'] ?? 'BuildMate User';
+
+        // استدعاء الدالة لتشغيل الخدمة (هنا كان النقص!)
+        onUserLogin(user.uid, userName);
+      } else {
+        // إغلاق الخدمة عند تسجيل الخروج
+        ZegoUIKitPrebuiltCallInvitationService().uninit();
+      }
+    });
+
     /// Foreground FCM → show in-app banner
     FirebaseMessaging.onMessage.listen((RemoteMessage message) {
       NotificationService.instance.showNotification(
