@@ -4,11 +4,8 @@ import 'package:intl/intl.dart';
 import '../model/user_model.dart';
 import '../services/chat_service.dart';
 import 'video_call_view.dart';
-import 'package:zego_uikit_prebuilt_call/zego_uikit_prebuilt_call.dart';
-import 'package:zego_uikit/zego_uikit.dart';
 
 class GroupChatView extends StatefulWidget {
-
   final String teamPostId;
   final String teamName;
 
@@ -99,23 +96,7 @@ class _GroupChatViewState extends State<GroupChatView> {
         _loadingUser = false;
         _photoCache.clear();
       });
-      _fetchTeamMembers();
     }
-  }
-
-  List<ZegoUIKitUser> _teamMembersList = [];
-
-  void _fetchTeamMembers() async {
-    var doc = await FirebaseFirestore.instance.collection('team_posts').doc(widget.teamPostId).get();
-    List membersIds = doc.data()?['members'] ?? [];
-
-    setState(() {
-      _teamMembersList = membersIds
-          .map((id) => id.toString()) // 👈 السطر السحري: تحويل صريح لنص لمنع الأخطاء الصامتة
-          .where((id) => id != _currentUser?.uid)
-          .map((id) => ZegoUIKitUser(id: id, name: "Member"))
-          .toList();
-    });
   }
 
   Future<void> _sendMessage() async {
@@ -293,55 +274,24 @@ class _GroupChatViewState extends State<GroupChatView> {
         ],
       ),
       actions: [
-        Opacity(
-          // نخفف لون الزر (يصير باهت) إذا ما كان فيه أعضاء للاتصال بهم
-          opacity: _teamMembersList.isEmpty ? 0.5 : 1.0,
-          child: Container(
-            margin: const EdgeInsets.only(right: 15, top: 10, bottom: 10),
-            child: ZegoSendCallInvitationButton(
-              isVideoCall: true,
-              resourceID: "buildmate_call",
-              customData: widget.teamPostId,
-              invitees: _teamMembersList, // يجب أن لا تكون فارغة لكي يُضغط الزر
+        // video call
+        IconButton(
+          icon: const Icon(Icons.videocam_outlined, color: Colors.white),
+          tooltip: 'Video Call',
+          onPressed: () {
+            if (_currentUser == null) return;
 
-              buttonSize: const Size(130, 36),
-              iconSize: const Size(130, 36),
-
-              icon: ButtonIcon(
-                // 👇 أضفنا IgnorePointer هنا عشان اللمسة تخترق التصميم وتفعل الزر
-                icon: IgnorePointer(
-                  child: Container(
-                    decoration: BoxDecoration(
-                      color: Colors.white,
-                      borderRadius: BorderRadius.circular(8),
-                      boxShadow: [
-                        BoxShadow(
-                          color: Colors.black.withOpacity(0.1),
-                          blurRadius: 4,
-                          offset: const Offset(0, 2),
-                        ),
-                      ],
-                    ),
-                    child: Row(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: const [
-                        Icon(Icons.videocam_rounded, color: _purple, size: 18),
-                        SizedBox(width: 6),
-                        Text(
-                          "Video Call",
-                          style: TextStyle(
-                            color: _purple,
-                            fontSize: 12,
-                            fontWeight: FontWeight.bold,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
+            Navigator.push(
+              context,
+              MaterialPageRoute(
+                builder: (context) => VideoCallView(
+                  callID: widget.teamPostId, // نفس أيدي القروب عشان تدخلون نفس الروم
+                  userID: _currentUser!.uid,
+                  userName: _currentUser!.fullName,
                 ),
               ),
-            ),
-          ),
+            );
+          },
         ),
       ],
     );
