@@ -368,34 +368,47 @@ class _ProfilePageState extends State<ProfilePage>
       padding: const EdgeInsets.symmetric(horizontal: 25),
       child: Wrap(
         alignment: WrapAlignment.center,
-        spacing: 25, // مسافة أفقية واسعة تعطي فخامة وتمنع التكدس
-        runSpacing: 18, // مسافة عمودية بين الأسطر
+        spacing: 25,
+        runSpacing: 18,
         children: skills.map((skill) {
-          return Row(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              // الدائرة الصغيرة الملونة (هي اللي تعطي الشكل الدائري والجمالية)
-              Container(
-                width: 8,
-                height: 8,
-                decoration: BoxDecoration(
-                  color: primaryPurple.withOpacity(0.5), // بنفسجي هادئ جداً
-                  shape: BoxShape.circle,
+          return Container(
+            // تحديد أقصى عرض للعنصر ليكون عرض الشاشة ناقص المسافات الجانبية
+            constraints: BoxConstraints(
+              maxWidth: MediaQuery.of(context).size.width - 60,
+            ),
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              // جعل النقطة البنفسجية تبدأ من الأعلى في حال التاف النص لعدة أسطر
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Padding(
+                  padding: const EdgeInsets.only(top: 6), // محاذاة النقطة مع أول سطر
+                  child: Container(
+                    width: 8,
+                    height: 8,
+                    decoration: BoxDecoration(
+                      color: primaryPurple.withOpacity(0.5),
+                      shape: BoxShape.circle,
+                    ),
+                  ),
                 ),
-              ),
-              const SizedBox(width: 10),
+                const SizedBox(width: 10),
 
-              // نص المهارة (حر تماماً: بدون لون خلفية وبدون إطار)
-              Text(
-                skill,
-                style: TextStyle(
-                  color: Colors.grey.shade800,
-                  fontSize: 15, // حجم خط واضح ومريح
-                  fontWeight: FontWeight.w600,
-                  letterSpacing: 0.3,
+                // استخدام Flexible للسماح للنص بالالتفاف داخل المساحة المتاحة
+                Flexible(
+                  child: Text(
+                    skill,
+                    softWrap: true, // تفعيل الالتفاف التلقائي
+                    style: TextStyle(
+                      color: Colors.grey.shade800,
+                      fontSize: 15,
+                      fontWeight: FontWeight.w600,
+                      letterSpacing: 0.3,
+                    ),
+                  ),
                 ),
-              ),
-            ],
+              ],
+            ),
           );
         }).toList(),
       ),
