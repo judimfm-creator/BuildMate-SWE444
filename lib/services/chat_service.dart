@@ -17,7 +17,7 @@ class ChatService {
     return UserModel.fromMap(doc.data()!);
   }
 
-  // إرسال رسالة
+// إرسال رسالة
   Future<void> sendMessage({
     required String teamPostId,
     required String text,
@@ -30,9 +30,18 @@ class ChatService {
         .doc(teamPostId)
         .get();
 
-    final members = List<String>.from(teamDoc.data()?['members'] ?? []);
+    if (!teamDoc.exists) return;
 
-    if (!members.contains(senderId)) return;
+    final data = teamDoc.data() ?? {};
+    final members = List<String>.from(data['members'] ?? []);
+    
+    // 🔴 التعديل الجوهري للأمان:
+    // نتحقق أن المستخدم موجود في قائمة الأعضاء النشطين (members)
+    // وليس في قائمة المطرودين (removedMembers)
+    if (!members.contains(senderId)) {
+      print("Access Denied: User is not an active member of this team.");
+      return; 
+    }
 
     if (text.trim().isEmpty) return;
 
@@ -45,7 +54,7 @@ class ChatService {
       'senderId': senderId,
       'senderName': senderName,
       'createdAt': FieldValue.serverTimestamp(),
-      'readBy': [],
+      'readBy': [senderId], // أضفنا المرسل لقائمة القراء تلقائياً عند الإرسال
     });
   }
 

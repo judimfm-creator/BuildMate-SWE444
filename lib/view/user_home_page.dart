@@ -1,15 +1,17 @@
 import 'package:flutter/material.dart';
+import 'package:cloud_firestore/cloud_firestore.dart'; // 👈 أضفنا هذا السطر
+import 'package:firebase_auth/firebase_auth.dart';    // 👈 أضفنا هذا السطر
 import '../home_screen.dart';
 import 'explore_user_view.dart' as explore_view;
 import 'my_teams_view.dart';
+import 'team_workspace_view.dart'; // 👈 تأكدي من عمل استيراد لصفحة الوورك سبيس
 
 class UserHomePage extends StatelessWidget {
   const UserHomePage({super.key});
 
-  // الألوان الأساسية بناءً على الهوية والتوزيع الجديد
   static const Color _mainPurple = Color(0xFF6D56B3);
   static const Color _mainOrange = Color(0xFFFFA726);
-  static const Color _turquoise = Color(0xFF00ACC1); // درجة التركواز/السيان المأخوذة من اللوقو
+  static const Color _turquoise = Color(0xFF00ACC1);
 
   void _navigateToExplore(int tabIndex) {
     explore_view.targetExploreTab = tabIndex;
@@ -19,8 +21,11 @@ class UserHomePage extends StatelessWidget {
     });
   }
 
-  void _navigateToWorkspace() {
+  // 🔴 تعديل دالة الانتقال للوورك سبيس لتكون أكثر ذكاءً
+  void _navigateToWorkspace(BuildContext context) {
     homeScreenState?.changeTab(2);
+    // ملاحظة: صفحة الهوم سكرين عندك هي اللي بتعرض التاب رقم 2
+    // التاب رقم 2 لازم يكون فيه Query يبحث في الـ team_posts عن المستخدم
   }
 
   @override
@@ -32,7 +37,6 @@ class UserHomePage extends StatelessWidget {
           children: [
             const SizedBox(height: 50),
 
-            // القسم العلوي
             Padding(
               padding: const EdgeInsets.symmetric(horizontal: 24.0),
               child: Column(
@@ -70,7 +74,6 @@ class UserHomePage extends StatelessWidget {
               ),
             ),
 
-            // الأزرار موزعة بالشكل القطري الجديد
             Expanded(
               child: Center(
                 child: SingleChildScrollView(
@@ -80,7 +83,6 @@ class UserHomePage extends StatelessWidget {
                     child: Column(
                       mainAxisSize: MainAxisSize.min,
                       children: [
-                        // الصف الأول: تركوازي | موف
                         Row(
                           children: [
                             Expanded(
@@ -88,7 +90,7 @@ class UserHomePage extends StatelessWidget {
                                 context,
                                 title: "All Hackathons",
                                 icon: Icons.campaign_outlined,
-                                color: _turquoise, // 👈 تركوازي
+                                color: _turquoise,
                                 onTap: () => _navigateToExplore(0),
                               ),
                             ),
@@ -98,14 +100,13 @@ class UserHomePage extends StatelessWidget {
                                 context,
                                 title: "Teams to Join",
                                 icon: Icons.person_add_alt_1_rounded,
-                                color: _mainPurple, // 👈 موف
+                                color: _mainPurple,
                                 onTap: () => _navigateToExplore(1),
                               ),
                             ),
                           ],
                         ),
                         const SizedBox(height: 16),
-                        // الصف الثاني: موف | برتقالي
                         Row(
                           children: [
                             Expanded(
@@ -113,7 +114,7 @@ class UserHomePage extends StatelessWidget {
                                 context,
                                 title: "My Teams",
                                 icon: Icons.diversity_3_rounded,
-                                color: _mainPurple, // 👈 موف
+                                color: _mainPurple,
                                 onTap: () => Navigator.push(
                                   context,
                                   MaterialPageRoute(
@@ -128,8 +129,8 @@ class UserHomePage extends StatelessWidget {
                                 context,
                                 title: "My Groups\nWorkspace",
                                 icon: Icons.groups_outlined,
-                                color: _mainOrange, // 👈 برتقالي
-                                onTap: _navigateToWorkspace,
+                                color: _mainOrange,
+                                onTap: () => _navigateToWorkspace(context), // 👈
                               ),
                             ),
                           ],

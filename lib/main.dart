@@ -28,10 +28,6 @@ import 'package:buildmate/services/notification_service.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 
-//video call
-import 'package:zego_uikit_prebuilt_call/zego_uikit_prebuilt_call.dart';
-import 'package:zego_uikit_signaling_plugin/zego_uikit_signaling_plugin.dart';
-
 @pragma('vm:entry-point')
 Future<void> firebaseMessagingBackgroundHandler(RemoteMessage message) async {
   await Firebase.initializeApp();
@@ -119,24 +115,6 @@ class _MyAppState extends State<MyApp> {
 
     NotificationService.instance.navigatorKey = _navigatorKey;
 
-    // 👇 1. إعطاء Zego صلاحية التنقل لفتح الشاشة
-    ZegoUIKitPrebuiltCallInvitationService().setNavigatorKey(_navigatorKey);
-
-    // 👇 2. تشغيل خدمة الرنين تلقائياً بمجرد دخول المستخدم
-    FirebaseAuth.instance.authStateChanges().listen((User? user) async {
-      if (user != null) {
-        // نحاول جلب اسم المستخدم من قاعدة البيانات
-        final doc = await FirebaseFirestore.instance.collection('users').doc(user.uid).get();
-        final userName = doc.data()?['fullName'] ?? 'BuildMate User';
-
-        // استدعاء الدالة لتشغيل الخدمة (هنا كان النقص!)
-        onUserLogin(user.uid, userName);
-      } else {
-        // إغلاق الخدمة عند تسجيل الخروج
-        ZegoUIKitPrebuiltCallInvitationService().uninit();
-      }
-    });
-
     /// Foreground FCM → show in-app banner
     FirebaseMessaging.onMessage.listen((RemoteMessage message) {
       NotificationService.instance.showNotification(
@@ -181,26 +159,6 @@ class _MyAppState extends State<MyApp> {
         '/home': (context) => const HomeScreen(),
         '/orgHome': (context) => const InstitutionHomeScreen(),
         '/completeProfile': (context) => const CompleteProfileView(),
-      },
-    );
-  }
-
-  void onUserLogin(String userID, String userName) {
-    ZegoUIKitPrebuiltCallInvitationService().init(
-      appID: 1561145060,
-      appSign: "2d4b9e89e5e3d2dc4625071e52091562ae81fe354f86a6073c9e9c1afcecda3b",
-      userID: userID,
-      userName: userName,
-      plugins: [ZegoUIKitSignalingPlugin()],
-      requireConfig: (ZegoCallInvitationData data) {
-        return ZegoUIKitPrebuiltCallConfig.groupVideoCall()
-          ..bottomMenuBar.buttons = [
-            ZegoCallMenuBarButtonName.toggleCameraButton,
-            ZegoCallMenuBarButtonName.toggleMicrophoneButton,
-            ZegoCallMenuBarButtonName.switchAudioOutputButton,
-            ZegoCallMenuBarButtonName.toggleScreenSharingButton,
-            ZegoCallMenuBarButtonName.hangUpButton,
-          ];
       },
     );
   }

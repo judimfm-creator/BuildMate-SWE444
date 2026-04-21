@@ -1,4 +1,5 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_auth/firebase_auth.dart'; // 👈 أضفنا هذا السطر
 import 'package:flutter/material.dart';
 import 'group_chat_view.dart';
 import 'my_team_post_view.dart';
@@ -13,13 +14,13 @@ class TeamWorkspaceView extends StatelessWidget {
     required this.hackathonId,
   });
 
-  // الألوان المعتمدة (الهوية البصرية)
   static const Color _purple = Color(0xFF6D56B3);
-  static const Color _accentOrange = Color(0xFFFFA726);
-  static const Color _pageBg = Colors.white; // 👈 الخلفية البيضاء الصافية
+  static const Color _pageBg = Colors.white;
 
   @override
   Widget build(BuildContext context) {
+    final String currentUid = FirebaseAuth.instance.currentUser?.uid ?? '';
+
     return Scaffold(
       backgroundColor: _pageBg,
       appBar: AppBar(
@@ -32,11 +33,12 @@ class TeamWorkspaceView extends StatelessWidget {
         foregroundColor: _purple,
         elevation: 0,
       ),
-      body: FutureBuilder<DocumentSnapshot<Map<String, dynamic>>>(
-        future: FirebaseFirestore.instance
+      // 👈 استخدام Snapshots بدلاً من Future ليحس التطبيق فوراً بأي تغيير في الحالة
+      body: StreamBuilder<DocumentSnapshot<Map<String, dynamic>>>(
+        stream: FirebaseFirestore.instance
             .collection('team_posts')
             .doc(teamPostId)
-            .get(),
+            .snapshots(),
         builder: (context, snapshot) {
           if (snapshot.connectionState == ConnectionState.waiting) {
             return const Center(child: CircularProgressIndicator(color: _purple));
@@ -48,22 +50,33 @@ class TeamWorkspaceView extends StatelessWidget {
 
           final data = snapshot.data!.data()!;
           final String teamName = data['teamName'] ?? 'Our Team';
+          final String leaderId = data['createdBy'] ?? '';
+          final List members = data['members'] ?? [];
+          final List removedMembers = data['removedMembers'] ?? [];
+
+          // 🔴 التحقق من حالة المستخدم الحالي
+          final bool isLeader = currentUid == leaderId;
+          final bool isRemoved = removedMembers.contains(currentUid);
+          
+          // إذا لم يكن ليدر ولا عضو ولا حتى مطرود (دخل بالخطأ مثلاً)
+          if (!isLeader && !members.contains(currentUid) && !isRemoved) {
+             return const Center(child: Text("Access Denied."));
+          }
 
           return SingleChildScrollView(
             padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                // 1. هيدر فخم ملمع يحمل اسم الفريق
-                _buildModernHeader(teamName),
+                _buildModernHeader(teamName, isRemoved),
 
                 const SizedBox(height: 25),
 
-                // 2. زر تفاصيل الفريق (بتصميم ملمع)
+                // زر تفاصيل الفريق
                 _buildActionCard(
                   context,
                   title: "Team Details",
-                  subtitle: "View roles and members",
+                  subtitle: isRemoved ? "View-only mode" : "View roles and members",
                   icon: Icons.auto_awesome_mosaic_rounded,
                   onTap: () {
                     Navigator.push(
@@ -81,7 +94,6 @@ class TeamWorkspaceView extends StatelessWidget {
 
                 const SizedBox(height: 20),
 
-                // 3. قسم المهام (بستايل الهالة المضيئة)
                 _buildSectionContainer(
                   title: "Current Tasks",
                   icon: Icons.task_alt_rounded,
@@ -96,11 +108,11 @@ class TeamWorkspaceView extends StatelessWidget {
 
                 const SizedBox(height: 20),
 
-                // 4. كارد المحادثة (بارز وجذاب)
+                // كارد المحادثة
                 _buildActionCard(
                   context,
                   title: "Group Chat",
-                  subtitle: "Discuss ideas with your team",
+                  subtitle: isRemoved ? "Archive (Read-only)" : "Discuss ideas with your team",
                   icon: Icons.forum_rounded,
                   isPrimary: true,
                   onTap: () {
@@ -118,7 +130,6 @@ class TeamWorkspaceView extends StatelessWidget {
 
                 const SizedBox(height: 20),
 
-                // 5. قسم المستندات والمصادر
                 _buildSectionContainer(
                   title: "Team Resources",
                   icon: Icons.folder_copy_rounded,
@@ -140,21 +151,20 @@ class TeamWorkspaceView extends StatelessWidget {
     );
   }
 
-  // ميثود بناء الهيدر الجديد
-  Widget _buildModernHeader(String teamName) {
+  Widget _buildModernHeader(String teamName, bool isRemoved) {
     return Container(
       width: double.infinity,
       padding: const EdgeInsets.all(24),
       decoration: BoxDecoration(
-        color: _purple.withOpacity(0.05),
+        color: isRemoved ? Colors.grey.withOpacity(0.05) : _purple.withOpacity(0.05),
         borderRadius: BorderRadius.circular(28),
-        border: Border.all(color: _purple.withOpacity(0.1), width: 1),
+        border: Border.all(color: isRemoved ? Colors.grey.withOpacity(0.1) : _purple.withOpacity(0.1), width: 1),
       ),
       child: Row(
         children: [
           CircleAvatar(
             radius: 30,
-            backgroundColor: _purple,
+            backgroundColor: isRemoved ? Colors.grey : _purple,
             child: const Icon(Icons.groups_rounded, color: Colors.white, size: 30),
           ),
           const SizedBox(width: 16),
@@ -164,11 +174,19 @@ class TeamWorkspaceView extends StatelessWidget {
               children: [
                 Text(
                   teamName,
-                  style: const TextStyle(fontWeight: FontWeight.w900, fontSize: 22, color: Colors.black87),
+                  style: TextStyle(
+                    fontWeight: FontWeight.w900, 
+                    fontSize: 22, 
+                    color: isRemoved ? Colors.grey : Colors.black87
+                  ),
                 ),
                 Text(
-                  "Collaboration Hub",
-                  style: TextStyle(color: _purple.withOpacity(0.6), fontWeight: FontWeight.w600, fontSize: 13),
+                  isRemoved ? "Archived Access" : "Collaboration Hub",
+                  style: TextStyle(
+                    color: isRemoved ? Colors.grey : _purple.withOpacity(0.6), 
+                    fontWeight: FontWeight.w600, 
+                    fontSize: 13
+                  ),
                 ),
               ],
             ),
@@ -178,14 +196,13 @@ class TeamWorkspaceView extends StatelessWidget {
     );
   }
 
-  // ميثود الحاوية الملمعة للأقسام (Tasks / Resources)
   Widget _buildSectionContainer({required String title, required IconData icon, required Widget child}) {
     return Container(
       padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(24),
-        border: Border.all(color: _purple.withOpacity(0.2), width: 1.2), // 👈 اللمعة الموف
+        border: Border.all(color: _purple.withOpacity(0.2), width: 1.2),
         boxShadow: [
           BoxShadow(
             color: _purple.withOpacity(0.08),
@@ -212,7 +229,6 @@ class TeamWorkspaceView extends StatelessWidget {
     );
   }
 
-  // ميثود الكروت القابلة للضغط (Identity / Chat)
   Widget _buildActionCard(BuildContext context, {required String title, required String subtitle, required IconData icon, required VoidCallback onTap, bool isPrimary = false}) {
     return InkWell(
       onTap: onTap,
@@ -252,11 +268,9 @@ class TeamWorkspaceView extends StatelessWidget {
   }
 }
 
-// ─── تطوير شكل المهام ──────────────────
 class _TaskRow extends StatelessWidget {
   final String title;
   final String deadline;
-
   const _TaskRow({required this.title, required this.deadline});
 
   @override
@@ -280,10 +294,8 @@ class _TaskRow extends StatelessWidget {
   }
 }
 
-// ─── تطوير شكل المستندات ──────────────────
 class _DocumentRow extends StatelessWidget {
   final String fileName;
-
   const _DocumentRow({required this.fileName});
 
   @override

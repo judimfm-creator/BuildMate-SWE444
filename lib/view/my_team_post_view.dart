@@ -6,28 +6,25 @@ import 'other_user_profile_page.dart';
 import 'team_registration_form_view.dart';
 import 'leader_join_requests_view.dart';
 
-
-  class MyTeamPostView extends StatelessWidget {
-
+class MyTeamPostView extends StatelessWidget {
   // 👇 هنا مكانها الصحيح
   DateTime? _parseFirestoreDate(dynamic value) {
-  if (value == null) return null;
+    if (value == null) return null;
 
-  if (value is Timestamp) {
-  return value.toDate();
+    if (value is Timestamp) {
+      return value.toDate();
+    }
+
+    if (value is DateTime) {
+      return value;
+    }
+
+    if (value is String) {
+      return DateTime.tryParse(value);
+    }
+
+    return null;
   }
-
-  if (value is DateTime) {
-  return value;
-  }
-
-  if (value is String) {
-  return DateTime.tryParse(value);
-  }
-
-  return null;
-  }
-
 
   final String teamPostId;
   final String hackathonId;
@@ -52,10 +49,8 @@ import 'leader_join_requests_view.dart';
     List<Map<String, String>> members = [];
 
     for (var id in memberIds) {
-      var doc = await FirebaseFirestore.instance
-          .collection('users')
-          .doc(id)
-          .get();
+      var doc =
+          await FirebaseFirestore.instance.collection('users').doc(id).get();
 
       String displayRole =
           (id == leaderId) ? leaderRole : (memberRoles[id] ?? "Member");
@@ -199,8 +194,7 @@ import 'leader_join_requests_view.dart';
               const SizedBox(height: 12),
               DropdownButtonFormField<String>(
                 value: selectedGender,
-                decoration:
-                    const InputDecoration(labelText: 'Teammate Gender'),
+                decoration: const InputDecoration(labelText: 'Teammate Gender'),
                 items: genderOptions
                     .map((g) => DropdownMenuItem(value: g, child: Text(g)))
                     .toList(),
@@ -221,8 +215,7 @@ import 'leader_join_requests_view.dart';
             ElevatedButton(
               style: ElevatedButton.styleFrom(backgroundColor: purple),
               onPressed: () => Navigator.pop(ctx, true),
-              child: const Text('Save',
-                  style: TextStyle(color: Colors.white)),
+              child: const Text('Save', style: TextStyle(color: Colors.white)),
             ),
           ],
         ),
@@ -258,8 +251,7 @@ import 'leader_join_requests_view.dart';
     nameCtrl.dispose();
     roleCtrl.dispose();
   }
-
-  Future<void> _removeMember(
+Future<void> _removeMember(
     BuildContext context,
     String memberId,
     String memberName,
@@ -268,7 +260,8 @@ import 'leader_join_requests_view.dart';
       context: context,
       builder: (_) => AlertDialog(
         title: const Text('Remove Member'),
-        content: Text('Remove $memberName from the team?'),
+        // 🔴 غيرنا الرسالة لتكون أوضح
+        content: Text('Are you sure you want to remove $memberName? They will be moved to the archive and can no longer participate in new chats.'),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context, false),
@@ -276,33 +269,45 @@ import 'leader_join_requests_view.dart';
           ),
           TextButton(
             onPressed: () => Navigator.pop(context, true),
-            child: const Text('Remove',
-                style: TextStyle(color: Colors.red)),
+            child: const Text('Remove', style: TextStyle(color: Colors.red)),
           ),
         ],
       ),
     );
+
     if (confirm == true) {
       try {
-        await FirebaseFirestore.instance
-            .collection('team_posts')
-            .doc(teamPostId)
-            .update({
-          'members': FieldValue.arrayRemove([memberId]),
-          'memberRoles.$memberId': FieldValue.delete(),
+        final batch = FirebaseFirestore.instance.batch();
+        final teamRef = FirebaseFirestore.instance.collection('team_posts').doc(teamPostId);
+        final userRef = FirebaseFirestore.instance.collection('users').doc(memberId);
+
+        // 1️⃣ تحديث بيانات الفريق
+        batch.update(teamRef, {
+          'members': FieldValue.arrayRemove([memberId]), // حذفه من النشطين
+          'removedMembers': FieldValue.arrayUnion([memberId]), // 🔴 إضافته للأرشيف (المطرودين)
+          'memberRoles.$memberId': FieldValue.delete(), // حذف دوره
         });
+
+        // 2️⃣ تحديث بيانات المستخدم (تحريره)
+        batch.update(userRef, {
+          'hasActiveTeam': false,
+          'currentTeamId': null,
+        });
+
+        // تنفيذ كل العمليات مرة واحدة (Batch) لضمان الدقة
+        await batch.commit();
+
         if (context.mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
             const SnackBar(
-                content: Text('Member removed.'),
+                content: Text('Member moved to archive successfully.'),
                 backgroundColor: Colors.green),
           );
         }
       } catch (e) {
         if (context.mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-                content: Text('Error: $e'), backgroundColor: Colors.red),
+            SnackBar(content: Text('Error: $e'), backgroundColor: Colors.red),
           );
         }
       }
@@ -325,8 +330,7 @@ import 'leader_join_requests_view.dart';
           ),
           TextButton(
             onPressed: () => Navigator.pop(context, true),
-            child:
-                const Text('Leave', style: TextStyle(color: Colors.red)),
+            child: const Text('Leave', style: TextStyle(color: Colors.red)),
           ),
         ],
       ),
@@ -351,8 +355,7 @@ import 'leader_join_requests_view.dart';
       } catch (e) {
         if (context.mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-                content: Text('Error: $e'), backgroundColor: Colors.red),
+            SnackBar(content: Text('Error: $e'), backgroundColor: Colors.red),
           );
         }
       }
@@ -400,7 +403,6 @@ import 'leader_join_requests_view.dart';
           final Map<String, dynamic> memberRoles = data['memberRoles'] ?? {};
           final String leaderRole = data['myRole'] ?? 'Leader';
 
-
           return FutureBuilder<DocumentSnapshot<Map<String, dynamic>>>(
             future: FirebaseFirestore.instance
                 .collection('hackathons')
@@ -417,28 +419,27 @@ import 'leader_join_requests_view.dart';
               final hackathonData = hackathonSnapshot.data?.data() ?? {};
 
               final DateTime? openDate =
-              _parseFirestoreDate(hackathonData['applicationOpenDate']);
+                  _parseFirestoreDate(hackathonData['applicationOpenDate']);
               final DateTime? deadline =
-              _parseFirestoreDate(hackathonData['applicationDeadline']);
+                  _parseFirestoreDate(hackathonData['applicationDeadline']);
 
               final now = DateTime.now();
 
               final DateTime? effectiveDeadline = deadline != null
                   ? DateTime(
-                deadline.year,
-                deadline.month,
-                deadline.day,
-                23,
-                59,
-                59,
-              )
+                      deadline.year,
+                      deadline.month,
+                      deadline.day,
+                      23,
+                      59,
+                      59,
+                    )
                   : null;
 
-              final bool isRegistrationOpen =
-                  openDate != null &&
-                      effectiveDeadline != null &&
-                      !now.isBefore(openDate) &&
-                      !now.isAfter(effectiveDeadline);
+              final bool isRegistrationOpen = openDate != null &&
+                  effectiveDeadline != null &&
+                  !now.isBefore(openDate) &&
+                  !now.isAfter(effectiveDeadline);
 
               final bool canFinalize =
                   !isSubmitted && currentMembers >= 2 && isRegistrationOpen;
@@ -450,7 +451,6 @@ import 'leader_join_requests_view.dart';
                     _buildStatusHeader(
                         isSubmitted, currentMembers, data['status']),
                     const SizedBox(height: 24),
-
                     _sectionTitle("Team Overview"),
                     _infoBox([
                       _dataRow("Team Name", data['teamName'] ?? 'Unnamed'),
@@ -461,25 +461,20 @@ import 'leader_join_requests_view.dart';
                       const Divider(height: 20),
                       _genderPreferenceRow(data['genderPreference'] ?? 'Any'),
                     ]),
-
                     const SizedBox(height: 24),
-
                     _sectionTitle("Project Idea"),
                     _infoBox([
                       Text(
                         (data['projectIdea'] != null &&
-                            data['projectIdea']
-                                .toString()
-                                .trim()
-                                .isNotEmpty)
+                                data['projectIdea']
+                                    .toString()
+                                    .trim()
+                                    .isNotEmpty)
                             ? data['projectIdea']
                             : (data['idea'] != null &&
-                            data['idea']
-                                .toString()
-                                .trim()
-                                .isNotEmpty)
-                            ? data['idea']
-                            : "No project idea added yet.",
+                                    data['idea'].toString().trim().isNotEmpty)
+                                ? data['idea']
+                                : "No project idea added yet.",
                         style: const TextStyle(
                           color: purple,
                           fontWeight: FontWeight.bold,
@@ -488,9 +483,7 @@ import 'leader_join_requests_view.dart';
                         ),
                       ),
                     ]),
-
                     const SizedBox(height: 24),
-
                     _sectionTitle("Current Members & Roles"),
                     FutureBuilder<List<Map<String, String>>>(
                       future: _getMemberDetails(
@@ -506,36 +499,31 @@ import 'leader_join_requests_view.dart';
                           );
                         }
 
-
                         return Column(
                           children: nameSnapshot.data!
                               .map(
-                                (member) =>
-                                _memberTile(
+                                (member) => _memberTile(
                                   context: context,
                                   uid: member['uid']!,
                                   name: member['name']!,
                                   isLeader: member['isLeader'] == 'true',
                                   role: member['role']!,
                                   onRemove: (isLeader &&
-                                      !isSubmitted &&
-                                      member['isLeader'] != 'true')
-                                      ? () =>
-                                      _removeMember(
-                                        context,
-                                        member['uid']!,
-                                        member['name']!,
-                                      )
+                                          !isSubmitted &&
+                                          member['isLeader'] != 'true')
+                                      ? () => _removeMember(
+                                            context,
+                                            member['uid']!,
+                                            member['name']!,
+                                          )
                                       : null,
                                 ),
-                          )
+                              )
                               .toList(),
                         );
                       },
                     ),
-
                     const SizedBox(height: 32),
-
                     if (isLeader) ...[
                       if (!isSubmitted && currentMembers < 2)
                         Container(
@@ -556,7 +544,7 @@ import 'leader_join_requests_view.dart';
                               const SizedBox(width: 10),
                               const Expanded(
                                 child: Text(
-                                  "Registration is locked. You need at least 2 members to finalize.",
+                                 "Registration is locked. You need at least 2 members to finalize.",
                                   style: TextStyle(
                                     color: Color(0xFFD35400),
                                     fontSize: 12,
@@ -567,7 +555,6 @@ import 'leader_join_requests_view.dart';
                             ],
                           ),
                         ),
-
                       if (!isSubmitted) ...[
                         _actionButton(
                           label: 'Edit Team Info',
@@ -577,7 +564,6 @@ import 'leader_join_requests_view.dart';
                         ),
                         const SizedBox(height: 12),
                       ],
-
                       StreamBuilder<int>(
                         stream: _pendingRequestsCountStream(),
                         builder: (context, snapshot) {
@@ -592,50 +578,48 @@ import 'leader_join_requests_view.dart';
                               Navigator.push(
                                 context,
                                 MaterialPageRoute(
-                                  builder: (_) =>
-                                      LeaderJoinRequestsView(
-                                        teamPostId: teamPostId,
-                                      ),
+                                  builder: (_) => LeaderJoinRequestsView(
+                                    teamPostId: teamPostId,
+                                  ),
                                 ),
                               );
                             },
                           );
                         },
                       ),
-
-
                       const SizedBox(height: 12),
-
                       _actionButton(
                         label: isSubmitted
                             ? 'Registration Submitted'
                             : (isRegistrationOpen
-                            ? 'Finalize & Register Team'
-                            : 'Registration Closed'),
+                                ? 'Finalize & Register Team'
+                                : 'Registration Closed'),
                         icon: isSubmitted
                             ? Icons.verified_user
                             : Icons.rocket_launch,
                         color: isSubmitted
                             ? Colors.grey
-                            : (canFinalize ? Colors.green : Colors.grey.shade400),
+                            : (canFinalize
+                                ? Colors.green
+                                : Colors.grey.shade400),
                         onPressed: canFinalize
                             ? () {
-                          Navigator.push(
-                            context,
-                            MaterialPageRoute(
-                              builder: (_) => TeamRegistrationFormView(
-                                hackathonId: hackathonId,
-                                teamPostId: teamPostId,
-                                teamName: data['teamName'] ?? 'Unnamed Team',
-                                members: List<String>.from(memberIds),
-                                hackathonTeamSize: hackathonTeamSize,
-                              ),
-                            ),
-                          );
-                        }
+                                Navigator.push(
+                                  context,
+                                  MaterialPageRoute(
+                                    builder: (_) => TeamRegistrationFormView(
+                                      hackathonId: hackathonId,
+                                      teamPostId: teamPostId,
+                                      teamName:
+                                          data['teamName'] ?? 'Unnamed Team',
+                                      members: List<String>.from(memberIds),
+                                      hackathonTeamSize: hackathonTeamSize,
+                                    ),
+                                  ),
+                                );
+                              }
                             : null,
                       ),
-
                       if (!isSubmitted) ...[
                         const SizedBox(height: 12),
                         _actionButton(
@@ -645,11 +629,10 @@ import 'leader_join_requests_view.dart';
                           onPressed: () => _showDeleteConfirmation(context),
                         ),
                       ],
-
                       if (!isSubmitted)
                         Padding(
-                          padding: const EdgeInsets.only(
-                              top: 12, left: 4, right: 4),
+                          padding:
+                              const EdgeInsets.only(top: 12, left: 4, right: 4),
                           child: Container(
                             padding: const EdgeInsets.all(12),
                             decoration: BoxDecoration(
@@ -681,20 +664,18 @@ import 'leader_join_requests_view.dart';
                             ),
                           ),
                         ),
-                    ] else
-                      ...[
-                        _buildMemberNotice(isSubmitted, currentMembers),
-                        if (!isSubmitted) ...[
-                          const SizedBox(height: 12),
-                          _actionButton(
-                            label: 'Leave Team',
-                            icon: Icons.exit_to_app_rounded,
-                            color: Colors.red,
-                            onPressed: () => _leaveTeam(context),
-                          ),
-                        ],
+                    ] else ...[
+                      _buildMemberNotice(isSubmitted, currentMembers),
+                      if (!isSubmitted) ...[
+                        const SizedBox(height: 12),
+                        _actionButton(
+                          label: 'Leave Team',
+                          icon: Icons.exit_to_app_rounded,
+                          color: Colors.red,
+                          onPressed: () => _leaveTeam(context),
+                        ),
                       ],
-
+                    ],
                     const SizedBox(height: 40),
                   ],
                 ),
@@ -735,8 +716,8 @@ import 'leader_join_requests_view.dart';
               radius: 18,
               child: Text(
                 name.isNotEmpty ? name[0] : '?',
-                style: const TextStyle(
-                    color: purple, fontWeight: FontWeight.bold),
+                style:
+                    const TextStyle(color: purple, fontWeight: FontWeight.bold),
               ),
             ),
           ),

@@ -4,11 +4,8 @@ import 'package:intl/intl.dart';
 import '../model/user_model.dart';
 import '../services/chat_service.dart';
 import 'video_call_view.dart';
-import 'package:zego_uikit_prebuilt_call/zego_uikit_prebuilt_call.dart';
-import 'package:zego_uikit/zego_uikit.dart';
 
 class GroupChatView extends StatefulWidget {
-
   final String teamPostId;
   final String teamName;
 
@@ -30,7 +27,6 @@ class _GroupChatViewState extends State<GroupChatView> {
   final ChatService _chatService = ChatService();
   final TextEditingController _messageController = TextEditingController();
   final ScrollController _scrollController = ScrollController();
-  final bool _showScrollButton = false;
   final Map<String, String?> _photoCache = {};
 
   UserModel? _currentUser;
@@ -57,12 +53,10 @@ class _GroupChatViewState extends State<GroupChatView> {
   void initState() {
     super.initState();
     _loadCurrentUser();
-    _listenToMemberStatus(); // 👈 أضيفي هذا السطر فقط
+    _listenToMemberStatus(); 
   }
 
-
-
-  @override
+  // دالة مراقبة حالة العضو إذا تم حذفه
   void _listenToMemberStatus() {
     FirebaseFirestore.instance
         .collection('team_posts')
@@ -77,6 +71,8 @@ class _GroupChatViewState extends State<GroupChatView> {
       }
     });
   }
+
+  @override
   void dispose() {
     _messageController.dispose();
     _scrollController.dispose();
@@ -93,7 +89,6 @@ class _GroupChatViewState extends State<GroupChatView> {
       final data = doc.data();
       final List readBy = data['readBy'] ?? [];
 
-      // إذا لست أنا المرسل، ومعرفي غير موجود في قائمة القراء
       if (data['senderId'] != _currentUser!.uid && !readBy.contains(_currentUser!.uid)) {
         batch.update(doc.reference, {
           'readBy': FieldValue.arrayUnion([_currentUser!.uid])
@@ -115,26 +110,11 @@ class _GroupChatViewState extends State<GroupChatView> {
         _loadingUser = false;
         _photoCache.clear();
       });
-      _fetchTeamMembers();
     }
   }
 
-  List<ZegoUIKitUser> _teamMembersList = [];
-
-  void _fetchTeamMembers() async {
-    var doc = await FirebaseFirestore.instance.collection('team_posts').doc(widget.teamPostId).get();
-    List membersIds = doc.data()?['members'] ?? [];
-
-    setState(() {
-      _teamMembersList = membersIds
-          .map((id) => id.toString()) // 👈 السطر السحري: تحويل صريح لنص لمنع الأخطاء الصامتة
-          .where((id) => id != _currentUser?.uid)
-          .map((id) => ZegoUIKitUser(id: id, name: "Member"))
-          .toList();
-    });
-  }
-
   Future<void> _sendMessage() async {
+    if (_isRemoved) return; // منع المطرود من الإرسال
     if (_currentUser == null || _messageController.text.trim().isEmpty) return;
 
     final text = _messageController.text;
@@ -162,7 +142,6 @@ class _GroupChatViewState extends State<GroupChatView> {
     });
   }
 
-  // لون الافتار بناءً على senderId
   Color _getAvatarBg(String senderId) {
     final index = senderId.hashCode.abs() % _avatarBgColors.length;
     return _avatarBgColors[index];
@@ -183,7 +162,6 @@ class _GroupChatViewState extends State<GroupChatView> {
     return DateFormat('hh:mm a').format(dt);
   }
 
-  // timestamp
   bool _isNewDay(
       QueryDocumentSnapshot<Map<String, dynamic>> current,
       QueryDocumentSnapshot<Map<String, dynamic>>? previous) {
@@ -205,22 +183,9 @@ class _GroupChatViewState extends State<GroupChatView> {
   String _formatDateDivider(Timestamp timestamp) {
     final dt = timestamp.toDate();
     final now = DateTime.now();
-
-    // التحقق إذا كان اليوم
-    if (dt.year == now.year &&
-        dt.month == now.month &&
-        dt.day == now.day) {
-      return 'Today';
-    }
-
-    // التحقق إذا كان الأمس
+    if (dt.year == now.year && dt.month == now.month && dt.day == now.day) return 'Today';
     final yesterday = now.subtract(const Duration(days: 1));
-    if (dt.year == yesterday.year &&
-        dt.month == yesterday.month &&
-        dt.day == yesterday.day) {
-      return 'Yesterday';
-    }
-
+    if (dt.year == yesterday.year && dt.month == yesterday.month && dt.day == yesterday.day) return 'Yesterday';
     return DateFormat('d MMM yyyy').format(dt);
   }
 
@@ -234,43 +199,29 @@ class _GroupChatViewState extends State<GroupChatView> {
           : Column(
         children: [
           Expanded(child: _buildMessagesList()),
-_isRemoved ? _buildRemovedNotice() : _buildInputArea(),
+          // التبديل بين حقل الإرسال ورسالة الطرد
+          _isRemoved ? _buildRemovedNotice() : _buildInputArea(),
         ],
       ),
     );
   }
 
-  Widget _buildAvatarCircle(Color bgColor, String label, {bool isCount = false}) {
+  Widget _buildRemovedNotice() {
     return Container(
-      width: 30,
-      height: 30,
-      decoration: BoxDecoration(
-        color: bgColor,
-        shape: BoxShape.circle,
-        border: Border.all(color: _purple, width: 1.5), // إطار بلون التطبيق للفصل بين الدوائر
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withOpacity(0.1),
-            blurRadius: 2,
-            offset: const Offset(0, 1),
-          ),
-        ],
-      ),
-      child: Center(
-        child: Text(
-          label,
-          style: TextStyle(
-            fontSize: isCount ? 10 : 12, // تصغير الخط إذا كان عدداً
-            fontWeight: FontWeight.bold,
-            color: isCount ? Colors.black54 : _purple,
-          ),
+      color: Colors.white,
+      padding: EdgeInsets.only(left: 20, right: 20, top: 10, bottom: MediaQuery.of(context).padding.bottom + 15),
+      child: Container(
+        padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 16),
+        decoration: BoxDecoration(color: Colors.grey.shade100, borderRadius: BorderRadius.circular(12), border: Border.all(color: Colors.grey.shade300)),
+        child: const Text(
+          "You can't send messages to this group because you're no longer a participant.",
+          textAlign: TextAlign.center,
+          style: TextStyle(color: Colors.grey, fontSize: 12, fontWeight: FontWeight.w500),
         ),
       ),
     );
   }
 
-
-  // AppBar
   AppBar _buildAppBar() {
     return AppBar(
       backgroundColor: _purple,
@@ -280,10 +231,10 @@ _isRemoved ? _buildRemovedNotice() : _buildInputArea(),
       leading: const BackButton(color: Colors.white),
       title: Row(
         children: [
-          CircleAvatar(
+          const CircleAvatar(
             radius: 20,
             backgroundColor: _purple,
-            child: const Icon(Icons.groups_rounded, color: Colors.white, size: 30),
+            child: Icon(Icons.groups_rounded, color: Colors.white, size: 30),
           ),
           const SizedBox(width: 10),
           Column(
@@ -291,122 +242,51 @@ _isRemoved ? _buildRemovedNotice() : _buildInputArea(),
             children: [
               Text(
                 widget.teamName,
-                style: const TextStyle(
-                  fontSize: 15,
-                  fontWeight: FontWeight.w600,
-                  color: Colors.white,
-                ),
+                style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w600, color: Colors.white),
               ),
               const Text(
                 'Group Chat',
-                style: TextStyle(
-                  fontSize: 11,
-                  color: Colors.white70,
-                ),
+                style: TextStyle(fontSize: 11, color: Colors.white70),
               ),
             ],
           ),
         ],
       ),
       actions: [
-        Opacity(
-          // نخفف لون الزر (يصير باهت) إذا ما كان فيه أعضاء للاتصال بهم
-          opacity: _teamMembersList.isEmpty ? 0.5 : 1.0,
-          child: Container(
-            margin: const EdgeInsets.only(right: 15, top: 10, bottom: 10),
-            child: ZegoSendCallInvitationButton(
-              isVideoCall: true,
-              resourceID: "buildmate_call",
-              customData: widget.teamPostId,
-              invitees: _teamMembersList, // يجب أن لا تكون فارغة لكي يُضغط الزر
-
-              buttonSize: const Size(130, 36),
-              iconSize: const Size(130, 36),
-
-              icon: ButtonIcon(
-                // 👇 أضفنا IgnorePointer هنا عشان اللمسة تخترق التصميم وتفعل الزر
-                icon: IgnorePointer(
-                  child: Container(
-                    decoration: BoxDecoration(
-                      color: Colors.white,
-                      borderRadius: BorderRadius.circular(8),
-                      boxShadow: [
-                        BoxShadow(
-                          color: Colors.black.withOpacity(0.1),
-                          blurRadius: 4,
-                          offset: const Offset(0, 2),
-                        ),
-                      ],
-                    ),
-                    child: Row(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: const [
-                        Icon(Icons.videocam_rounded, color: _purple, size: 18),
-                        SizedBox(width: 6),
-                        Text(
-                          "Video Call",
-                          style: TextStyle(
-                            color: _purple,
-                            fontSize: 12,
-                            fontWeight: FontWeight.bold,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
+        if (!_isRemoved) // لا تظهر زر الفيديو إذا كان مطروداً
+        IconButton(
+          icon: const Icon(Icons.videocam_outlined, color: Colors.white),
+          tooltip: 'Video Call',
+          onPressed: () {
+            if (_currentUser == null) return;
+            Navigator.push(
+              context,
+              MaterialPageRoute(
+                builder: (context) => VideoCallView(
+                  callID: widget.teamPostId,
+                  userID: _currentUser!.uid,
+                  userName: _currentUser!.fullName,
                 ),
               ),
-            ),
-          ),
+            );
+          },
         ),
       ],
     );
   }
 
-  // Messages list
   Widget _buildMessagesList() {
     return StreamBuilder<QuerySnapshot<Map<String, dynamic>>>(
       stream: _chatService.getMessagesStream(widget.teamPostId),
       builder: (context, snapshot) {
-        if (snapshot.connectionState == ConnectionState.waiting) {
-          return const Center(
-            child: CircularProgressIndicator(color: _purple),
-          );
-        }
-
-        if (snapshot.hasError) {
-          return const Center(child: Text('Oops! We couldn’t load your messages. Please try again.'));
-        }
+        if (snapshot.connectionState == ConnectionState.waiting) return const Center(child: CircularProgressIndicator(color: _purple));
+        if (snapshot.hasError) return const Center(child: Text('Oops! Failed to load messages.'));
 
         final docs = snapshot.data?.docs ?? [];
+        if (docs.isNotEmpty) _markMessagesAsRead(docs);
+        if (docs.isEmpty) return _buildEmptyState();
 
-        if (docs.isNotEmpty) {
-          _markMessagesAsRead(docs);
-        }
-
-        if (docs.isEmpty) {
-          return Center(
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                const Icon(Icons.chat_bubble_outline_rounded,
-                    size: 48, color: Color(0xFFB4B2A9)),
-                const SizedBox(height: 12),
-                Text(
-                  'No messages yet \n connect with your BuildMates and start building!',
-                  textAlign: TextAlign.center,
-                  style: TextStyle(
-                    color: Colors.grey.shade500,
-                    fontSize: 14,
-                  ),
-                ),
-              ],
-            ),
-          );
-        }
-
-        WidgetsBinding.instance
-            .addPostFrameCallback((_) => _scrollToBottom());
+        WidgetsBinding.instance.addPostFrameCallback((_) => _scrollToBottom());
 
         return ListView.builder(
           controller: _scrollController,
@@ -433,6 +313,23 @@ _isRemoved ? _buildRemovedNotice() : _buildInputArea(),
     );
   }
 
+  Widget _buildEmptyState() {
+    return Center(
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          const Icon(Icons.chat_bubble_outline_rounded, size: 48, color: Color(0xFFB4B2A9)),
+          const SizedBox(height: 12),
+          Text(
+            'No messages yet \n connect with your BuildMates and start building!',
+            textAlign: TextAlign.center,
+            style: TextStyle(color: Colors.grey.shade500, fontSize: 14),
+          ),
+        ],
+      ),
+    );
+  }
+
   Widget _buildDateDivider(String label) {
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 12),
@@ -441,13 +338,7 @@ _isRemoved ? _buildRemovedNotice() : _buildInputArea(),
           const Expanded(child: Divider(thickness: 0.5)),
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: 10),
-            child: Text(
-              label,
-              style: const TextStyle(
-                fontSize: 11,
-                color: Color(0xFF888780),
-              ),
-            ),
+            child: Text(label, style: const TextStyle(fontSize: 11, color: Color(0xFF888780))),
           ),
           const Expanded(child: Divider(thickness: 0.5)),
         ],
@@ -457,33 +348,24 @@ _isRemoved ? _buildRemovedNotice() : _buildInputArea(),
 
   Future<String?> _getSenderPhoto(String senderId) async {
     if (_photoCache.containsKey(senderId)) return _photoCache[senderId];
-    final doc = await FirebaseFirestore.instance
-        .collection('users')
-        .doc(senderId)
-        .get();
+    final doc = await FirebaseFirestore.instance.collection('users').doc(senderId).get();
     final photo = doc.data()?['profilePhotoPath'] as String?;
     _photoCache[senderId] = photo;
     return photo;
   }
 
-  // msg bubble
   Widget _buildMessageBubble(Map<String, dynamic> data, bool isMe) {
     final senderId = data['senderId'] as String? ?? '';
-    final senderName = data['senderName'] as String? ?? 'مجهول';
+    final senderName = data['senderName'] as String? ?? 'Unknown';
     final text = data['text'] as String? ?? '';
     final timestamp = data['createdAt'] as Timestamp?;
-
-    // --- الجزء الخاص بحالة القراءة (الصح والصحين) ---
     final List readBy = data['readBy'] ?? [];
-    // نعتبر الرسالة مقروءة إذا كان هناك أي شخص في القائمة غير المرسل
     bool isRead = readBy.any((uid) => uid != senderId);
-    // --------------------------------------------
 
     return Padding(
       padding: const EdgeInsets.only(bottom: 8),
       child: Row(
-        mainAxisAlignment:
-        isMe ? MainAxisAlignment.end : MainAxisAlignment.start,
+        mainAxisAlignment: isMe ? MainAxisAlignment.end : MainAxisAlignment.start,
         crossAxisAlignment: CrossAxisAlignment.end,
         children: [
           if (!isMe) ...[
@@ -498,86 +380,47 @@ _isRemoved ? _buildRemovedNotice() : _buildInputArea(),
             ),
             const SizedBox(width: 6),
           ],
-
-          // msg content
           Column(
-            crossAxisAlignment: isMe
-                ? CrossAxisAlignment.end
-                : CrossAxisAlignment.start,
+            crossAxisAlignment: isMe ? CrossAxisAlignment.end : CrossAxisAlignment.start,
             children: [
               if (!isMe)
                 Padding(
-                  padding: const EdgeInsets.only(bottom: 3, right: 2, left: 2),
-                  child: Text(
-                    senderName,
-                    style: const TextStyle(
-                      fontSize: 11,
-                      color: Color(0xFF888780),
-                      fontWeight: FontWeight.w500,
-                    ),
-                  ),
+                  padding: const EdgeInsets.only(bottom: 3),
+                  child: Text(senderName, style: const TextStyle(fontSize: 11, color: Color(0xFF888780))),
                 ),
               ConstrainedBox(
-                constraints: BoxConstraints(
-                  maxWidth: MediaQuery.of(context).size.width * 0.65,
-                ),
+                constraints: BoxConstraints(maxWidth: MediaQuery.of(context).size.width * 0.65),
                 child: Container(
-                  padding: const EdgeInsets.symmetric(
-                      horizontal: 12, vertical: 9),
+                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 9),
                   decoration: BoxDecoration(
                     color: isMe ? _purple : Colors.white,
                     borderRadius: BorderRadius.only(
                       topLeft: const Radius.circular(14),
                       topRight: const Radius.circular(14),
-                      bottomLeft: isMe
-                          ? const Radius.circular(14)
-                          : const Radius.circular(4),
-                      bottomRight: isMe
-                          ? const Radius.circular(4)
-                          : const Radius.circular(14),
+                      bottomLeft: isMe ? const Radius.circular(14) : const Radius.circular(4),
+                      bottomRight: isMe ? const Radius.circular(4) : const Radius.circular(14),
                     ),
-                    border: isMe
-                        ? null
-                        : Border.all(color: Colors.grey.shade200),
+                    border: isMe ? null : Border.all(color: Colors.grey.shade200),
                   ),
                   child: Text(
                     text,
-                    style: TextStyle(
-                      fontSize: 13,
-                      color: isMe ? Colors.white : Colors.black87,
-                      height: 1.45,
-                    ),
+                    style: TextStyle(fontSize: 13, color: isMe ? Colors.white : Colors.black87, height: 1.45),
                   ),
                 ),
               ),
               const SizedBox(height: 3),
-              Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 2),
-                child: Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Text(
-                      _formatTime(timestamp),
-                      style: const TextStyle(
-                        fontSize: 10,
-                        color: Color(0xFF888780),
-                      ),
-                    ),
-                    if (isMe) ...[
-                      const SizedBox(width: 3),
-                      // التعديل هنا: إذا قرأها أحد تظهر صحين زرقاء، وإلا صح واحد رمادي
-                      Icon(
-                        isRead ? Icons.done_all : Icons.done,
-                        size: 13,
-                      ),
-                    ],
+              Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Text(_formatTime(timestamp), style: const TextStyle(fontSize: 10, color: Color(0xFF888780))),
+                  if (isMe) ...[
+                    const SizedBox(width: 3),
+                    Icon(isRead ? Icons.done_all : Icons.done, size: 13, color: isRead ? Colors.blue : Colors.grey),
                   ],
-                ),
+                ],
               ),
             ],
           ),
-
-          // أفاتار المستخدم الحالي
           if (isMe) ...[
             const SizedBox(width: 6),
             FutureBuilder<String?>(
@@ -595,117 +438,54 @@ _isRemoved ? _buildRemovedNotice() : _buildInputArea(),
     );
   }
 
-  Widget _buildAvatar({
-    required String senderId,
-    required String senderName,
-    String? photoUrl,
-    double size = 36,
-  }) {
+  Widget _buildAvatar({required String senderId, required String senderName, String? photoUrl, double size = 36}) {
     if (photoUrl != null && photoUrl.isNotEmpty) {
-      return CircleAvatar(
-        radius: size / 2,
-        backgroundImage: NetworkImage(photoUrl),
-      );
+      return CircleAvatar(radius: size / 2, backgroundImage: NetworkImage(photoUrl));
     }
     return CircleAvatar(
       radius: size / 2,
       backgroundColor: _getAvatarBg(senderId),
-      child: Text(
-        _getInitial(senderName),
-        style: TextStyle(
-          fontSize: size * 0.38,
-          fontWeight: FontWeight.w500,
-          color: _getAvatarTextColor(senderId),
-        ),
-      ),
+      child: Text(_getInitial(senderName), style: TextStyle(fontSize: size * 0.38, color: _getAvatarTextColor(senderId))),
     );
   }
 
-  // ─── صندوق الإرسال ───────────────────────────────────────────────────
   Widget _buildInputArea() {
     return Container(
       color: Colors.white,
-      padding: EdgeInsets.only(
-        left: 10,
-        right: 10,
-        top: 8,
-        bottom: MediaQuery.of(context).padding.bottom + 8,
-      ),
+      padding: EdgeInsets.only(left: 10, right: 10, top: 8, bottom: MediaQuery.of(context).padding.bottom + 8),
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.end,
         children: [
           const SizedBox(width: 8),
-
-          // حقل الكتابة
           Expanded(
             child: TextField(
               controller: _messageController,
               maxLines: 4,
               minLines: 1,
-              textAlign: TextAlign.left,
               style: const TextStyle(fontSize: 13),
               decoration: InputDecoration(
                 hintText: 'Write a message...',
-                hintStyle: TextStyle(
-                  fontSize: 13,
-                  color: Colors.grey.shade400,
-                ),
                 filled: true,
                 fillColor: _pageBg,
-                contentPadding: const EdgeInsets.symmetric(
-                    horizontal: 14, vertical: 9),
-                border: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(20),
-                  borderSide: BorderSide(color: Colors.grey.shade200),
-                ),
-                enabledBorder: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(20),
-                  borderSide: BorderSide(color: Colors.grey.shade200),
-                ),
-                focusedBorder: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(20),
-                  borderSide:
-                  const BorderSide(color: _purple, width: 1.2),
-                ),
+                contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 9),
+                border: OutlineInputBorder(borderRadius: BorderRadius.circular(20), borderSide: BorderSide(color: Colors.grey.shade200)),
+                enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(20), borderSide: BorderSide(color: Colors.grey.shade200)),
+                focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(20), borderSide: const BorderSide(color: _purple, width: 1.2)),
               ),
               onSubmitted: (_) => _sendMessage(),
             ),
           ),
           const SizedBox(width: 8),
-
-          // زر الإرسال
           GestureDetector(
             onTap: _sendMessage,
             child: Container(
               width: 38,
               height: 38,
-              decoration: const BoxDecoration(
-                color: _purple,
-                shape: BoxShape.circle,
-              ),
-              child: const Icon(
-                Icons.send_rounded,
-                color: Colors.white,
-                size: 18,
-              ),
+              decoration: const BoxDecoration(color: _purple, shape: BoxShape.circle),
+              child: const Icon(Icons.send_rounded, color: Colors.white, size: 18),
             ),
           ),
         ],
-      ),
-    );
-  }
-  Widget _buildRemovedNotice() {
-    return Container(
-      color: Colors.white,
-      padding: EdgeInsets.only(left: 20, right: 20, top: 10, bottom: MediaQuery.of(context).padding.bottom + 15),
-      child: Container(
-        padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 16),
-        decoration: BoxDecoration(color: Colors.grey.shade100, borderRadius: BorderRadius.circular(12), border: Border.all(color: Colors.grey.shade300)),
-        child: const Text(
-          "You can't send messages to this group because you're no longer a participant.",
-          textAlign: TextAlign.center,
-          style: TextStyle(color: Colors.grey, fontSize: 12, fontWeight: FontWeight.w500),
-        ),
       ),
     );
   }
