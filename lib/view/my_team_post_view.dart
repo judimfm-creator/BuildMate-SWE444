@@ -6,7 +6,29 @@ import 'other_user_profile_page.dart';
 import 'team_registration_form_view.dart';
 import 'leader_join_requests_view.dart';
 
-class MyTeamPostView extends StatelessWidget {
+
+  class MyTeamPostView extends StatelessWidget {
+
+  // 👇 هنا مكانها الصحيح
+  DateTime? _parseFirestoreDate(dynamic value) {
+  if (value == null) return null;
+
+  if (value is Timestamp) {
+  return value.toDate();
+  }
+
+  if (value is DateTime) {
+  return value;
+  }
+
+  if (value is String) {
+  return DateTime.tryParse(value);
+  }
+
+  return null;
+  }
+
+
   final String teamPostId;
   final String hackathonId;
   final int hackathonTeamSize;
@@ -378,248 +400,306 @@ class MyTeamPostView extends StatelessWidget {
           final Map<String, dynamic> memberRoles = data['memberRoles'] ?? {};
           final String leaderRole = data['myRole'] ?? 'Leader';
 
-          return SingleChildScrollView(
-            padding: const EdgeInsets.all(20),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                _buildStatusHeader(isSubmitted, currentMembers, data['status']),
-                const SizedBox(height: 24),
 
-                _sectionTitle("Team Overview"),
-                _infoBox([
-                  _dataRow("Team Name", data['teamName'] ?? 'Unnamed'),
-                  _dataRow(
-                    "Team Capacity",
-                    "$currentMembers / $hackathonTeamSize members",
-                  ),
-                  const Divider(height: 20),
-                  _genderPreferenceRow(data['genderPreference'] ?? 'Any'),
-                ]),
+          return FutureBuilder<DocumentSnapshot<Map<String, dynamic>>>(
+            future: FirebaseFirestore.instance
+                .collection('hackathons')
+                .doc(hackathonId)
+                .get(),
+            builder: (context, hackathonSnapshot) {
+              if (hackathonSnapshot.connectionState ==
+                  ConnectionState.waiting) {
+                return const Center(
+                  child: CircularProgressIndicator(color: purple),
+                );
+              }
 
-                const SizedBox(height: 24),
+              final hackathonData = hackathonSnapshot.data?.data() ?? {};
 
-                _sectionTitle("Project Idea"),
-                _infoBox([
-                  Text(
-                    (data['projectIdea'] != null &&
-                            data['projectIdea'].toString().trim().isNotEmpty)
-                        ? data['projectIdea']
-                        : (data['idea'] != null &&
-                                data['idea'].toString().trim().isNotEmpty)
+              final DateTime? openDate =
+              _parseFirestoreDate(hackathonData['applicationOpenDate']);
+              final DateTime? deadline =
+              _parseFirestoreDate(hackathonData['applicationDeadline']);
+
+              final now = DateTime.now();
+
+              final DateTime? effectiveDeadline = deadline != null
+                  ? DateTime(
+                deadline.year,
+                deadline.month,
+                deadline.day,
+                23,
+                59,
+                59,
+              )
+                  : null;
+
+              final bool isRegistrationOpen =
+                  openDate != null &&
+                      effectiveDeadline != null &&
+                      !now.isBefore(openDate) &&
+                      !now.isAfter(effectiveDeadline);
+
+              final bool canFinalize =
+                  !isSubmitted && currentMembers >= 2 && isRegistrationOpen;
+              return SingleChildScrollView(
+                padding: const EdgeInsets.all(20),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    _buildStatusHeader(
+                        isSubmitted, currentMembers, data['status']),
+                    const SizedBox(height: 24),
+
+                    _sectionTitle("Team Overview"),
+                    _infoBox([
+                      _dataRow("Team Name", data['teamName'] ?? 'Unnamed'),
+                      _dataRow(
+                        "Team Capacity",
+                        "$currentMembers / $hackathonTeamSize members",
+                      ),
+                      const Divider(height: 20),
+                      _genderPreferenceRow(data['genderPreference'] ?? 'Any'),
+                    ]),
+
+                    const SizedBox(height: 24),
+
+                    _sectionTitle("Project Idea"),
+                    _infoBox([
+                      Text(
+                        (data['projectIdea'] != null &&
+                            data['projectIdea']
+                                .toString()
+                                .trim()
+                                .isNotEmpty)
+                            ? data['projectIdea']
+                            : (data['idea'] != null &&
+                            data['idea']
+                                .toString()
+                                .trim()
+                                .isNotEmpty)
                             ? data['idea']
                             : "No project idea added yet.",
-                    style: const TextStyle(
-                      color: purple,
-                      fontWeight: FontWeight.bold,
-                      fontSize: 13,
-                      height: 1.5,
-                    ),
-                  ),
-                ]),
+                        style: const TextStyle(
+                          color: purple,
+                          fontWeight: FontWeight.bold,
+                          fontSize: 13,
+                          height: 1.5,
+                        ),
+                      ),
+                    ]),
 
-                const SizedBox(height: 24),
+                    const SizedBox(height: 24),
 
-                _sectionTitle("Current Members & Roles"),
-                FutureBuilder<List<Map<String, String>>>(
-                  future: _getMemberDetails(
-                    memberIds,
-                    leaderId,
-                    leaderRole,
-                    memberRoles,
-                  ),
-                  builder: (context, nameSnapshot) {
-                    if (!nameSnapshot.hasData) {
-                      return const Center(
-                        child: LinearProgressIndicator(color: purple),
-                      );
-                    }
+                    _sectionTitle("Current Members & Roles"),
+                    FutureBuilder<List<Map<String, String>>>(
+                      future: _getMemberDetails(
+                        memberIds,
+                        leaderId,
+                        leaderRole,
+                        memberRoles,
+                      ),
+                      builder: (context, nameSnapshot) {
+                        if (!nameSnapshot.hasData) {
+                          return const Center(
+                            child: LinearProgressIndicator(color: purple),
+                          );
+                        }
 
-                    return Column(
-                      children: nameSnapshot.data!
-                          .map(
-                            (member) => _memberTile(
-                              context: context,
-                              uid: member['uid']!,
-                              name: member['name']!,
-                              isLeader: member['isLeader'] == 'true',
-                              role: member['role']!,
-                              onRemove: (isLeader &&
+
+                        return Column(
+                          children: nameSnapshot.data!
+                              .map(
+                                (member) =>
+                                _memberTile(
+                                  context: context,
+                                  uid: member['uid']!,
+                                  name: member['name']!,
+                                  isLeader: member['isLeader'] == 'true',
+                                  role: member['role']!,
+                                  onRemove: (isLeader &&
                                       !isSubmitted &&
                                       member['isLeader'] != 'true')
-                                  ? () => _removeMember(
+                                      ? () =>
+                                      _removeMember(
                                         context,
                                         member['uid']!,
                                         member['name']!,
                                       )
-                                  : null,
-                            ),
+                                      : null,
+                                ),
                           )
-                          .toList(),
-                    );
-                  },
-                ),
+                              .toList(),
+                        );
+                      },
+                    ),
 
-                const SizedBox(height: 32),
+                    const SizedBox(height: 32),
 
-                if (isLeader) ...[
-                  if (!isSubmitted && currentMembers < 2)
-                    Container(
-                      margin: const EdgeInsets.only(bottom: 16),
-                      padding: const EdgeInsets.all(12),
-                      decoration: BoxDecoration(
-                        color: Colors.orange.shade50,
-                        borderRadius: BorderRadius.circular(12),
-                        border: Border.all(color: Colors.orange.shade200),
-                      ),
-                      child: Row(
-                        children: [
-                          Icon(
-                            Icons.lock_clock_outlined,
-                            size: 18,
-                            color: Colors.orange.shade800,
+                    if (isLeader) ...[
+                      if (!isSubmitted && currentMembers < 2)
+                        Container(
+                          margin: const EdgeInsets.only(bottom: 16),
+                          padding: const EdgeInsets.all(12),
+                          decoration: BoxDecoration(
+                            color: Colors.orange.shade50,
+                            borderRadius: BorderRadius.circular(12),
+                            border: Border.all(color: Colors.orange.shade200),
                           ),
-                          const SizedBox(width: 10),
-                          const Expanded(
-                            child: Text(
-                              "Registration is locked. You need at least 2 members to finalize.",
-                              style: TextStyle(
-                                color: Color(0xFFD35400),
-                                fontSize: 12,
-                                fontWeight: FontWeight.bold,
+                          child: Row(
+                            children: [
+                              Icon(
+                                Icons.lock_clock_outlined,
+                                size: 18,
+                                color: Colors.orange.shade800,
                               ),
-                            ),
+                              const SizedBox(width: 10),
+                              const Expanded(
+                                child: Text(
+                                  "Registration is locked. You need at least 2 members to finalize.",
+                                  style: TextStyle(
+                                    color: Color(0xFFD35400),
+                                    fontSize: 12,
+                                    fontWeight: FontWeight.bold,
+                                  ),
+                                ),
+                              ),
+                            ],
                           ),
-                        ],
+                        ),
+
+                      if (!isSubmitted) ...[
+                        _actionButton(
+                          label: 'Edit Team Info',
+                          icon: Icons.edit_outlined,
+                          color: purple,
+                          onPressed: () => _editTeamInfo(context, data),
+                        ),
+                        const SizedBox(height: 12),
+                      ],
+
+                      StreamBuilder<int>(
+                        stream: _pendingRequestsCountStream(),
+                        builder: (context, snapshot) {
+                          final int count = snapshot.data ?? 0;
+
+                          return _actionButton(
+                            label: 'View Join Requests',
+                            icon: Icons.group_add_outlined,
+                            color: purple,
+                            badgeCount: count,
+                            onPressed: () {
+                              Navigator.push(
+                                context,
+                                MaterialPageRoute(
+                                  builder: (_) =>
+                                      LeaderJoinRequestsView(
+                                        teamPostId: teamPostId,
+                                      ),
+                                ),
+                              );
+                            },
+                          );
+                        },
                       ),
-                    ),
 
-                  if (!isSubmitted) ...[
-                    _actionButton(
-                      label: 'Edit Team Info',
-                      icon: Icons.edit_outlined,
-                      color: purple,
-                      onPressed: () => _editTeamInfo(context, data),
-                    ),
-                    const SizedBox(height: 12),
-                  ],
 
-                  StreamBuilder<int>(
-                    stream: _pendingRequestsCountStream(),
-                    builder: (context, snapshot) {
-                      final int count = snapshot.data ?? 0;
+                      const SizedBox(height: 12),
 
-                      return _actionButton(
-                        label: 'View Join Requests',
-                        icon: Icons.group_add_outlined,
-                        color: purple,
-                        badgeCount: count,
-                        onPressed: () {
+                      _actionButton(
+                        label: isSubmitted
+                            ? 'Registration Submitted'
+                            : (isRegistrationOpen
+                            ? 'Finalize & Register Team'
+                            : 'Registration Closed'),
+                        icon: isSubmitted
+                            ? Icons.verified_user
+                            : Icons.rocket_launch,
+                        color: isSubmitted
+                            ? Colors.grey
+                            : (canFinalize ? Colors.green : Colors.grey.shade400),
+                        onPressed: canFinalize
+                            ? () {
                           Navigator.push(
                             context,
                             MaterialPageRoute(
-                              builder: (_) => LeaderJoinRequestsView(
+                              builder: (_) => TeamRegistrationFormView(
+                                hackathonId: hackathonId,
                                 teamPostId: teamPostId,
+                                teamName: data['teamName'] ?? 'Unnamed Team',
+                                members: List<String>.from(memberIds),
+                                hackathonTeamSize: hackathonTeamSize,
                               ),
                             ),
                           );
-                        },
-                      );
-                    },
-                  ),
-
-                  const SizedBox(height: 12),
-
-                  _actionButton(
-                    label: isSubmitted
-                        ? 'Registration Submitted'
-                        : 'Finalize & Register Team',
-                    icon: isSubmitted
-                        ? Icons.verified_user
-                        : Icons.rocket_launch,
-                    color: isSubmitted
-                        ? Colors.grey
-                        : (currentMembers >= 2
-                            ? Colors.green
-                            : Colors.grey.shade400),
-                    onPressed: (!isSubmitted && currentMembers >= 2)
-                        ? () {
-                            Navigator.push(
-                              context,
-                              MaterialPageRoute(
-                                builder: (_) => TeamRegistrationFormView(
-                                  hackathonId: hackathonId,
-                                  teamPostId: teamPostId,
-                                  teamName: data['teamName'] ?? 'Unnamed Team',
-                                  members: List<String>.from(memberIds),
-                                  hackathonTeamSize: hackathonTeamSize,
-                                ),
-                              ),
-                            );
-                          }
-                        : null,
-                  ),
-
-                  if (!isSubmitted) ...[
-                    const SizedBox(height: 12),
-                    _actionButton(
-                      label: 'Delete Team',
-                      icon: Icons.delete_outline,
-                      color: Colors.red,
-                      onPressed: () => _showDeleteConfirmation(context),
-                    ),
-                  ],
-
-                  if (!isSubmitted)
-                    Padding(
-                      padding: const EdgeInsets.only(top: 12, left: 4, right: 4),
-                      child: Container(
-                        padding: const EdgeInsets.all(12),
-                        decoration: BoxDecoration(
-                          color: Colors.amber.shade50.withOpacity(0.5),
-                          borderRadius: BorderRadius.circular(12),
-                          border: Border.all(color: Colors.amber.shade200),
-                        ),
-                        child: Row(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Icon(
-                              Icons.tips_and_updates_outlined,
-                              color: Colors.amber.shade900,
-                              size: 18,
-                            ),
-                            const SizedBox(width: 10),
-                            Expanded(
-                              child: Text(
-                                "Pro tip: Make sure all members have completed their profiles before registering. Incomplete profiles may affect your acceptance.",
-                                style: TextStyle(
-                                  fontSize: 11,
-                                  color: Colors.amber.shade900,
-                                  fontWeight: FontWeight.w600,
-                                  height: 1.4,
-                                ),
-                              ),
-                            ),
-                          ],
-                        ),
+                        }
+                            : null,
                       ),
-                    ),
-                ] else ...[
-                  _buildMemberNotice(isSubmitted, currentMembers),
-                  if (!isSubmitted) ...[
-                    const SizedBox(height: 12),
-                    _actionButton(
-                      label: 'Leave Team',
-                      icon: Icons.exit_to_app_rounded,
-                      color: Colors.red,
-                      onPressed: () => _leaveTeam(context),
-                    ),
-                  ],
-                ],
 
-                const SizedBox(height: 40),
-              ],
-            ),
+                      if (!isSubmitted) ...[
+                        const SizedBox(height: 12),
+                        _actionButton(
+                          label: 'Delete Team',
+                          icon: Icons.delete_outline,
+                          color: Colors.red,
+                          onPressed: () => _showDeleteConfirmation(context),
+                        ),
+                      ],
+
+                      if (!isSubmitted)
+                        Padding(
+                          padding: const EdgeInsets.only(
+                              top: 12, left: 4, right: 4),
+                          child: Container(
+                            padding: const EdgeInsets.all(12),
+                            decoration: BoxDecoration(
+                              color: Colors.amber.shade50.withOpacity(0.5),
+                              borderRadius: BorderRadius.circular(12),
+                              border: Border.all(color: Colors.amber.shade200),
+                            ),
+                            child: Row(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Icon(
+                                  Icons.tips_and_updates_outlined,
+                                  color: Colors.amber.shade900,
+                                  size: 18,
+                                ),
+                                const SizedBox(width: 10),
+                                Expanded(
+                                  child: Text(
+                                    "Pro tip: Make sure all members have completed their profiles before registering. Incomplete profiles may affect your acceptance.",
+                                    style: TextStyle(
+                                      fontSize: 11,
+                                      color: Colors.amber.shade900,
+                                      fontWeight: FontWeight.w600,
+                                      height: 1.4,
+                                    ),
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ),
+                    ] else
+                      ...[
+                        _buildMemberNotice(isSubmitted, currentMembers),
+                        if (!isSubmitted) ...[
+                          const SizedBox(height: 12),
+                          _actionButton(
+                            label: 'Leave Team',
+                            icon: Icons.exit_to_app_rounded,
+                            color: Colors.red,
+                            onPressed: () => _leaveTeam(context),
+                          ),
+                        ],
+                      ],
+
+                    const SizedBox(height: 40),
+                  ],
+                ),
+              );
+            },
           );
         },
       ),

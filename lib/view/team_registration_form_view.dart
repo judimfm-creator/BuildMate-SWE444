@@ -51,6 +51,24 @@ class _TeamRegistrationFormViewState
     super.dispose();
   }
 
+  DateTime? _parseFirestoreDate(dynamic value) {
+    if (value == null) return null;
+
+    if (value is Timestamp) {
+      return value.toDate();
+    }
+
+    if (value is DateTime) {
+      return value;
+    }
+
+    if (value is String) {
+      return DateTime.tryParse(value);
+    }
+
+    return null;
+  }
+
   Future<void> _submitRegistrationForm() async {
     if (_isLoading) return;
 
@@ -77,16 +95,87 @@ class _TeamRegistrationFormViewState
       setState(() => _isLoading = true);
 
       final firestore = FirebaseFirestore.instance;
+
+      final hackathonRef =
+      firestore.collection('hackathons').doc(widget.hackathonId);
+
       final teamPostRef =
       firestore.collection('team_posts').doc(widget.teamPostId);
 
+      final hackathonDoc = await hackathonRef.get();
+
+      if (!hackathonDoc.exists) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('This hackathon is no longer available'),
+            backgroundColor: Colors.red,
+          ),
+        );
+
+        if (mounted) {
+          Navigator.pop(context);
+        }
+        return;
+      }
+
+      final hackathonData = hackathonDoc.data() ?? {};
+
+      final DateTime? openDate =
+      _parseFirestoreDate(hackathonData['applicationOpenDate']);
+      final DateTime? deadline =
+      _parseFirestoreDate(hackathonData['applicationDeadline']);
+
+      final now = DateTime.now();
+
+      if (openDate != null && now.isBefore(openDate)) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Registration has not opened yet'),
+            backgroundColor: Colors.orange,
+          ),
+        );
+        return;
+      }
+
+      final DateTime? effectiveDeadline = deadline != null
+          ? DateTime(
+        deadline.year,
+        deadline.month,
+        deadline.day,
+        23,
+        59,
+        59,
+      )
+          : null;
+
+      if (effectiveDeadline != null && now.isAfter(effectiveDeadline)) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Registration is closed'),
+            backgroundColor: Colors.red,
+          ),
+        );
+        return;
+      }
+
+
       final teamDoc = await teamPostRef.get();
 
-      final data = teamDoc.data() ?? {};
+      if (!teamDoc.exists) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Team post no longer exists'),
+            backgroundColor: Colors.red,
+          ),
+        );
+        return;
+      }
 
-      final leaderId = data['createdBy'];
+      final teamData = teamDoc.data() ?? {};
+
+      final leaderId = teamData['createdBy'];
       final members =
-      List<String>.from(data['members'] ?? widget.members);
+      List<String>.from(teamData['members'] ?? widget.members);
 
       if (leaderId != currentUser.uid) {
         ScaffoldMessenger.of(context).showSnackBar(
@@ -143,7 +232,9 @@ class _TeamRegistrationFormViewState
         ),
       );
     } finally {
-      setState(() => _isLoading = false);
+      if (mounted) {
+        setState(() => _isLoading = false);
+      }
     }
   }
 
@@ -193,10 +284,11 @@ class _TeamRegistrationFormViewState
               const Text(
                 "Team Registration Summary",
                 style: TextStyle(
-                    fontSize: 16, fontWeight: FontWeight.bold),
+                  fontSize: 16,
+                  fontWeight: FontWeight.bold,
+                ),
               ),
               const SizedBox(height: 8),
-
               Container(
                 padding: const EdgeInsets.all(16),
                 decoration: BoxDecoration(
@@ -221,17 +313,15 @@ class _TeamRegistrationFormViewState
                   ],
                 ),
               ),
-
               const SizedBox(height: 24),
-
               const Text(
                 "Hackathon Registration Details",
                 style: TextStyle(
-                    fontSize: 16, fontWeight: FontWeight.bold),
+                  fontSize: 16,
+                  fontWeight: FontWeight.bold,
+                ),
               ),
-
               const SizedBox(height: 12),
-
               TextFormField(
                 controller: _ideaNameController,
                 maxLength: 20,
@@ -263,9 +353,7 @@ class _TeamRegistrationFormViewState
                   return null;
                 },
               ),
-
               const SizedBox(height: 16),
-
               TextFormField(
                 controller: _briefDescriptionController,
                 maxLines: 4,
@@ -294,9 +382,7 @@ class _TeamRegistrationFormViewState
                   return null;
                 },
               ),
-
               const SizedBox(height: 24),
-
               SizedBox(
                 width: double.infinity,
                 height: 52,
@@ -306,17 +392,18 @@ class _TeamRegistrationFormViewState
                   style: ElevatedButton.styleFrom(
                     backgroundColor: _purple,
                     shape: RoundedRectangleBorder(
-                      borderRadius:
-                      BorderRadius.circular(12),
+                      borderRadius: BorderRadius.circular(12),
                     ),
                   ),
                   child: _isLoading
                       ? const CircularProgressIndicator(
-                      color: Colors.white)
+                    color: Colors.white,
+                  )
                       : const Text(
                     "Submit Registration",
                     style: TextStyle(
-                        fontWeight: FontWeight.bold),
+                      fontWeight: FontWeight.bold,
+                    ),
                   ),
                 ),
               ),
