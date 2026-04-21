@@ -628,7 +628,7 @@ Text(
                     child: Padding(
                       padding: EdgeInsets.only(top: 40),
                       child: Text(
-                        "No teams match your filters.",
+                        "No Available teams.",
                         style: TextStyle(color: Colors.grey),
                       ),
                     ),
