@@ -35,6 +35,7 @@ class _GroupChatViewState extends State<GroupChatView> {
 
   UserModel? _currentUser;
   bool _loadingUser = true;
+  bool _isRemoved = false; // لمعرفة هل المستخدم مطرود
 
   // ألوان الافتار للأعضاء
   final List<Color> _avatarBgColors = const [
@@ -56,11 +57,26 @@ class _GroupChatViewState extends State<GroupChatView> {
   void initState() {
     super.initState();
     _loadCurrentUser();
+    _listenToMemberStatus(); // 👈 أضيفي هذا السطر فقط
   }
 
 
 
   @override
+  void _listenToMemberStatus() {
+    FirebaseFirestore.instance
+        .collection('team_posts')
+        .doc(widget.teamPostId)
+        .snapshots()
+        .listen((doc) {
+      if (doc.exists && mounted) {
+        final List removedIds = doc.data()?['removedMembers'] ?? [];
+        setState(() {
+          _isRemoved = removedIds.contains(_currentUser?.uid);
+        });
+      }
+    });
+  }
   void dispose() {
     _messageController.dispose();
     _scrollController.dispose();
@@ -218,7 +234,7 @@ class _GroupChatViewState extends State<GroupChatView> {
           : Column(
         children: [
           Expanded(child: _buildMessagesList()),
-          _buildInputArea(),
+_isRemoved ? _buildRemovedNotice() : _buildInputArea(),
         ],
       ),
     );
@@ -675,6 +691,21 @@ class _GroupChatViewState extends State<GroupChatView> {
             ),
           ),
         ],
+      ),
+    );
+  }
+  Widget _buildRemovedNotice() {
+    return Container(
+      color: Colors.white,
+      padding: EdgeInsets.only(left: 20, right: 20, top: 10, bottom: MediaQuery.of(context).padding.bottom + 15),
+      child: Container(
+        padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 16),
+        decoration: BoxDecoration(color: Colors.grey.shade100, borderRadius: BorderRadius.circular(12), border: Border.all(color: Colors.grey.shade300)),
+        child: const Text(
+          "You can't send messages to this group because you're no longer a participant.",
+          textAlign: TextAlign.center,
+          style: TextStyle(color: Colors.grey, fontSize: 12, fontWeight: FontWeight.w500),
+        ),
       ),
     );
   }
