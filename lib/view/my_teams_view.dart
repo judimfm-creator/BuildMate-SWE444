@@ -19,10 +19,16 @@ class MyTeamsView extends StatelessWidget {
       appBar: AppBar(
         backgroundColor: Colors.white,
         elevation: 0,
-        iconTheme: const IconThemeData(color: Colors.black),
+        centerTitle: true,
+        // foregroundColor يغير لون السهم والنص معاً للموف
+        foregroundColor: const Color(0xFF6D56B3),
         title: const Text(
           "My Teams",
-          style: TextStyle(color: Colors.black, fontWeight: FontWeight.bold),
+          style: TextStyle(
+            fontSize: 20, // حجم الخط الموحد للعناوين
+            fontWeight: FontWeight.bold, // نفس ثقل خط الوورك سبيس
+            letterSpacing: 0.5,
+          ),
         ),
       ),
       body: currentUid == null

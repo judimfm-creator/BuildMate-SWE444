@@ -254,23 +254,49 @@ class _GroupChatViewState extends State<GroupChatView> {
       ),
       actions: [
         if (!_isRemoved) // لا تظهر زر الفيديو إذا كان مطروداً
-        IconButton(
-          icon: const Icon(Icons.videocam_outlined, color: Colors.white),
-          tooltip: 'Video Call',
-          onPressed: () {
-            if (_currentUser == null) return;
-            Navigator.push(
-              context,
-              MaterialPageRoute(
-                builder: (context) => VideoCallView(
-                  callID: widget.teamPostId,
-                  userID: _currentUser!.uid,
-                  userName: _currentUser!.fullName,
+          Padding(
+            padding: const EdgeInsets.only(right: 16.0),
+            child: Center(
+              child: InkWell(
+                borderRadius: BorderRadius.circular(12),
+                onTap: () {
+                  if (_currentUser == null) return;
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (context) => VideoCallView(
+                        callID: widget.teamPostId,
+                        userID: _currentUser!.uid,
+                        userName: _currentUser!.fullName,
+                      ),
+                    ),
+                  );
+                },
+                child: Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                  decoration: BoxDecoration(
+                    color: Colors.white, // خلفية الزر بيضاء
+                    borderRadius: BorderRadius.circular(12), // حواف دائرية
+                  ),
+                  child: const Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Icon(Icons.videocam_rounded, color: _purple, size: 20), // الأيقونة بالموف
+                      SizedBox(width: 6),
+                      Text(
+                        "Video Call", // يمكنك تغيير الكلمة إلى Call أو حذفها تماماً
+                        style: TextStyle(
+                          color: _purple,
+                          fontWeight: FontWeight.w800,
+                          fontSize: 13,
+                        ),
+                      ),
+                    ],
+                  ),
                 ),
               ),
-            );
-          },
-        ),
+            ),
+          ),
       ],
     );
   }

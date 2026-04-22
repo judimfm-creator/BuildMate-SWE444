@@ -97,13 +97,14 @@ class _ExploreUserViewState extends State<ExploreUserView> with SingleTickerProv
       appBar: AppBar(
         backgroundColor: Colors.white,
         elevation: 0,
-        automaticallyImplyLeading: false,
+        automaticallyImplyLeading: true, // للسماح بظهور السهم
+        iconTheme: const IconThemeData(color: _purple), // 👈 تغيير لون السهم للموف
         titleSpacing: 0,
-        toolbarHeight: 80, 
+        toolbarHeight: 80,
         title: Padding(
-          padding: const EdgeInsets.fromLTRB(16, 20, 16, 12),
+          padding: const EdgeInsets.fromLTRB(8, 20, 16, 12),
           child: Row(children: [
-            Expanded(child: _buildSearchBar(vm)), 
+            Expanded(child: _buildSearchBar(vm)),
             if (_hasActiveFilters()) ...[
               const SizedBox(width: 8), 
               _buildClearFilterButton()
