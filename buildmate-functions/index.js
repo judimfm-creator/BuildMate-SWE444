@@ -37,13 +37,13 @@ exports.sendJoinRequestNotification = onDocumentCreated(
       await admin.messaging().send({
         token: token,
         notification: {
-          title: "New Join Request",
-          body: `${name} requested to join your team`,
+          title: "New Join Request 🔔",
+          body: `${name} wants to join your team`,
         },
         android: {
           priority: "high",
           notification: {
-            channelId: "join_requests_channel",
+            channelId: "high_importance_channel",
           },
         },
       });
