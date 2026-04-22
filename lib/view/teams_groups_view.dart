@@ -3,7 +3,6 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'team_workspace_view.dart';
 
-
 class TeamsGroupsView extends StatelessWidget {
   const TeamsGroupsView({super.key});
 
@@ -53,9 +52,7 @@ class TeamsGroupsView extends StatelessWidget {
         elevation: 0,
       ),
       body: StreamBuilder<QuerySnapshot<Map<String, dynamic>>>(
-        stream: FirebaseFirestore.instance
-            .collection('team_posts')
-            .snapshots(),
+        stream: FirebaseFirestore.instance.collection('team_posts').snapshots(),
         builder: (context, snapshot) {
           if (snapshot.connectionState == ConnectionState.waiting) {
             return const Center(
@@ -73,13 +70,20 @@ class TeamsGroupsView extends StatelessWidget {
             final data = doc.data();
             final List members = data['members'] ?? [];
             final String createdBy = data['createdBy'] ?? '';
+            final List<String> removedMembers =
+                List<String>.from(data['removedMembers'] ?? []);
 
-            final bool isMyTeam =
-                createdBy == currentUid || members.contains(currentUid);
+            // الليدر أو عضو حالي أو مطرود — كلهم يشوفون الـ workspace
+            final bool isMyTeam = createdBy == currentUid ||
+                members.contains(currentUid) ||
+                removedMembers.contains(currentUid);
 
-            final bool workspaceReady = members.length >= 2;
+            // لو أخفى الـ workspace ما يظهر في قائمته
+            final List<String> hiddenFor =
+                List<String>.from(data['hiddenFor'] ?? []);
+            final bool isHidden = hiddenFor.contains(currentUid);
 
-            return isMyTeam && workspaceReady;
+            return isMyTeam && !isHidden;
           }).toList();
 
           if (docs.isEmpty) {
@@ -106,7 +110,8 @@ class TeamsGroupsView extends StatelessWidget {
               ];
 
               // اختيار اللون بناءً على الترتيب
-              final Color currentColor = brandColors[index % brandColors.length];
+              final Color currentColor =
+                  brandColors[index % brandColors.length];
 
               // 2. تصميم البوكس الملون (Container)
               return Container(
@@ -134,7 +139,8 @@ class TeamsGroupsView extends StatelessWidget {
                     width: 52,
                     height: 52,
                     decoration: BoxDecoration(
-                      color: currentColor.withOpacity(0.1), // خلفية هادئة من لون الفريق
+                      color: currentColor
+                          .withOpacity(0.1), // خلفية هادئة من لون الفريق
                       shape: BoxShape.circle,
                     ),
                     child: Icon(
