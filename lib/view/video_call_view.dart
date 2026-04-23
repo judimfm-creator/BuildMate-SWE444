@@ -26,6 +26,7 @@ class VideoCallView extends StatelessWidget {
         config: ZegoUIKitPrebuiltCallConfig.groupVideoCall()
           ..bottomMenuBar.buttons = [
             ZegoCallMenuBarButtonName.toggleCameraButton,
+            ZegoCallMenuBarButtonName.switchCameraButton,
             ZegoCallMenuBarButtonName.toggleMicrophoneButton,
             ZegoCallMenuBarButtonName.switchAudioOutputButton,
             ZegoCallMenuBarButtonName.toggleScreenSharingButton,

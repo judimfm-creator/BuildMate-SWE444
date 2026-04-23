@@ -88,7 +88,7 @@ class TeamWorkspaceView extends StatelessWidget {
                         builder: (_) => AlertDialog(
                           title: const Text('Hide Workspace'),
                           content: const Text(
-                              'This will hide the workspace from your list only. Other members will not be affected.'),
+                              'This will hide the workspace from your list.'),
                           actions: [
                             TextButton(
                               onPressed: () => Navigator.pop(context, false),
@@ -164,7 +164,7 @@ class TeamWorkspaceView extends StatelessWidget {
                   context,
                   title: "Group Chat",
                   subtitle: isRemoved
-                      ? "Archive (Read-only)"
+                      ? "Read-only"
                       : "Discuss ideas with your team",
                   icon: Icons.forum_rounded,
                   isPrimary: true,
@@ -240,7 +240,7 @@ class TeamWorkspaceView extends StatelessWidget {
                       color: isRemoved ? Colors.grey : Colors.black87),
                 ),
                 Text(
-                  isRemoved ? "Archived Access" : "Collaboration Hub",
+                  isRemoved ? "Read-only" : "Collaboration Hub",
                   style: TextStyle(
                       color: isRemoved ? Colors.grey : _purple.withOpacity(0.6),
                       fontWeight: FontWeight.w600,

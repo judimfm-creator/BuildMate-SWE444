@@ -167,7 +167,7 @@ class MyTeamPostView extends StatelessWidget {
     }
   }
 
-  Future<void> _editTeamInfo(
+  /*Future<void> _editTeamInfo(
     BuildContext context,
     Map<String, dynamic> data,
   ) async {
@@ -250,7 +250,7 @@ class MyTeamPostView extends StatelessWidget {
     }
     nameCtrl.dispose();
     roleCtrl.dispose();
-  }
+  }*/
 
   Future<void> _removeMember(
     BuildContext context,
@@ -396,7 +396,7 @@ class MyTeamPostView extends StatelessWidget {
         content: Text(
           isLeader && newLeaderId != null
               ? 'You will leave the team and transfer leadership. You will lose access to send messages.'
-              : 'Are you sure you want to leave this team? You will lose access to send messages.',
+              : 'Are you sure you want to leave this team?',
         ),
         actions: [
           TextButton(
@@ -648,7 +648,7 @@ class MyTeamPostView extends StatelessWidget {
                             ],
                           ),
                         ),
-                      if (!isSubmitted) ...[
+                      /*if (!isSubmitted) ...[
                         _actionButton(
                           label: 'Edit Team Info',
                           icon: Icons.edit_outlined,
@@ -656,7 +656,7 @@ class MyTeamPostView extends StatelessWidget {
                           onPressed: () => _editTeamInfo(context, data),
                         ),
                         const SizedBox(height: 12),
-                      ],
+                      ],*/
                       StreamBuilder<int>(
                         stream: _pendingRequestsCountStream(),
                         builder: (context, snapshot) {
