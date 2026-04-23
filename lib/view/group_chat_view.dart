@@ -248,25 +248,54 @@ class _GroupChatViewState extends State<GroupChatView> {
           ),
         ],
       ),
- actions: [
-        // تم اعتماد تصميمك البسيط (IconButton) مع التأكد من حالة الطرد
-        if (!isRemoved) 
-          IconButton(
-            icon: const Icon(Icons.videocam_outlined, color: Colors.white),
-            tooltip: 'Video Call',
-            onPressed: () {
-              if (_currentUser == null) return;
-              Navigator.push(
-                context,
-                MaterialPageRoute(
-                  builder: (context) => VideoCallView(
-                    callID: widget.teamPostId,
-                    userID: _currentUser!.uid,
-                    userName: _currentUser!.fullName,
+      actions: [
+        if (!isRemoved)
+          Padding(
+            padding: const EdgeInsets.only(right: 16.0),
+            child: Center(
+              child: GestureDetector(
+                onTap: () {
+                  if (_currentUser == null) return;
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (context) => VideoCallView(
+                        callID: widget.teamPostId,
+                        userID: _currentUser!.uid,
+                        userName: _currentUser!.fullName,
+                      ),
+                    ),
+                  );
+                },
+                child: Container(
+                  // التحكم في مساحة الزر الداخلية
+                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                  decoration: BoxDecoration(
+                    color: Colors.white, // خلفية بيضاء للبتن
+                    borderRadius: BorderRadius.circular(20), // زوايا دائرية (شكل كبسولة)
+                  ),
+                  child: const Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Icon(
+                        Icons.videocam_rounded,
+                        color: _purple, // أيقونة الكاميرا باللون الموف
+                        size: 18,
+                      ),
+                      SizedBox(width: 6),
+                      Text(
+                        'Video Call',
+                        style: TextStyle(
+                          color: _purple, // نص الفيديو كول بالموف
+                          fontSize: 12,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                    ],
                   ),
                 ),
-              );
-            },
+              ),
+            ),
           ),
       ],
     );

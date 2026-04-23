@@ -24,23 +24,21 @@ class VideoCallView extends StatelessWidget {
         callID: callID,
 
         config: ZegoUIKitPrebuiltCallConfig.groupVideoCall()
+          ..bottomMenuBar.maxCount = 6
           ..bottomMenuBar.buttons = [
+            ZegoCallMenuBarButtonName.hangUpButton,
             ZegoCallMenuBarButtonName.toggleCameraButton,
-            ZegoCallMenuBarButtonName.switchCameraButton,
             ZegoCallMenuBarButtonName.toggleMicrophoneButton,
+            ZegoCallMenuBarButtonName.switchCameraButton,
             ZegoCallMenuBarButtonName.switchAudioOutputButton,
             ZegoCallMenuBarButtonName.toggleScreenSharingButton,
-            ZegoCallMenuBarButtonName.hangUpButton,
           ],
 
-        // ✅ التعديل هنا فقط:
         events: ZegoUIKitPrebuiltCallEvents(
           onCallEnd: (event, defaultAction) {
-            // نغلق الشاشة ونطلّع اليوزر فقط إذا هو ضغط زر الخروج بيده
             if (event.reason == ZegoUIKitCallEndReason.localHangUp) {
-              defaultAction.call();
+              Navigator.of(context, rootNavigator: true).pop();
             }
-            // أي سبب ثاني (مثل خروج شخص ثاني وبقاءك لحالك) التطبيق بيتجاهله وتستمر المكالمة
           },
         ),
       ),
