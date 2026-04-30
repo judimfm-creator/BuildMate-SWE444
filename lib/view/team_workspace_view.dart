@@ -3,12 +3,17 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'group_chat_view.dart';
 import 'my_team_post_view.dart';
+import 'dart:io';
+import 'package:file_picker/file_picker.dart';
+import 'package:firebase_storage/firebase_storage.dart';
+import 'package:open_filex/open_filex.dart';
+import 'package:gal/gal.dart';
 
 class TeamWorkspaceView extends StatelessWidget {
   final String teamPostId;
   final String hackathonId;
 
-  const TeamWorkspaceView({
+   TeamWorkspaceView({
     super.key,
     required this.teamPostId,
     required this.hackathonId,
@@ -16,6 +21,65 @@ class TeamWorkspaceView extends StatelessWidget {
 
   static const Color _purple = Color(0xFF6D56B3);
   static const Color _pageBg = Colors.white;
+
+  // متغير لمراقبة حالة الرفع
+  final ValueNotifier<bool> _isUploading = ValueNotifier(false);
+
+  // دالة اختيار ورفع الملف
+  Future<void> _uploadFile(BuildContext context) async {
+    FilePickerResult? result = await FilePicker.platform.pickFiles();
+
+    if (result != null && result.files.single.path != null) {
+      File file = File(result.files.single.path!);
+
+      if (!file.existsSync()) {
+        if (context.mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('Error: File not found on device.'), backgroundColor: Colors.red),
+          );
+        }
+        return;
+      }
+
+      String originalName = result.files.single.name;
+      String safeFileName = "${DateTime.now().millisecondsSinceEpoch}_${originalName.replaceAll(RegExp(r'[^a-zA-Z0-9\.]'), '_')}";
+
+      _isUploading.value = true;
+
+      try {
+        Reference ref = FirebaseStorage.instance
+            .ref()
+            .child('team_files/$teamPostId/$safeFileName');
+
+        await ref.putFile(file);
+        String downloadUrl = await ref.getDownloadURL();
+
+        await FirebaseFirestore.instance
+            .collection('team_posts')
+            .doc(teamPostId)
+            .collection('shared_files')
+            .add({
+          'fileName': originalName,
+          'fileUrl': downloadUrl,
+          'uploadedAt': FieldValue.serverTimestamp(),
+        });
+
+        if (context.mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('File uploaded successfully! ✅'), backgroundColor: Colors.green),
+          );
+        }
+      } catch (e) {
+        if (context.mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text('Error: $e'), backgroundColor: Colors.red),
+          );
+        }
+      } finally {
+        _isUploading.value = false;
+      }
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -59,6 +123,7 @@ class TeamWorkspaceView extends StatelessWidget {
           // 🔴 التحقق من حالة المستخدم الحالي
           final bool isLeader = currentUid == leaderId;
           final bool isRemoved = removedMembers.contains(currentUid);
+
 
           // فقط لو مو ليدر ومو عضو ومو مطرود = دخل بالخطأ
           if (!isLeader && !members.contains(currentUid) && !isRemoved) {
@@ -352,12 +417,46 @@ class TeamWorkspaceView extends StatelessWidget {
                 _buildSectionContainer(
                   title: "Team Resources",
                   icon: Icons.folder_copy_rounded,
-                  child: Column(
-                    children: [
-                      _DocumentRow(fileName: "Project_Proposal.pdf"),
-                      const SizedBox(height: 12),
-                      _DocumentRow(fileName: "Reference_Links.txt"),
-                    ],
+                  trailing: isRemoved ? null : ValueListenableBuilder<bool>(
+                    valueListenable: _isUploading,
+                    builder: (context, uploading, child) {
+                      return uploading
+                          ? const SizedBox(
+                          width: 20,
+                          height: 20,
+                          child: CircularProgressIndicator(strokeWidth: 2, color: _purple))
+                          : IconButton(
+                        icon: const Icon(Icons.add_circle_outline, color: _purple),
+                        padding: EdgeInsets.zero,
+                        constraints: const BoxConstraints(),
+                        onPressed: () => _uploadFile(context),
+                      );
+                    },
+                  ),
+                  child: StreamBuilder<QuerySnapshot>(
+                    stream: FirebaseFirestore.instance
+                        .collection('team_posts')
+                        .doc(teamPostId)
+                        .collection('shared_files')
+                        .orderBy('uploadedAt', descending: true)
+                        .snapshots(),
+                    builder: (context, fileSnapshot) {
+                      if (!fileSnapshot.hasData || fileSnapshot.data!.docs.isEmpty) {
+                        return const Text("No files shared yet.", style: TextStyle(color: Colors.grey, fontSize: 12));
+                      }
+                      return Column(
+                        children: fileSnapshot.data!.docs.map((doc) {
+                          final fData = doc.data() as Map<String, dynamic>;
+                          return Padding(
+                            padding: const EdgeInsets.only(bottom: 12),
+                            child: _DocumentRow(
+                              fileName: fData['fileName'] ?? '',
+                              fileUrl: fData['fileUrl'] ?? '',
+                            ),
+                          );
+                        }).toList(),
+                      );
+                    },
                   ),
                 ),
 
@@ -421,7 +520,7 @@ class TeamWorkspaceView extends StatelessWidget {
   }
 
   Widget _buildSectionContainer(
-      {required String title, required IconData icon, required Widget child}) {
+      {required String title, required IconData icon, required Widget child, Widget? trailing}) {
     return Container(
       padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
@@ -441,14 +540,20 @@ class TeamWorkspaceView extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              Icon(icon, color: _purple, size: 20),
-              const SizedBox(width: 8),
-              Text(title,
-                  style: const TextStyle(
-                      fontWeight: FontWeight.w800,
-                      fontSize: 16,
-                      color: _purple)),
+              Row(
+                children: [
+                  Icon(icon, color: _purple, size: 20),
+                  const SizedBox(width: 8),
+                  Text(title,
+                      style: const TextStyle(
+                          fontWeight: FontWeight.w800,
+                          fontSize: 16,
+                          color: _purple)),
+                ],
+              ),
+              if (trailing != null) trailing,
             ],
           ),
           const SizedBox(height: 18),
@@ -575,34 +680,287 @@ class _TaskRow extends StatelessWidget {
   }
 }
 
+///FILES
 class _DocumentRow extends StatelessWidget {
   final String fileName;
-  const _DocumentRow({required this.fileName});
+  final String fileUrl;
+
+  const _DocumentRow({required this.fileName, required this.fileUrl});
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.all(12),
-      decoration: BoxDecoration(
-          color: Colors.grey.shade50, borderRadius: BorderRadius.circular(15)),
-      child: Row(
-        children: [
-          const Icon(Icons.insert_drive_file_outlined,
-              size: 18, color: Color(0xFF6D56B3)),
-          const SizedBox(width: 12),
-          Expanded(
-              child: Text(fileName,
-                  style: const TextStyle(
-                      fontSize: 13, fontWeight: FontWeight.w500))),
-          Icon(Icons.download_for_offline_rounded,
-              size: 20, color: Colors.grey.shade400),
-        ],
+    return InkWell(
+      onTap: () {
+        if (fileUrl.isEmpty) return;
+        final bool isImage = fileName.toLowerCase().endsWith('.png') ||
+            fileName.toLowerCase().endsWith('.jpg') ||
+            fileName.toLowerCase().endsWith('.jpeg');
+
+        showDialog(
+          context: context,
+          builder: (context) => _SmartFileDialog(
+            fileName: fileName,
+            fileUrl: fileUrl,
+            isImage: isImage,
+          ),
+        );
+      },
+      borderRadius: BorderRadius.circular(15),
+      child: Container(
+        padding: const EdgeInsets.all(12),
+        decoration: BoxDecoration(
+            color: Colors.grey.shade50, borderRadius: BorderRadius.circular(15)),
+        child: Row(
+          children: [
+            const Icon(Icons.insert_drive_file_outlined,
+                size: 18, color: Color(0xFF6D56B3)),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Text(
+                fileName,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w500),
+              ),
+            ),
+            Icon(Icons.visibility_rounded, size: 20, color: Colors.grey.shade500),
+          ],
+        ),
       ),
     );
-
   }
 }
 
+class ActiveDownloads {
+  static final Map<String, ValueNotifier<double>> tasks = {};
+}
+
+class _SmartFileDialog extends StatefulWidget {
+  final String fileName;
+  final String fileUrl;
+  final bool isImage;
+
+  const _SmartFileDialog({
+    required this.fileName,
+    required this.fileUrl,
+    required this.isImage,
+  });
+
+  @override
+  State<_SmartFileDialog> createState() => _SmartFileDialogState();
+}
+
+class _SmartFileDialogState extends State<_SmartFileDialog> {
+  ValueNotifier<double>? _progressNotifier;
+  String _fileSize = "Calculating size...";
+
+  @override
+  void initState() {
+    super.initState();
+    _fetchFileSize();
+
+    if (ActiveDownloads.tasks.containsKey(widget.fileUrl)) {
+      _progressNotifier = ActiveDownloads.tasks[widget.fileUrl];
+    }
+  }
+
+  Future<void> _fetchFileSize() async {
+    try {
+      final ref = FirebaseStorage.instance.refFromURL(widget.fileUrl);
+      final metadata = await ref.getMetadata();
+      final sizeInBytes = metadata.size ?? 0;
+      final sizeInMb = sizeInBytes / (1024 * 1024);
+
+      if (mounted) {
+        setState(() {
+          _fileSize = sizeInMb < 1.0
+              ? "${(sizeInBytes / 1024).toStringAsFixed(1)} KB"
+              : "${sizeInMb.toStringAsFixed(2)} MB";
+        });
+      }
+    } catch (e) {
+      if (mounted) setState(() => _fileSize = "Unknown size");
+    }
+  }
+
+  Future<void> _startDownload() async {
+    if (ActiveDownloads.tasks.containsKey(widget.fileUrl)) return;
+
+    final scaffoldMessenger = ScaffoldMessenger.of(context);
+    final currentDialogContext = context;
+
+    final notifier = ValueNotifier<double>(0.0);
+    ActiveDownloads.tasks[widget.fileUrl] = notifier;
+
+    if (mounted) {
+      setState(() {
+        _progressNotifier = notifier;
+      });
+    }
+
+    try {
+      Directory dir = Directory('/storage/emulated/0/Download');
+      String uniqueName = "${DateTime.now().millisecondsSinceEpoch}_${widget.fileName}";
+      File file = File('${dir.path}/$uniqueName');
+
+      final ref = FirebaseStorage.instance.refFromURL(widget.fileUrl);
+      final DownloadTask task = ref.writeToFile(file);
+
+      task.snapshotEvents.listen((TaskSnapshot snapshot) {
+        notifier.value = snapshot.bytesTransferred / snapshot.totalBytes;
+      });
+
+      await task;
+
+      if (widget.isImage) {
+        try {
+          if (!await Gal.hasAccess()) {
+            await Gal.requestAccess();
+          }
+          await Gal.putImage(file.path);
+        } catch (galError) {
+          debugPrint('Gallery save ignored: $galError');
+        }
+      }
+
+      scaffoldMessenger.hideCurrentSnackBar();
+      scaffoldMessenger.showSnackBar(
+        SnackBar(
+          content: Text(widget.isImage
+              ? 'Image saved to Gallery & Downloads! 🖼️✅'
+              : 'Saved! Find it in "My Files -> Downloads". Opening... 📁'),
+          backgroundColor: Colors.green,
+          duration: const Duration(seconds: 6),
+        ),
+      );
+
+      await Future.delayed(const Duration(milliseconds: 1500));
+
+      ActiveDownloads.tasks.remove(widget.fileUrl);
+
+      if (currentDialogContext.mounted) {
+        Navigator.pop(currentDialogContext);
+      }
+
+      if (!widget.isImage) {
+        await OpenFilex.open(file.path);
+      }
+
+    } catch (e) {
+      ActiveDownloads.tasks.remove(widget.fileUrl);
+      if (mounted) {
+        setState(() {
+          _progressNotifier = null;
+        });
+      }
+      scaffoldMessenger.showSnackBar(
+        SnackBar(content: Text('Download failed: $e'), backgroundColor: Colors.red),
+      );
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Dialog(
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(15)),
+      clipBehavior: Clip.antiAlias,
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Container(
+            color: Colors.grey.shade100,
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Expanded(
+                  child: Text(
+                    widget.fileName,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14),
+                  ),
+                ),
+                IconButton(
+                  icon: const Icon(Icons.close, color: Colors.black54),
+                  onPressed: () => Navigator.pop(context),
+                  padding: EdgeInsets.zero,
+                  constraints: const BoxConstraints(),
+                ),
+              ],
+            ),
+          ),
+          if (widget.isImage)
+            ConstrainedBox(
+              constraints: BoxConstraints(
+                maxHeight: MediaQuery.of(context).size.height * 0.35,
+              ),
+              child: Image.network(widget.fileUrl, fit: BoxFit.contain),
+            )
+          else
+            const Padding(
+              padding: EdgeInsets.all(40.0),
+              child: Icon(Icons.picture_as_pdf_rounded, size: 80, color: Color(0xFF6D56B3)),
+            ),
+          Padding(
+            padding: const EdgeInsets.only(bottom: 8.0),
+            child: Text(
+              _fileSize,
+              style: TextStyle(color: Colors.grey.shade600, fontSize: 13, fontWeight: FontWeight.w500),
+            ),
+          ),
+          Padding(
+            padding: const EdgeInsets.all(16.0),
+            child: _buildActionArea(),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildActionArea() {
+    if (_progressNotifier != null) {
+      return ValueListenableBuilder<double>(
+        valueListenable: _progressNotifier!,
+        builder: (context, progress, child) {
+          if (progress >= 1.0) {
+            return const Padding(
+              padding: EdgeInsets.all(8.0),
+              child: Text('Opening...', style: TextStyle(color: Color(0xFF6D56B3), fontWeight: FontWeight.bold)),
+            );
+          }
+          return Column(
+            children: [
+              LinearProgressIndicator(
+                value: progress,
+                backgroundColor: Colors.grey.shade200,
+                color: const Color(0xFF6D56B3),
+                minHeight: 8,
+                borderRadius: BorderRadius.circular(10),
+              ),
+              const SizedBox(height: 8),
+              Text(
+                'Downloading... ${(progress * 100).toStringAsFixed(0)}%',
+                style: const TextStyle(color: Color(0xFF6D56B3), fontWeight: FontWeight.bold),
+              ),
+            ],
+          );
+        },
+      );
+    }
+    return ElevatedButton.icon(
+      onPressed: _startDownload,
+      icon: const Icon(Icons.download_rounded),
+      label: const Text('Download to Device'),
+      style: ElevatedButton.styleFrom(
+        backgroundColor: const Color(0xFF6D56B3),
+        foregroundColor: Colors.white,
+        minimumSize: const Size(double.infinity, 45),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+      ),
+    );
+  }
+}
 // ─────────────────────────────────────────────────────────────────────────────
 // _CreateTaskDialog
 // ─────────────────────────────────────────────────────────────────────────────

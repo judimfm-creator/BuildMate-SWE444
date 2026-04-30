@@ -11,6 +11,11 @@ dependencies:
   flutter:
     sdk: flutter
 
+  file_picker: ^10.3.8    # لاختيار الملفات من الجهاز
+  firebase_storage: ^12.4.10  # لرفع الملفات للفايربيس
+  open_filex: ^4.3.4       # لفتح الملفات (مثل الـ PDF) بعد التحميل
+  gal: ^2.3.0             # لحفظ الصور في معرض الصور بالجهاز
+
   firebase_core: ^3.13.0
   firebase_auth: ^5.5.2
   cloud_firestore: ^5.6.6
