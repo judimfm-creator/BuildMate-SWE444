@@ -86,9 +86,9 @@ class TeamWorkspaceView extends StatelessWidget {
                       final confirm = await showDialog<bool>(
                         context: context,
                         builder: (_) => AlertDialog(
-                          title: const Text('Hide Workspace'),
+                          title: const Text('Delete Workspace'),
                           content: const Text(
-                              'This will hide the workspace from your list.'),
+                              'You will be removed from this workspace.'),
                           actions: [
                             TextButton(
                               onPressed: () => Navigator.pop(context, false),
@@ -96,7 +96,7 @@ class TeamWorkspaceView extends StatelessWidget {
                             ),
                             TextButton(
                               onPressed: () => Navigator.pop(context, true),
-                              child: const Text('Hide',
+                              child: const Text('Delete',
                                   style: TextStyle(color: Colors.red)),
                             ),
                           ],
@@ -107,6 +107,7 @@ class TeamWorkspaceView extends StatelessWidget {
                             .collection('team_posts')
                             .doc(teamPostId)
                             .update({
+                          'members': FieldValue.arrayRemove([currentUid]),
                           'hiddenFor': FieldValue.arrayUnion([currentUid]),
                         });
                         if (context.mounted) Navigator.pop(context);
@@ -114,10 +115,11 @@ class TeamWorkspaceView extends StatelessWidget {
                     },
                     icon: const Icon(Icons.delete_outline_rounded,
                         color: Colors.red, size: 16),
-                    label: const Text('Hide Workspace',
+                    label: const Text('Delete Workspace',
                         style: TextStyle(color: Colors.red, fontSize: 12)),
                   ),
                 ),
+
 
                 const SizedBox(height: 25),
 
