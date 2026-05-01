@@ -13,11 +13,12 @@ class _NotificationsViewState extends State<NotificationsView> {
   static const Color _purple = Color(0xFF6D56B3);
   static const Color _pageBg = Color(0xFFF8F9FD);
 
-  final String _uid = FirebaseAuth.instance.currentUser?.uid ?? '';
+  late final String _uid;
 
   @override
   void initState() {
     super.initState();
+    _uid = FirebaseAuth.instance.currentUser?.uid ?? '';
     _markAllAsRead();
   }
 
@@ -38,7 +39,6 @@ class _NotificationsViewState extends State<NotificationsView> {
       FirebaseFirestore.instance
           .collection('notifications')
           .where('receiverId', isEqualTo: _uid)
-          .orderBy('createdAt', descending: true)
           .snapshots();
 
   IconData _iconFor(String type) {
@@ -112,7 +112,14 @@ class _NotificationsViewState extends State<NotificationsView> {
             );
           }
 
-          final docs = snapshot.data?.docs ?? [];
+          final docs = snapshot.data?.docs ?? []
+            ..sort((a, b) {
+              final aTs = a.data()['createdAt'] as Timestamp?;
+              final bTs = b.data()['createdAt'] as Timestamp?;
+              if (aTs == null) return 1;
+              if (bTs == null) return -1;
+              return bTs.compareTo(aTs);
+            });
 
           if (docs.isEmpty) {
             return Center(
