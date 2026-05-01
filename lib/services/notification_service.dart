@@ -116,7 +116,6 @@ class NotificationService {
     _joinRequestsSub = FirebaseFirestore.instance
         .collection('notifications')
         .where('receiverId', isEqualTo: user.uid)
-        .where('type', isEqualTo: 'join_request')
         .where('isRead', isEqualTo: false)
         .snapshots()
         .listen((snapshot) {

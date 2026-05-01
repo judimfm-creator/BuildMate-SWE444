@@ -12,6 +12,7 @@ import 'package:buildmate/view/org_profile_page.dart';
 import 'package:buildmate/view/explore_user_view.dart';
 import 'package:buildmate/view/user_home_page.dart';
 import 'package:buildmate/services/notification_service.dart';
+import 'package:buildmate/widgets/notification_bell.dart';
 // ✅ إضافة هذا السطر لتمكين الصفحات الأخرى من تغيير التبويب
 _HomeScreenState? homeScreenState;
 
@@ -92,6 +93,7 @@ class _HomeScreenState extends State<HomeScreen> {
           ? null
           : BuildMateAppBar(
         onLogout: () => Provider.of<RegisterViewModel>(context, listen: false).logout(context),
+        extraActions: const [NotificationBell()],
       ),
       body: IndexedStack(
         index: _selectedIndex,

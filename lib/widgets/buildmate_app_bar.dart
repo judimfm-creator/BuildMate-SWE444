@@ -12,12 +12,16 @@ class BuildMateAppBar extends StatelessWidget implements PreferredSizeWidget {
   /// وش يسوي السهم
   final VoidCallback? onBack;
 
+  /// أيقونات إضافية في الـ AppBar
+  final List<Widget>? extraActions;
+
   const BuildMateAppBar({
     super.key,
     this.onLogout,
     this.titleText,
     this.showBack = false,
     this.onBack,
+    this.extraActions,
   });
 
   @override
@@ -60,6 +64,7 @@ class BuildMateAppBar extends StatelessWidget implements PreferredSizeWidget {
 
 
       actions: [
+        if (extraActions != null) ...extraActions!,
         if (onLogout != null)
           IconButton(
             icon: const Icon(Icons.logout, color: Colors.black87),

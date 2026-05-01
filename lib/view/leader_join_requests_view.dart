@@ -61,6 +61,23 @@ class _LeaderJoinRequestsViewState extends State<LeaderJoinRequestsView> {
     }
   }
 
+  Future<void> _writeNotification({
+    required String receiverId,
+    required String type,
+    required String title,
+    required String message,
+  }) async {
+    await FirebaseFirestore.instance.collection('notifications').add({
+      'receiverId': receiverId,
+      'type': type,
+      'title': title,
+      'message': message,
+      'isRead': false,
+      'createdAt': FieldValue.serverTimestamp(),
+      'teamPostId': widget.teamPostId,
+    });
+  }
+
   Future<void> _acceptRequest(
       BuildContext context,
       String requestDocId,
@@ -109,6 +126,14 @@ class _LeaderJoinRequestsViewState extends State<LeaderJoinRequestsView> {
 
       await batch.commit();
 
+      final String teamName = (data['teamName'] ?? 'the team').toString();
+      await _writeNotification(
+        receiverId: requesterId,
+        type: 'request_accepted',
+        title: 'Request Accepted!',
+        message: 'Your request to join $teamName has been accepted. Welcome to the team!',
+      );
+
       if (!mounted) return;
       messenger.showSnackBar(
         const SnackBar(
@@ -127,15 +152,28 @@ class _LeaderJoinRequestsViewState extends State<LeaderJoinRequestsView> {
   Future<void> _rejectRequest(
     BuildContext context,
     String requestDocId,
+    String requesterId,
   ) async {
     final messenger = ScaffoldMessenger.of(context);
+
+    final teamPostDoc = await FirebaseFirestore.instance
+        .collection('team_posts')
+        .doc(widget.teamPostId)
+        .get();
+    final String teamName =
+        (teamPostDoc.data()?['teamName'] ?? 'the team').toString();
 
     await FirebaseFirestore.instance
         .collection('join_requests')
         .doc(requestDocId)
-        .update({
-      'status': 'rejected',
-    });
+        .update({'status': 'rejected'});
+
+    await _writeNotification(
+      receiverId: requesterId,
+      type: 'request_rejected',
+      title: 'Request Not Accepted',
+      message: 'Your request to join $teamName was not accepted this time.',
+    );
 
     if (!mounted) return;
 
@@ -421,7 +459,7 @@ class _LeaderJoinRequestsViewState extends State<LeaderJoinRequestsView> {
                                         ),
                                         padding: const EdgeInsets.symmetric(vertical: 12),
                                       ),
-                                      onPressed: () => _rejectRequest(context, doc.id),
+                                      onPressed: () => _rejectRequest(context, doc.id, requesterId),
                                       icon: const Icon(Icons.close, size: 18),
                                       label: const Text(
                                         'Reject',

@@ -1044,6 +1044,24 @@ class _CreateTaskDialogState extends State<_CreateTaskDialog> {
         'createdAt': FieldValue.serverTimestamp(),
       });
 
+      final String deadlineLabel =
+          '${_deadline!.year}-${_deadline!.month.toString().padLeft(2, '0')}-${_deadline!.day.toString().padLeft(2, '0')}';
+      final String taskTitle = _titleController.text.trim();
+      final notifBatch = FirebaseFirestore.instance.batch();
+      for (final uid in _selectedUids) {
+        final ref = FirebaseFirestore.instance.collection('notifications').doc();
+        notifBatch.set(ref, {
+          'receiverId': uid,
+          'type': 'task_deadline',
+          'title': 'New Task Assigned',
+          'message': '$taskTitle — deadline $deadlineLabel',
+          'isRead': false,
+          'createdAt': FieldValue.serverTimestamp(),
+          'teamPostId': widget.teamPostId,
+        });
+      }
+      await notifBatch.commit();
+
       if (mounted) Navigator.pop(context, true);
     } catch (e) {
       setState(() {
