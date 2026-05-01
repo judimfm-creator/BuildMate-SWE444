@@ -19,83 +19,94 @@ class MyTeamsView extends StatelessWidget {
       appBar: AppBar(
         backgroundColor: Colors.white,
         elevation: 0,
-        iconTheme: const IconThemeData(color: Colors.black),
+        centerTitle: true,
+        // foregroundColor يغير لون السهم والنص معاً للموف
+        foregroundColor: const Color(0xFF6D56B3),
         title: const Text(
           "My Teams",
-          style: TextStyle(color: Colors.black, fontWeight: FontWeight.bold),
+          style: TextStyle(
+            fontSize: 20, // حجم الخط الموحد للعناوين
+            fontWeight: FontWeight.bold, // نفس ثقل خط الوورك سبيس
+            letterSpacing: 0.5,
+          ),
         ),
       ),
       body: currentUid == null
           ? const Center(child: Text("Please login first."))
           : StreamBuilder<QuerySnapshot>(
-        stream: FirebaseFirestore.instance.collection('team_posts').snapshots(),
-        builder: (context, snapshot) {
-          if (snapshot.connectionState == ConnectionState.waiting) {
-            return const Center(child: CircularProgressIndicator(color: _purple));
-          }
-
-          if (!snapshot.hasData || snapshot.data!.docs.isEmpty) {
-            return _buildEmptyState();
-          }
-
-          // فلترة الفرق الخاصة بالمستخدم
-          final myTeams = snapshot.data!.docs.where((doc) {
-            final data = doc.data() as Map<String, dynamic>;
-            final members = List<String>.from(data['members'] ?? []);
-            final createdBy = data['createdBy'] ?? '';
-            return members.contains(currentUid) || createdBy == currentUid;
-          }).toList();
-
-          if (myTeams.isEmpty) return _buildEmptyState();
-
-          return FutureBuilder<List<Map<String, dynamic>>>(
-            future: Future.wait(
-              myTeams.map((doc) async {
-                final data = doc.data() as Map<String, dynamic>;
-                final team = TeamPostModel.fromMap(doc.id, data);
-                final hackathonDoc = await FirebaseFirestore.instance
-                    .collection('hackathons')
-                    .doc(team.hackathonId)
-                    .get();
-
-                Hackathon? hackathon;
-                if (hackathonDoc.exists) {
-                  hackathon = Hackathon.fromFirestore(hackathonDoc);
+              stream: FirebaseFirestore.instance
+                  .collection('team_posts')
+                  .snapshots(),
+              builder: (context, snapshot) {
+                if (snapshot.connectionState == ConnectionState.waiting) {
+                  return const Center(
+                      child: CircularProgressIndicator(color: _purple));
                 }
-                return {'team': team, 'hackathon': hackathon};
-              }),
+
+                if (!snapshot.hasData || snapshot.data!.docs.isEmpty) {
+                  return _buildEmptyState();
+                }
+
+                // فلترة الفرق الخاصة بالمستخدم
+                final myTeams = snapshot.data!.docs.where((doc) {
+                  final data = doc.data() as Map<String, dynamic>;
+                  final members = List<String>.from(data['members'] ?? []);
+                  final createdBy = data['createdBy'] ?? '';
+                  return members.contains(currentUid) ||
+                      createdBy == currentUid;
+                }).toList();
+
+                if (myTeams.isEmpty) return _buildEmptyState();
+
+                return FutureBuilder<List<Map<String, dynamic>>>(
+                  future: Future.wait(
+                    myTeams.map((doc) async {
+                      final data = doc.data() as Map<String, dynamic>;
+                      final team = TeamPostModel.fromMap(doc.id, data);
+                      final hackathonDoc = await FirebaseFirestore.instance
+                          .collection('hackathons')
+                          .doc(team.hackathonId)
+                          .get();
+
+                      Hackathon? hackathon;
+                      if (hackathonDoc.exists) {
+                        hackathon = Hackathon.fromFirestore(hackathonDoc);
+                      }
+                      return {'team': team, 'hackathon': hackathon};
+                    }),
+                  ),
+                  builder: (context, futureSnapshot) {
+                    if (!futureSnapshot.hasData) {
+                      return const Center(
+                          child: CircularProgressIndicator(color: _purple));
+                    }
+
+                    var list = futureSnapshot.data!
+                        .where((item) => item['hackathon'] != null)
+                        .toList();
+
+                    if (list.isEmpty) return _buildEmptyState();
+
+                    return ListView.builder(
+                      padding: const EdgeInsets.all(16),
+                      itemCount: list.length,
+                      itemBuilder: (context, index) {
+                        final team = list[index]['team'] as TeamPostModel;
+                        final hackathon = list[index]['hackathon'] as Hackathon;
+                        return _buildSimplifiedTeamCard(
+                            context, team, hackathon, currentUid);
+                      },
+                    );
+                  },
+                );
+              },
             ),
-            builder: (context, futureSnapshot) {
-              if (!futureSnapshot.hasData) {
-                return const Center(child: CircularProgressIndicator(color: _purple));
-              }
-
-              var list = futureSnapshot.data!
-                  .where((item) => item['hackathon'] != null)
-                  .toList();
-
-              if (list.isEmpty) return _buildEmptyState();
-
-              return ListView.builder(
-                padding: const EdgeInsets.all(16),
-                itemCount: list.length,
-                itemBuilder: (context, index) {
-                  final team = list[index]['team'] as TeamPostModel;
-                  final hackathon = list[index]['hackathon'] as Hackathon;
-                  return _buildSimplifiedTeamCard(context, team, hackathon, currentUid);
-                },
-              );
-            },
-          );
-        },
-      ),
     );
   }
 
   // الكارد المبسطة بناءً على طلبك
-  Widget _buildSimplifiedTeamCard(
-      BuildContext context, TeamPostModel team, Hackathon hackathon, String currentUid) {
-
+  Widget _buildSimplifiedTeamCard(BuildContext context, TeamPostModel team,
+      Hackathon hackathon, String currentUid) {
     // التحقق من حالة المستخدم
     final bool isLeader = team.createdBy == currentUid;
 
@@ -140,9 +151,12 @@ class MyTeamsView extends StatelessWidget {
               const SizedBox(width: 12),
               // الـ Status Badge
               Container(
-                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
                 decoration: BoxDecoration(
-                  color: isLeader ? Colors.orange.withOpacity(0.1) : _purple.withOpacity(0.1),
+                  color: isLeader
+                      ? Colors.orange.withOpacity(0.1)
+                      : _purple.withOpacity(0.1),
                   borderRadius: BorderRadius.circular(8),
                 ),
                 child: Text(

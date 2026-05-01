@@ -88,11 +88,11 @@ class _HomeScreenState extends State<HomeScreen> {
 
     return Scaffold(
       backgroundColor: Colors.white,
-      appBar: (!_isOrg && _selectedIndex == 3) 
-          ? null 
+      appBar: (!_isOrg && _selectedIndex == 3)
+          ? null
           : BuildMateAppBar(
-              onLogout: () => Provider.of<RegisterViewModel>(context, listen: false).logout(context),
-            ),
+        onLogout: () => Provider.of<RegisterViewModel>(context, listen: false).logout(context),
+      ),
       body: IndexedStack(
         index: _selectedIndex,
         children: _isOrg ? orgPages : userPages,

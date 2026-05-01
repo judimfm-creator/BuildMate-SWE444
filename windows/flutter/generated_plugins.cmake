@@ -9,7 +9,9 @@ list(APPEND FLUTTER_PLUGIN_LIST
   file_selector_windows
   firebase_auth
   firebase_core
+  firebase_storage
   flutter_volume_controller
+  gal
   permission_handler_windows
   screen_brightness_windows
   share_plus

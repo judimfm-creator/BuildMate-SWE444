@@ -6,43 +6,31 @@ class ChatService {
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
   final FirebaseAuth _auth = FirebaseAuth.instance;
 
-  // جلب بيانات المستخدم الحالي من Firestore
   Future<UserModel?> getCurrentUser() async {
     final uid = _auth.currentUser?.uid;
     if (uid == null) return null;
-
     final doc = await _firestore.collection('users').doc(uid).get();
     if (!doc.exists) return null;
-
     return UserModel.fromMap(doc.data()!);
   }
 
-// إرسال رسالة
   Future<void> sendMessage({
     required String teamPostId,
     required String text,
     required String senderId,
     required String senderName,
   }) async {
+    final teamDoc =
+        await _firestore.collection('team_posts').doc(teamPostId).get();
 
-    final teamDoc = await _firestore
-        .collection('team_posts')
-        .doc(teamPostId)
-        .get();
+    final members = List<String>.from(teamDoc.data()?['members'] ?? []);
 
-    if (!teamDoc.exists) return;
+    // حماية: المطرود لا يقدر يرسل
+    final removedList =
+        List<String>.from(teamDoc.data()?['removedMembers'] ?? []);
+    if (removedList.contains(senderId)) return;
 
-    final data = teamDoc.data() ?? {};
-    final members = List<String>.from(data['members'] ?? []);
-    
-    // 🔴 التعديل الجوهري للأمان:
-    // نتحقق أن المستخدم موجود في قائمة الأعضاء النشطين (members)
-    // وليس في قائمة المطرودين (removedMembers)
-    if (!members.contains(senderId)) {
-      print("Access Denied: User is not an active member of this team.");
-      return; 
-    }
-
+    if (!members.contains(senderId)) return;
     if (text.trim().isEmpty) return;
 
     await _firestore
@@ -54,11 +42,10 @@ class ChatService {
       'senderId': senderId,
       'senderName': senderName,
       'createdAt': FieldValue.serverTimestamp(),
-      'readBy': [senderId], // أضفنا المرسل لقائمة القراء تلقائياً عند الإرسال
+      'readBy': [],
     });
   }
 
-  // real-time
   Stream<QuerySnapshot<Map<String, dynamic>>> getMessagesStream(
       String teamPostId) {
     return _firestore
@@ -67,5 +54,33 @@ class ChatService {
         .collection('messages')
         .orderBy('createdAt', descending: false)
         .snapshots();
+  }
+
+  // إعادة عضو مطرود — يُحذف من removedMembers ويُضاف لـ memberJoinedAt
+  Future<void> restoreMember({
+    required String teamPostId,
+    required String memberId,
+    required String desiredRole,
+  }) async {
+    await _firestore.collection('team_posts').doc(teamPostId).update({
+      'members': FieldValue.arrayUnion([memberId]),
+      'memberRoles.$memberId': desiredRole,
+      'removedMembers': FieldValue.arrayRemove([memberId]),
+      // وقت الانضمام الجديد — نفلتر الرسائل القديمة للعضو الراجع
+      'memberJoinedAt.$memberId': FieldValue.serverTimestamp(),
+    });
+  }
+
+  // حذف رسالة واحدة — للمرسل فقط
+  Future<void> deleteMessage({
+    required String teamPostId,
+    required String messageId,
+  }) async {
+    await _firestore
+        .collection('team_posts')
+        .doc(teamPostId)
+        .collection('messages')
+        .doc(messageId)
+        .delete();
   }
 }

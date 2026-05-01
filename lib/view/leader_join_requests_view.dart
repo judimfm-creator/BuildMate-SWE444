@@ -100,6 +100,11 @@ class _LeaderJoinRequestsViewState extends State<LeaderJoinRequestsView> {
       batch.update(teamPostRef, {
         'members': FieldValue.arrayUnion([requesterId]),
         'memberRoles.$requesterId': desiredRole,
+        // لو كان مطرود ورجع — نظف removedMembers وسجل وقت انضمامه الجديد
+        'removedMembers': FieldValue.arrayRemove([requesterId]),
+        'memberJoinedAt.$requesterId': FieldValue.serverTimestamp(),
+        // نظف removedAt لو كان مطروداً ورجع
+        'removedAt.$requesterId': FieldValue.delete(),
       });
 
       await batch.commit();

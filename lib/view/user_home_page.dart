@@ -4,7 +4,7 @@ import 'package:firebase_auth/firebase_auth.dart';    // 👈 أضفنا هذا 
 import '../home_screen.dart';
 import 'explore_user_view.dart' as explore_view;
 import 'my_teams_view.dart';
-import 'team_workspace_view.dart'; // 👈 تأكدي من عمل استيراد لصفحة الوورك سبيس
+import 'teams_groups_view.dart';
 
 class UserHomePage extends StatelessWidget {
   const UserHomePage({super.key});
@@ -13,19 +13,25 @@ class UserHomePage extends StatelessWidget {
   static const Color _mainOrange = Color(0xFFFFA726);
   static const Color _turquoise = Color(0xFF00ACC1);
 
-  void _navigateToExplore(int tabIndex) {
+  void _navigateToExplore(BuildContext context, int tabIndex) {
     explore_view.targetExploreTab = tabIndex;
-    homeScreenState?.changeTab(1);
+
+    // ✅ نستخدم Navigator.push لفتح الصفحة كصفحة جديدة تظهر فوق البار
+    // وهذا سيُظهر سهم العودة تلقائياً في الـ AppBar الخاص بالصفحة الجديدة
+    Navigator.of(context).push(
+      MaterialPageRoute(builder: (context) => const explore_view.ExploreUserView()),
+    );
+
     Future.delayed(const Duration(milliseconds: 100), () {
       explore_view.exploreTabStream.add(tabIndex);
     });
   }
 
-  // 🔴 تعديل دالة الانتقال للوورك سبيس لتكون أكثر ذكاءً
   void _navigateToWorkspace(BuildContext context) {
-    homeScreenState?.changeTab(2);
-    // ملاحظة: صفحة الهوم سكرين عندك هي اللي بتعرض التاب رقم 2
-    // التاب رقم 2 لازم يكون فيه Query يبحث في الـ team_posts عن المستخدم
+    // ✅ نفتحها كصفحة جديدة لضمان ظهور سهم الرجوع
+    Navigator.of(context).push(
+      MaterialPageRoute(builder: (context) => const TeamsGroupsView()),
+    );
   }
 
   @override
@@ -91,7 +97,7 @@ class UserHomePage extends StatelessWidget {
                                 title: "All Hackathons",
                                 icon: Icons.campaign_outlined,
                                 color: _turquoise,
-                                onTap: () => _navigateToExplore(0),
+                                  onTap: () => _navigateToExplore(context, 0)
                               ),
                             ),
                             const SizedBox(width: 16),
@@ -101,7 +107,7 @@ class UserHomePage extends StatelessWidget {
                                 title: "Teams to Join",
                                 icon: Icons.person_add_alt_1_rounded,
                                 color: _mainPurple,
-                                onTap: () => _navigateToExplore(1),
+                                  onTap: () => _navigateToExplore(context, 1)
                               ),
                             ),
                           ],
@@ -130,7 +136,7 @@ class UserHomePage extends StatelessWidget {
                                 title: "My Groups\nWorkspace",
                                 icon: Icons.groups_outlined,
                                 color: _mainOrange,
-                                onTap: () => _navigateToWorkspace(context), // 👈
+                                  onTap: () => _navigateToWorkspace(context)// 👈
                               ),
                             ),
                           ],

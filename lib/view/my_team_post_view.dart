@@ -251,7 +251,8 @@ class MyTeamPostView extends StatelessWidget {
     nameCtrl.dispose();
     roleCtrl.dispose();
   }
-Future<void> _removeMember(
+
+  Future<void> _removeMember(
     BuildContext context,
     String memberId,
     String memberName,
@@ -260,8 +261,7 @@ Future<void> _removeMember(
       context: context,
       builder: (_) => AlertDialog(
         title: const Text('Remove Member'),
-        // 🔴 غيرنا الرسالة لتكون أوضح
-        content: Text('Are you sure you want to remove $memberName? They will be moved to the archive and can no longer participate in new chats.'),
+        content: Text('Remove $memberName from the team?'),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context, false),
@@ -274,33 +274,21 @@ Future<void> _removeMember(
         ],
       ),
     );
-
     if (confirm == true) {
       try {
-        final batch = FirebaseFirestore.instance.batch();
-        final teamRef = FirebaseFirestore.instance.collection('team_posts').doc(teamPostId);
-        final userRef = FirebaseFirestore.instance.collection('users').doc(memberId);
-
-        // 1️⃣ تحديث بيانات الفريق
-        batch.update(teamRef, {
-          'members': FieldValue.arrayRemove([memberId]), // حذفه من النشطين
-          'removedMembers': FieldValue.arrayUnion([memberId]), // 🔴 إضافته للأرشيف (المطرودين)
-          'memberRoles.$memberId': FieldValue.delete(), // حذف دوره
+        await FirebaseFirestore.instance
+            .collection('team_posts')
+            .doc(teamPostId)
+            .update({
+          'members': FieldValue.arrayRemove([memberId]),
+          'memberRoles.$memberId': FieldValue.delete(),
+          'removedMembers': FieldValue.arrayUnion([memberId]),
+          'removedAt.$memberId': FieldValue.serverTimestamp(),
         });
-
-        // 2️⃣ تحديث بيانات المستخدم (تحريره)
-        batch.update(userRef, {
-          'hasActiveTeam': false,
-          'currentTeamId': null,
-        });
-
-        // تنفيذ كل العمليات مرة واحدة (Batch) لضمان الدقة
-        await batch.commit();
-
         if (context.mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
             const SnackBar(
-                content: Text('Member moved to archive successfully.'),
+                content: Text('Member removed.'),
                 backgroundColor: Colors.green),
           );
         }
@@ -318,11 +306,98 @@ Future<void> _removeMember(
     final String? uid = FirebaseAuth.instance.currentUser?.uid;
     if (uid == null) return;
 
+    // جلب بيانات الفريق عشان نعرف الأعضاء والليدر
+    final teamDoc = await FirebaseFirestore.instance
+        .collection('team_posts')
+        .doc(teamPostId)
+        .get();
+    if (!teamDoc.exists) return;
+
+    final data = teamDoc.data()!;
+    final String leaderId = data['createdBy'] ?? '';
+    final List<String> members =
+        List<String>.from(data['members'] ?? []);
+    final bool isLeader = uid == leaderId;
+
+    // لو ليدر — نسأله يختار خلف
+    String? newLeaderId;
+    if (isLeader) {
+      final otherMembers = members.where((m) => m != uid).toList();
+
+      if (otherMembers.isEmpty) {
+        // لو ما في أعضاء ثانيين، يطلع بدون تحويل
+        newLeaderId = null;
+      } else {
+        // جلب أسماء الأعضاء
+        final List<Map<String, String>> memberDetails = [];
+        for (final memberId in otherMembers) {
+          final userDoc = await FirebaseFirestore.instance
+              .collection('users')
+              .doc(memberId)
+              .get();
+          final name = userDoc.data()?['fullName'] ?? 'Unknown';
+          memberDetails.add({'uid': memberId, 'name': name});
+        }
+
+        if (!context.mounted) return;
+
+        // Dialog اختيار الليدر الجديد
+        newLeaderId = await showDialog<String>(
+          context: context,
+          builder: (_) => AlertDialog(
+            title: const Text('Choose New Leader'),
+            content: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                const Text(
+                  'Select a member to become the new team leader:',
+                  style: TextStyle(fontSize: 13, color: Colors.grey),
+                ),
+                const SizedBox(height: 12),
+                ...memberDetails.map(
+                  (m) => ListTile(
+                    leading: CircleAvatar(
+                      backgroundColor: const Color(0xFFF0EEFF),
+                      child: Text(
+                        m['name']!.isNotEmpty ? m['name']![0] : '?',
+                        style: const TextStyle(
+                            color: Color(0xFF6D56B3),
+                            fontWeight: FontWeight.bold),
+                      ),
+                    ),
+                    title: Text(m['name']!,
+                        style: const TextStyle(fontWeight: FontWeight.w600)),
+                    onTap: () => Navigator.pop(context, m['uid']),
+                  ),
+                ),
+              ],
+            ),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.pop(context, null),
+                child: const Text('Cancel'),
+              ),
+            ],
+          ),
+        );
+
+        // لو ما اختار = ألغى العملية
+        if (newLeaderId == null) return;
+      }
+    }
+
+    if (!context.mounted) return;
+
+    // Confirm dialog النهائي
     final confirm = await showDialog<bool>(
       context: context,
       builder: (_) => AlertDialog(
         title: const Text('Leave Team'),
-        content: const Text('Are you sure you want to leave this team?'),
+        content: Text(
+          isLeader && newLeaderId != null
+              ? 'You will leave the team and transfer leadership. You will lose access to send messages.'
+              : 'Are you sure you want to leave this team?',
+        ),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context, false),
@@ -335,29 +410,42 @@ Future<void> _removeMember(
         ],
       ),
     );
-    if (confirm == true) {
-      try {
-        await FirebaseFirestore.instance
-            .collection('team_posts')
-            .doc(teamPostId)
-            .update({
-          'members': FieldValue.arrayRemove([uid]),
-          'memberRoles.$uid': FieldValue.delete(),
-        });
-        if (context.mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(
-                content: Text('You have left the team.'),
-                backgroundColor: Colors.green),
-          );
-          Navigator.pop(context);
-        }
-      } catch (e) {
-        if (context.mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text('Error: $e'), backgroundColor: Colors.red),
-          );
-        }
+
+    if (confirm != true) return;
+
+    try {
+      final Map<String, dynamic> updates = {
+        'members': FieldValue.arrayRemove([uid]),
+        'memberRoles.$uid': FieldValue.delete(),
+        'removedMembers': FieldValue.arrayUnion([uid]),
+        // وقت الخروج — نفلتر الرسائل الجديدة بعده
+        'removedAt.$uid': FieldValue.serverTimestamp(),
+      };
+
+      // لو ليدر واختار خلف
+      if (isLeader && newLeaderId != null) {
+        updates['createdBy'] = newLeaderId;
+        updates['leaderId'] = newLeaderId;
+      }
+
+      await FirebaseFirestore.instance
+          .collection('team_posts')
+          .doc(teamPostId)
+          .update(updates);
+
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+              content: Text('You have left the team.'),
+              backgroundColor: Colors.green),
+        );
+        Navigator.pop(context);
+      }
+    } catch (e) {
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Error: \$e'), backgroundColor: Colors.red),
+        );
       }
     }
   }
@@ -402,6 +490,11 @@ Future<void> _removeMember(
           final bool isSubmitted = data['submittedToInstitution'] == true;
           final Map<String, dynamic> memberRoles = data['memberRoles'] ?? {};
           final String leaderRole = data['myRole'] ?? 'Leader';
+          // المطرود أو من طلع بنفسه
+          final List<String> removedMembers =
+              List<String>.from(data['removedMembers'] ?? []);
+          final bool isRemovedUser =
+              removedMembers.contains(currentUserId);
 
           return FutureBuilder<DocumentSnapshot<Map<String, dynamic>>>(
             future: FirebaseFirestore.instance
@@ -544,7 +637,7 @@ Future<void> _removeMember(
                               const SizedBox(width: 10),
                               const Expanded(
                                 child: Text(
-                                 "Registration is locked. You need at least 2 members to finalize.",
+                                  "Registration is locked. You need at least 2 members to finalize.",
                                   style: TextStyle(
                                     color: Color(0xFFD35400),
                                     fontSize: 12,
@@ -710,10 +803,14 @@ Future<void> _removeMember(
                       if (!isSubmitted) ...[
                         const SizedBox(height: 12),
                         _actionButton(
-                          label: 'Leave Team',
+                          label: isRemovedUser
+                              ? 'Removed from Team'
+                              : 'Leave Team',
                           icon: Icons.exit_to_app_rounded,
-                          color: Colors.red,
-                          onPressed: () => _leaveTeam(context),
+                          color: isRemovedUser ? Colors.grey : Colors.red,
+                          onPressed: isRemovedUser
+                              ? null
+                              : () => _leaveTeam(context),
                         ),
                       ],
                     ],
