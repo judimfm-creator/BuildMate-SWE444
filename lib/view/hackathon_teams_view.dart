@@ -143,7 +143,9 @@ class ExploreTeamsView extends StatelessWidget {
                 final List members = data['members'] ?? [];
 
                 if (teamId != null) {
-                  return doc.id == teamId;
+                  return doc.id == teamId &&
+                      data['createdBy'] != currentUserId &&
+                      !members.contains(currentUserId);
                 }
 
                 return data['createdBy'] != currentUserId &&
@@ -727,7 +729,7 @@ class ExploreTeamsView extends StatelessWidget {
                           final String teamName =
                               (teamData['teamName'] ?? 'your team').toString();
 
-                          if (leaderId.isNotEmpty) {
+                          if (leaderId.isNotEmpty && leaderId != uid) {
                             await FirebaseFirestore.instance
                                 .collection('notifications')
                                 .add({

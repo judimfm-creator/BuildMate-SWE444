@@ -341,7 +341,7 @@ class _ExploreUserViewState extends State<ExploreUserView> with SingleTickerProv
                           const SizedBox(height: 10),
                           _outlinedBtn(
                             "Withdraw Join Request",
-                            Colors.red,
+                            Colors.deepOrange.shade400,
                             () => _confirmWithdraw(requestId),
                           ),
                         ],
@@ -437,8 +437,9 @@ Future<List<Map<String, dynamic>>> _buildFilteredTeams(
       final data = doc.data();
       final team = TeamPostModel.fromMap(doc.id, data);
 
-      // 1. إذا أنا منضم لفريق بهذا الهاكاثون، أخفيه
+      // 1. إذا أنا منضم لفريق بهذا الهاكاثون أو أنا مؤسسه، أخفيه
       if (joinedIds.contains(team.hackathonId)) return null;
+      if (team.createdBy == currentUid) return null;
 
       // 2. إذا عندي طلب معلق، لا تظهر إلا الفريق اللي طلبت الانضمام له
       if (pendingHackathonToTeam.containsKey(team.hackathonId)) {
@@ -591,7 +592,7 @@ Future<List<Map<String, dynamic>>> _buildFilteredTeams(
             Expanded(child: _outlinedBtn("Full Details", _purple, () { if (hackathon != null) Navigator.push(context, MaterialPageRoute(builder: (c) => TeamPostDetailsView(team: team, hackathon: hackathon))); })),
             const SizedBox(width: 12),
             Expanded(child: isPending 
-              ? _outlinedBtn("Withdraw Request", Colors.red, () async {
+              ? _outlinedBtn("Withdraw Request", Colors.deepOrange.shade400, () async {
                   final q = await FirebaseFirestore.instance.collection('join_requests')
                       .where('requesterId', isEqualTo: FirebaseAuth.instance.currentUser?.uid)
                       .where('teamPostId', isEqualTo: team.id)
@@ -704,7 +705,7 @@ Future<List<Map<String, dynamic>>> _buildFilteredTeams(
   }
 
   Widget _filterSectionTitle(String title) => Padding(padding: const EdgeInsets.only(top: 10, bottom: 5), child: Text(title, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 12, color: Colors.grey)));
-  Widget _buildClearFilterButton() => Container(height: 45, width: 45, decoration: BoxDecoration(color: Colors.red.withOpacity(0.1), borderRadius: BorderRadius.circular(12)), child: IconButton(icon: const Icon(Icons.filter_alt_off, color: Colors.red, size: 20), onPressed: _clearAllFilters));
+  Widget _buildClearFilterButton() => Container(height: 45, width: 45, decoration: BoxDecoration(color: Colors.orange.withValues(alpha: 0.1), borderRadius: BorderRadius.circular(12)), child: IconButton(icon: Icon(Icons.filter_alt_off, color: Colors.orange.shade700, size: 20), onPressed: _clearAllFilters));
 
   Widget _btn(String label, Color color, VoidCallback? onTap) => SizedBox(width: double.infinity, height: 42, child: ElevatedButton(style: ElevatedButton.styleFrom(backgroundColor: color, elevation: 0, shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12))), onPressed: onTap, child: Text(label, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 12, color: Colors.white))));
   Widget _outlinedBtn(String label, Color color, VoidCallback? onTap) => SizedBox(width: double.infinity, height: 42, child: OutlinedButton(style: OutlinedButton.styleFrom(foregroundColor: color, side: BorderSide(color: onTap == null ? Colors.grey.shade300 : color, width: 1.2), shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12))), onPressed: onTap, child: Text(label, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 12))));
@@ -713,9 +714,9 @@ Future<List<Map<String, dynamic>>> _buildFilteredTeams(
     final now = DateTime.now();
     final endOfDeadline = DateTime(deadline.year, deadline.month, deadline.day, 23, 59, 59);
     final bool cl = now.isAfter(endOfDeadline);
-    String label = "Registration Open"; Color color = Colors.green;
+    String label = "Registration Open"; Color color = const Color(0xFF6D56B3);
     if (ns) { label = "Registration Upcoming Soon"; color = Colors.orange; }
-    else if (cl) { label = "Registration Closed"; color = Colors.red; }
+    else if (cl) { label = "Registration Closed"; color = Colors.grey.shade500; }
     return Container(padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4), decoration: BoxDecoration(color: color.withOpacity(0.1), borderRadius: BorderRadius.circular(8)), child: Text(label.toUpperCase(), style: TextStyle(color: color, fontSize: 8, fontWeight: FontWeight.bold)));
   }
 
@@ -732,5 +733,5 @@ Future<List<Map<String, dynamic>>> _buildFilteredTeams(
       },
     );
   }
-  Widget _dateItem(String label, String date, {bool isCritical = false}) => Column(crossAxisAlignment: CrossAxisAlignment.start, children: [Text(label, style: const TextStyle(fontSize: 9, color: Colors.grey, fontWeight: FontWeight.bold)), Text(date, style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: isCritical ? Colors.redAccent : Colors.black))]);
+  Widget _dateItem(String label, String date, {bool isCritical = false}) => Column(crossAxisAlignment: CrossAxisAlignment.start, children: [Text(label, style: const TextStyle(fontSize: 9, color: Colors.grey, fontWeight: FontWeight.bold)), Text(date, style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: isCritical ? Colors.deepOrange.shade400 : Colors.black))]);
 }

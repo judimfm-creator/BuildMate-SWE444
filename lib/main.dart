@@ -115,14 +115,6 @@ class _MyAppState extends State<MyApp> {
 
     NotificationService.instance.navigatorKey = _navigatorKey;
 
-    /// Foreground FCM → show in-app banner
-    FirebaseMessaging.onMessage.listen((RemoteMessage message) {
-      NotificationService.instance.showNotification(
-        title: message.notification?.title ?? 'New Notification',
-        body: message.notification?.body ?? '',
-      );
-    });
-
     FirebaseMessaging.onMessageOpenedApp.listen((RemoteMessage message) {
       debugPrint('Notification clicked: ${message.messageId}');
     });

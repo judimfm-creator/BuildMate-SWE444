@@ -297,7 +297,7 @@ class _HackathonDetailsViewState extends State<HackathonDetailsView> {
 
   Widget _buildSimpleStatusBadge(bool ns, bool cl, bool ended) {
     String label = "Registration Open";
-    Color color = Colors.green;
+    Color color = const Color(0xFF6D56B3);
     IconData icon = Icons.check_circle_outline;
 
     if (ended) {
@@ -306,7 +306,7 @@ class _HackathonDetailsViewState extends State<HackathonDetailsView> {
       icon = Icons.event_available;
     } else if (cl) {
       label = "Registration Closed";
-      color = Colors.red;
+      color = Colors.grey.shade500;
       icon = Icons.lock_outline;
     } else if (ns) {
       label = "Registration Upcoming Soon";

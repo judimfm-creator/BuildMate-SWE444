@@ -153,9 +153,9 @@ class MyTeamPostView extends StatelessWidget {
           ),
           TextButton(
             onPressed: () => Navigator.pop(context, true),
-            child: const Text(
+            child: Text(
               'Delete',
-              style: TextStyle(color: Colors.red),
+              style: TextStyle(color: Colors.deepOrange.shade400),
             ),
           ),
         ],
@@ -556,38 +556,69 @@ Future<void> _removeMember(
                           ),
                         ),
                       if (!isSubmitted) ...[
-                        _actionButton(
-                          label: 'Edit Team Info',
-                          icon: Icons.edit_outlined,
-                          color: purple,
-                          onPressed: () => _editTeamInfo(context, data),
+                        Row(
+                          children: [
+                            Expanded(
+                              child: _actionButton(
+                                label: 'Edit Team Info',
+                                icon: Icons.edit_outlined,
+                                color: purple,
+                                onPressed: () => _editTeamInfo(context, data),
+                              ),
+                            ),
+                            const SizedBox(width: 10),
+                            Expanded(
+                              child: StreamBuilder<int>(
+                                stream: _pendingRequestsCountStream(),
+                                builder: (context, snapshot) {
+                                  final int count = snapshot.data ?? 0;
+                                  return _actionButton(
+                                    label: 'Join Requests',
+                                    icon: Icons.group_add_outlined,
+                                    color: purple,
+                                    badgeCount: count,
+                                    onPressed: () {
+                                      Navigator.push(
+                                        context,
+                                        MaterialPageRoute(
+                                          builder: (_) => LeaderJoinRequestsView(
+                                            teamPostId: teamPostId,
+                                          ),
+                                        ),
+                                      );
+                                    },
+                                  );
+                                },
+                              ),
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: 12),
+                      ] else ...[
+                        StreamBuilder<int>(
+                          stream: _pendingRequestsCountStream(),
+                          builder: (context, snapshot) {
+                            final int count = snapshot.data ?? 0;
+                            return _actionButton(
+                              label: 'View Join Requests',
+                              icon: Icons.group_add_outlined,
+                              color: purple,
+                              badgeCount: count,
+                              onPressed: () {
+                                Navigator.push(
+                                  context,
+                                  MaterialPageRoute(
+                                    builder: (_) => LeaderJoinRequestsView(
+                                      teamPostId: teamPostId,
+                                    ),
+                                  ),
+                                );
+                              },
+                            );
+                          },
                         ),
                         const SizedBox(height: 12),
                       ],
-                      StreamBuilder<int>(
-                        stream: _pendingRequestsCountStream(),
-                        builder: (context, snapshot) {
-                          final int count = snapshot.data ?? 0;
-
-                          return _actionButton(
-                            label: 'View Join Requests',
-                            icon: Icons.group_add_outlined,
-                            color: purple,
-                            badgeCount: count,
-                            onPressed: () {
-                              Navigator.push(
-                                context,
-                                MaterialPageRoute(
-                                  builder: (_) => LeaderJoinRequestsView(
-                                    teamPostId: teamPostId,
-                                  ),
-                                ),
-                              );
-                            },
-                          );
-                        },
-                      ),
-                      const SizedBox(height: 12),
                       _actionButton(
                         label: isSubmitted
                             ? 'Registration Submitted'
@@ -600,7 +631,7 @@ Future<void> _removeMember(
                         color: isSubmitted
                             ? Colors.grey
                             : (canFinalize
-                                ? Colors.green
+                                ? const Color(0xFF6D56B3)
                                 : Colors.grey.shade400),
                         onPressed: canFinalize
                             ? () {
@@ -621,12 +652,22 @@ Future<void> _removeMember(
                             : null,
                       ),
                       if (!isSubmitted) ...[
+                        const SizedBox(height: 16),
+                        Divider(color: Colors.grey.shade200, height: 1),
                         const SizedBox(height: 12),
-                        _actionButton(
-                          label: 'Delete Team',
-                          icon: Icons.delete_outline,
-                          color: Colors.red,
-                          onPressed: () => _showDeleteConfirmation(context),
+                        SizedBox(
+                          width: double.infinity,
+                          height: 46,
+                          child: OutlinedButton.icon(
+                            style: OutlinedButton.styleFrom(
+                              foregroundColor: Colors.deepOrange.shade400,
+                              side: BorderSide(color: Colors.deepOrange.shade300, width: 1.2),
+                              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                            ),
+                            onPressed: () => _showDeleteConfirmation(context),
+                            icon: Icon(Icons.delete_outline, size: 18, color: Colors.deepOrange.shade400),
+                            label: Text('Delete Team', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14, color: Colors.deepOrange.shade400)),
+                          ),
                         ),
                       ],
                       if (!isSubmitted)

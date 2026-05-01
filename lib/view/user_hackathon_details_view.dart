@@ -135,14 +135,14 @@ class UserHackathonDetailsView extends StatelessWidget {
 
   Widget _buildSimpleStatusBadge(bool regNotStarted, bool regClosed) {
     String label = "Registration Open";
-    Color color = Colors.green;
+    Color color = const Color(0xFF6D56B3);
 
     if (regNotStarted) {
       label = "Upcoming";
       color = Colors.orange;
     } else if (regClosed) {
       label = "Registration Closed";
-      color = Colors.red;
+      color = Colors.grey.shade500;
     }
 
     return Row(

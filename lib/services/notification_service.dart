@@ -184,7 +184,7 @@ class _InAppBannerWidgetState extends State<_InAppBannerWidget>
     );
 
     _controller.forward();
-    Future.delayed(const Duration(seconds: 4), _dismiss);
+    Future.delayed(const Duration(seconds: 15), _dismiss);
   }
 
   Future<void> _dismiss() async {
