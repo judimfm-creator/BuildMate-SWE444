@@ -106,12 +106,17 @@ class NotificationService {
     overlay.insert(entry);
   }
 
-  // Listens to the notifications collection for real-time in-app banners
+  bool _initialLoadDone = false;
+
+  // Listens to the notifications collection for real-time in-app banners.
+  // First snapshot silently seeds seen IDs — only additions AFTER login show a banner.
   void startJoinRequestListener() {
     final User? user = FirebaseAuth.instance.currentUser;
     if (user == null) return;
 
     _joinRequestsSub?.cancel();
+    _initialLoadDone = false;
+    _shownNotificationIds.clear();
 
     _joinRequestsSub = FirebaseFirestore.instance
         .collection('notifications')
@@ -119,6 +124,15 @@ class NotificationService {
         .where('isRead', isEqualTo: false)
         .snapshots()
         .listen((snapshot) {
+      if (!_initialLoadDone) {
+        // Seed all existing IDs silently — these are old, don't banner them
+        for (final doc in snapshot.docs) {
+          _shownNotificationIds.add(doc.id);
+        }
+        _initialLoadDone = true;
+        return;
+      }
+
       for (final change in snapshot.docChanges) {
         if (change.type != DocumentChangeType.added) continue;
 
@@ -129,10 +143,8 @@ class NotificationService {
         if (_shownNotificationIds.contains(doc.id)) continue;
         _shownNotificationIds.add(doc.id);
 
-        final String title =
-            (data['title'] ?? 'New Join Request').toString();
-        final String body =
-            (data['message'] ?? 'Someone wants to join your team').toString();
+        final String title = (data['title'] ?? 'New Notification').toString();
+        final String body = (data['message'] ?? '').toString();
 
         showInAppBanner(title: title, body: body);
       }
