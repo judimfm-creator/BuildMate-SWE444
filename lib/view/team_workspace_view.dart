@@ -24,6 +24,38 @@ class TeamWorkspaceView extends StatelessWidget {
 
   // متغير لمراقبة حالة الرفع
   final ValueNotifier<bool> _isUploading = ValueNotifier(false);
+  Future<List<Map<String, String>>> _buildMembersList(
+      String leaderId, List members) async {
+    final List<Map<String, String>> membersList = [];
+
+    final leaderDoc = await FirebaseFirestore.instance
+        .collection('users')
+        .doc(leaderId)
+        .get();
+    final leaderName = leaderDoc.data()?['name'] ??
+        leaderDoc.data()?['displayName'] ??
+        leaderDoc.data()?['username'] ??
+        'Leader';
+    membersList.add({'uid': leaderId, 'name': leaderName});
+
+    for (final uid in members.cast<String>()) {
+      if (uid == leaderId) continue;
+      try {
+        final userDoc = await FirebaseFirestore.instance
+            .collection('users')
+            .doc(uid)
+            .get();
+        final name = userDoc.data()?['name'] ??
+            userDoc.data()?['displayName'] ??
+            userDoc.data()?['username'] ??
+            'Member';
+        membersList.add({'uid': uid, 'name': name});
+      } catch (_) {
+        membersList.add({'uid': uid, 'name': 'Member'});
+      }
+    }
+    return membersList;
+  }
 
   // دالة اختيار ورفع الملف
   Future<void> _uploadFile(BuildContext context) async {
@@ -270,7 +302,55 @@ class TeamWorkspaceView extends StatelessWidget {
                                       title: d['title'] ?? '',
                                       deadline: label,
                                       assigneeNames: names,
+                                      onDelete: () async {
+                                        final confirm = await showDialog<bool>(
+                                          context: context,
+                                          builder: (_) => AlertDialog(
+                                            title: const Text('Delete Task'),
+                                            content: const Text('Are you sure you want to delete this task?'),
+                                            actions: [
+                                              TextButton(
+                                                onPressed: () => Navigator.pop(context, false),
+                                                child: const Text('Cancel'),
+                                              ),
+                                              TextButton(
+                                                onPressed: () => Navigator.pop(context, true),
+                                                child: const Text('Delete',
+                                                    style: TextStyle(color: Colors.red)),
+                                              ),
+                                            ],
+                                          ),
+                                        );
+                                        if (confirm == true) {
+                                          await FirebaseFirestore.instance
+                                              .collection('team_posts')
+                                              .doc(teamPostId)
+                                              .collection('tasks')
+                                              .doc(doc.id)
+                                              .delete();
+                                        }
+                                      },
+                                      onEdit: () {
+                                        _buildMembersList(leaderId, members).then((membersList) {
+
+                                          if (context.mounted) {
+                                            showDialog(
+                                              context: context,
+                                              builder: (_) => _EditTaskDialog(
+                                                teamPostId: teamPostId,
+                                                taskId: doc.id,
+                                                currentTitle: d['title'] ?? '',
+                                                currentDeadline: (d['deadline'] as Timestamp?)?.toDate(),
+                                                currentAssignedUids: List<String>.from(d['assignedTo'] ?? []),
+                                                members: membersList,
+                                              ),
+                                            );
+                                          }
+                                        });
+                                      },
+
                                     );
+
                                   },
                                 ),
                               );
@@ -325,6 +405,7 @@ class TeamWorkspaceView extends StatelessWidget {
                                           ),
                                         );
                                       }
+
                                     },
                                     icon: const Icon(Icons.add_rounded,
                                         size: 18),
@@ -621,11 +702,17 @@ class _TaskRow extends StatelessWidget {
   final String deadline;
   final List<String> assigneeNames; // 👈 جديد
 
+  final VoidCallback? onEdit;
+  final VoidCallback? onDelete;
+
   const _TaskRow({
     required this.title,
     required this.deadline,
-    this.assigneeNames = const [], // 👈 جديد
+    this.assigneeNames = const [],
+    this.onEdit,
+    this.onDelete,
   });
+
 
   @override
   Widget build(BuildContext context) {
@@ -658,6 +745,23 @@ class _TaskRow extends StatelessWidget {
                         fontWeight: FontWeight.bold,
                         fontSize: 10)),
               ),
+              if (onEdit != null) ...[
+                const SizedBox(width: 6),
+                GestureDetector(
+                  onTap: onEdit,
+                  child: const Icon(Icons.edit_rounded,
+                      size: 16, color: Color(0xFF6D56B3)),
+                ),
+              ],
+              if (onDelete != null) ...[
+                const SizedBox(width: 6),
+                GestureDetector(
+                  onTap: onDelete,
+                  child: const Icon(Icons.delete_outline_rounded,
+                      size: 16, color: Colors.red),
+                ),
+              ],
+
             ],
           ),
           // 👈 أسماء الأعضاء تحت
@@ -1285,6 +1389,297 @@ class _CreateTaskDialogState extends State<_CreateTaskDialog> {
                           color: Colors.white, strokeWidth: 2),
                     )
                         : const Text('Create',
+                        style:
+                        TextStyle(fontWeight: FontWeight.w700)),
+                  ),
+                ],
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+class _EditTaskDialog extends StatefulWidget {
+  final String teamPostId;
+  final String taskId;
+  final String currentTitle;
+  final DateTime? currentDeadline;
+  final List<String> currentAssignedUids;
+  final List<Map<String, String>> members;
+
+  const _EditTaskDialog({
+    required this.teamPostId,
+    required this.taskId,
+    required this.currentTitle,
+    required this.currentDeadline,
+    required this.currentAssignedUids,
+    required this.members,
+  });
+
+  @override
+  State<_EditTaskDialog> createState() => _EditTaskDialogState();
+}
+
+class _EditTaskDialogState extends State<_EditTaskDialog> {
+  static const Color _purple = Color(0xFF6D56B3);
+
+  final _formKey = GlobalKey<FormState>();
+  late TextEditingController _titleController;
+  late List<String> _selectedUids;
+  DateTime? _deadline;
+  bool _saving = false;
+  String? _errorMessage;
+
+  @override
+  void initState() {
+    super.initState();
+    _titleController = TextEditingController(text: widget.currentTitle);
+    _selectedUids = List.from(widget.currentAssignedUids);
+    _deadline = widget.currentDeadline;
+  }
+
+  @override
+  void dispose() {
+    _titleController.dispose();
+    super.dispose();
+  }
+
+  Future<void> _pickDate() async {
+    final picked = await showDatePicker(
+      context: context,
+      initialDate: _deadline ?? DateTime.now().add(const Duration(days: 1)),
+      firstDate: DateTime.now(),
+      lastDate: DateTime.now().add(const Duration(days: 365)),
+      builder: (ctx, child) => Theme(
+        data: Theme.of(ctx).copyWith(
+          colorScheme: const ColorScheme.light(primary: _purple),
+        ),
+        child: child!,
+      ),
+    );
+    if (picked != null) setState(() => _deadline = picked);
+  }
+
+  Future<void> _save() async {
+    setState(() => _errorMessage = null);
+    if (!_formKey.currentState!.validate()) return;
+    if (_selectedUids.isEmpty) {
+      setState(() => _errorMessage = 'Please assign at least one member.');
+      return;
+    }
+    if (_deadline == null) {
+      setState(() => _errorMessage = 'Please select a deadline.');
+      return;
+    }
+
+    setState(() => _saving = true);
+    try {
+      await FirebaseFirestore.instance
+          .collection('team_posts')
+          .doc(widget.teamPostId)
+          .collection('tasks')
+          .doc(widget.taskId)
+          .update({
+        'title': _titleController.text.trim(),
+        'assignedTo': _selectedUids,
+        'deadline': Timestamp.fromDate(_deadline!),
+      });
+      if (mounted) Navigator.pop(context, true);
+    } catch (e) {
+      setState(() {
+        _saving = false;
+        _errorMessage = 'Something went wrong, please try again.';
+      });
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final String deadlineLabel = _deadline == null
+        ? 'Pick a deadline'
+        : '${_deadline!.year}-${_deadline!.month.toString().padLeft(2, '0')}-${_deadline!.day.toString().padLeft(2, '0')}';
+
+    return Dialog(
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
+      insetPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 40),
+      child: Padding(
+        padding: const EdgeInsets.all(24),
+        child: Form(
+          key: _formKey,
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              // Header
+              Row(
+                children: [
+                  Container(
+                    padding: const EdgeInsets.all(8),
+                    decoration: BoxDecoration(
+                      color: _purple.withOpacity(0.1),
+                      shape: BoxShape.circle,
+                    ),
+                    child: const Icon(Icons.edit_rounded,
+                        color: _purple, size: 20),
+                  ),
+                  const SizedBox(width: 12),
+                  const Text('Edit Task',
+                      style: TextStyle(
+                          fontWeight: FontWeight.w900,
+                          fontSize: 18,
+                          color: _purple)),
+                ],
+              ),
+              const SizedBox(height: 20),
+
+              // Task Name
+              TextFormField(
+                controller: _titleController,
+                maxLength: 20,
+                decoration: InputDecoration(
+                  labelText: 'Task Name',
+                  prefixIcon: const Icon(Icons.drive_file_rename_outline,
+                      color: _purple),
+                  border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(14)),
+                  focusedBorder: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(14),
+                    borderSide:
+                    const BorderSide(color: _purple, width: 1.5),
+                  ),
+                ),
+                validator: (v) => (v == null || v.trim().isEmpty)
+                    ? 'Task name cannot be empty.'
+                    : null,
+              ),
+              const SizedBox(height: 16),
+
+              // Assign Members
+              const Text('Assign to',
+                  style: TextStyle(
+                      fontWeight: FontWeight.w700, fontSize: 14)),
+              const SizedBox(height: 8),
+              Wrap(
+                spacing: 8,
+                runSpacing: 6,
+                children: widget.members.map((m) {
+                  final isSelected = _selectedUids.contains(m['uid']);
+                  return FilterChip(
+                    label: Text(m['name'] ?? 'Member'),
+                    selected: isSelected,
+                    onSelected: (val) {
+                      setState(() {
+                        if (val) {
+                          _selectedUids.add(m['uid']!);
+                        } else {
+                          _selectedUids.remove(m['uid']);
+                        }
+                      });
+                    },
+                    selectedColor: _purple.withOpacity(0.15),
+                    checkmarkColor: _purple,
+                    labelStyle: TextStyle(
+                      color: isSelected ? _purple : Colors.black87,
+                      fontWeight: isSelected
+                          ? FontWeight.w700
+                          : FontWeight.normal,
+                      fontSize: 13,
+                    ),
+                    side: BorderSide(
+                        color: isSelected
+                            ? _purple
+                            : Colors.grey.shade300),
+                  );
+                }).toList(),
+              ),
+              const SizedBox(height: 16),
+
+              // Deadline
+              const Text('Deadline',
+                  style: TextStyle(
+                      fontWeight: FontWeight.w700, fontSize: 14)),
+              const SizedBox(height: 8),
+              GestureDetector(
+                onTap: _pickDate,
+                child: Container(
+                  padding: const EdgeInsets.symmetric(
+                      horizontal: 14, vertical: 12),
+                  decoration: BoxDecoration(
+                    border: Border.all(
+                        color: _deadline != null
+                            ? _purple
+                            : Colors.grey.shade300,
+                        width: _deadline != null ? 1.5 : 1),
+                    borderRadius: BorderRadius.circular(14),
+                  ),
+                  child: Row(
+                    children: [
+                      Icon(Icons.calendar_today_rounded,
+                          color:
+                          _deadline != null ? _purple : Colors.grey,
+                          size: 18),
+                      const SizedBox(width: 10),
+                      Text(deadlineLabel,
+                          style: TextStyle(
+                              color: _deadline != null
+                                  ? Colors.black87
+                                  : Colors.grey,
+                              fontSize: 14)),
+                    ],
+                  ),
+                ),
+              ),
+              const SizedBox(height: 16),
+
+              if (_errorMessage != null) ...[
+                Container(
+                  width: double.infinity,
+                  padding: const EdgeInsets.symmetric(
+                      horizontal: 12, vertical: 10),
+                  decoration: BoxDecoration(
+                    color: Colors.red.withOpacity(0.08),
+                    borderRadius: BorderRadius.circular(10),
+                    border:
+                    Border.all(color: Colors.red.withOpacity(0.3)),
+                  ),
+                  child: Text(_errorMessage!,
+                      style: const TextStyle(
+                          color: Colors.redAccent, fontSize: 12)),
+                ),
+                const SizedBox(height: 12),
+              ],
+
+              // Buttons
+              Row(
+                mainAxisAlignment: MainAxisAlignment.end,
+                children: [
+                  TextButton(
+                    onPressed:
+                    _saving ? null : () => Navigator.pop(context),
+                    child: const Text('Cancel',
+                        style: TextStyle(color: Colors.grey)),
+                  ),
+                  const SizedBox(width: 8),
+                  ElevatedButton(
+                    onPressed: _saving ? null : _save,
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: _purple,
+                      foregroundColor: Colors.white,
+                      shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(12)),
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 24, vertical: 12),
+                    ),
+                    child: _saving
+                        ? const SizedBox(
+                      width: 16,
+                      height: 16,
+                      child: CircularProgressIndicator(
+                          color: Colors.white, strokeWidth: 2),
+                    )
+                        : const Text('Save',
                         style:
                         TextStyle(fontWeight: FontWeight.w700)),
                   ),
