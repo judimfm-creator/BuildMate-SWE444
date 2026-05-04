@@ -1,6 +1,9 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import '../model/user_model.dart';
+import 'package:firebase_storage/firebase_storage.dart';
+import 'dart:io';
+
 
 class ChatService {
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
@@ -14,6 +17,43 @@ class ChatService {
     return UserModel.fromMap(doc.data()!);
   }
 
+  Future<void> sendFileMessage({
+    required String teamPostId,
+    required String senderId,
+    required String senderName,
+    required File file,
+    required String fileName,
+    required String fileType, // 'image' | 'file'
+  }) async {
+    final teamDoc = await _firestore.collection('team_posts').doc(teamPostId).get();
+    final members = List<String>.from(teamDoc.data()?['members'] ?? []);
+    final removedList = List<String>.from(teamDoc.data()?['removedMembers'] ?? []);
+    if (removedList.contains(senderId) || !members.contains(senderId)) return;
+
+    final safeFileName = "${DateTime.now().millisecondsSinceEpoch}_${fileName.replaceAll(RegExp(r'[^a-zA-Z0-9\.]'), '_')}";
+
+    final ref = FirebaseStorage.instance
+        .ref()
+        .child('chat_files/$teamPostId/$safeFileName');
+
+    await ref.putFile(file);
+    final downloadUrl = await ref.getDownloadURL();
+
+    await _firestore
+        .collection('team_posts')
+        .doc(teamPostId)
+        .collection('messages')
+        .add({
+      'text': '',
+      'fileUrl': downloadUrl,
+      'fileName': fileName,
+      'fileType': fileType,
+      'senderId': senderId,
+      'senderName': senderName,
+      'createdAt': FieldValue.serverTimestamp(),
+      'readBy': [],
+    });
+  }
   Future<void> sendMessage({
     required String teamPostId,
     required String text,

@@ -457,11 +457,37 @@ class TeamWorkspaceView extends StatelessWidget {
                             final label = deadline == null
                                 ? '—'
                                 : '${deadline.year}-${deadline.month.toString().padLeft(2, '0')}-${deadline.day.toString().padLeft(2, '0')}';
+                            final List<String> assignedUids =
+                            List<String>.from(d['assignedTo'] ?? []);
+
                             return Padding(
                               padding: const EdgeInsets.only(bottom: 10),
-                              child: _TaskRow(
-                                  title: d['title'] ?? '',
-                                  deadline: label),
+                              child: FutureBuilder<List<String>>(
+                                future: Future.wait(
+                                  assignedUids.map((uid) async {
+                                    try {
+                                      final userDoc = await FirebaseFirestore.instance
+                                          .collection('users')
+                                          .doc(uid)
+                                          .get();
+                                      return userDoc.data()?['name'] ??
+                                          userDoc.data()?['displayName'] ??
+                                          userDoc.data()?['username'] ??
+                                          'Member';
+                                    } catch (_) {
+                                      return 'Member';
+                                    }
+                                  }),
+                                ),
+                                builder: (context, nameSnap) {
+                                  final names = nameSnap.data ?? [];
+                                  return _TaskRow(
+                                    title: d['title'] ?? '',
+                                    deadline: label,
+                                    assigneeNames: names,
+                                  );
+                                },
+                              ),
                             );
                           }).toList(),
                         );

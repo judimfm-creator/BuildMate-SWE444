@@ -4,6 +4,10 @@ import 'package:intl/intl.dart';
 import '../model/user_model.dart';
 import '../services/chat_service.dart';
 import 'video_call_view.dart';
+import 'dart:io';
+import 'package:file_picker/file_picker.dart';
+import 'package:image_picker/image_picker.dart';
+import 'package:open_filex/open_filex.dart';
 
 class GroupChatView extends StatefulWidget {
   final String teamPostId;
@@ -104,6 +108,112 @@ class _GroupChatViewState extends State<GroupChatView> {
     _scrollToBottom();
   }
 
+  // ── دالة إرسال الملف ─────────────────────────────────────────────────────
+  Future<void> _sendFile() async {
+    if (_currentUser == null) return;
+
+    final choice = await showModalBottomSheet<String>(
+      context: context,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      builder: (_) => SafeArea(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const SizedBox(height: 8),
+            Container(
+              width: 40,
+              height: 4,
+              decoration: BoxDecoration(
+                  color: Colors.grey.shade300,
+                  borderRadius: BorderRadius.circular(2)),
+            ),
+            const SizedBox(height: 16),
+            ListTile(
+              leading: Container(
+                padding: const EdgeInsets.all(8),
+                decoration: BoxDecoration(
+                    color: _purple.withOpacity(0.1), shape: BoxShape.circle),
+                child: const Icon(Icons.image_rounded, color: _purple),
+              ),
+              title: const Text('Photo from Gallery',
+                  style: TextStyle(fontWeight: FontWeight.w600)),
+              onTap: () => Navigator.pop(context, 'image'),
+            ),
+            ListTile(
+              leading: Container(
+                padding: const EdgeInsets.all(8),
+                decoration: BoxDecoration(
+                    color: _purple.withOpacity(0.1), shape: BoxShape.circle),
+                child: const Icon(Icons.attach_file_rounded, color: _purple),
+              ),
+              title: const Text('File',
+                  style: TextStyle(fontWeight: FontWeight.w600)),
+              onTap: () => Navigator.pop(context, 'file'),
+            ),
+            const SizedBox(height: 8),
+          ],
+        ),
+      ),
+    );
+
+    if (choice == null) return;
+
+    File? file;
+    String? fileName;
+    final String fileType = choice;
+
+    if (choice == 'image') {
+      final picked = await ImagePicker()
+          .pickImage(source: ImageSource.gallery, imageQuality: 70);
+      if (picked == null) return;
+      file = File(picked.path);
+      fileName = picked.name;
+    } else {
+      final result = await FilePicker.platform.pickFiles();
+      if (result == null || result.files.single.path == null) return;
+      file = File(result.files.single.path!);
+      fileName = result.files.single.name;
+    }
+
+    if (!context.mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(
+          content: Text('Uploading...'),
+          duration: Duration(seconds: 60)),
+    );
+
+    try {
+      await _chatService.sendFileMessage(
+        teamPostId: widget.teamPostId,
+        senderId: _currentUser!.uid,
+        senderName: _currentUser!.fullName,
+        file: file,
+        fileName: fileName!,
+        fileType: fileType,
+      );
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).hideCurrentSnackBar();
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+              content: Text('Sent! ✅'),
+              backgroundColor: Colors.green,
+              duration: Duration(seconds: 2)),
+        );
+        _scrollToBottom();
+      }
+    } catch (e) {
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).hideCurrentSnackBar();
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+              content: Text('Failed: $e'), backgroundColor: Colors.red),
+        );
+      }
+    }
+  }
+
   void _scrollToBottom() {
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (_scrollController.hasClients) {
@@ -184,19 +294,19 @@ class _GroupChatViewState extends State<GroupChatView> {
 
         // removedAt: وقت الطرد أو الانسحاب — نخفي الرسائل بعده عن المطرود
         final removedAtMap =
-            Map<String, dynamic>.from(teamData['removedAt'] ?? {});
+        Map<String, dynamic>.from(teamData['removedAt'] ?? {});
         final Timestamp? removedAt = (isRemoved &&
-                _currentUser != null &&
-                removedAtMap.containsKey(_currentUser!.uid))
+            _currentUser != null &&
+            removedAtMap.containsKey(_currentUser!.uid))
             ? (removedAtMap[_currentUser!.uid] as Timestamp?)
             : null;
 
         // memberJoinedAt: للأعضاء الجدد — ما يشوفون رسائل قبل انضمامهم
         final memberJoinedAtMap =
-            Map<String, dynamic>.from(teamData['memberJoinedAt'] ?? {});
+        Map<String, dynamic>.from(teamData['memberJoinedAt'] ?? {});
         final Timestamp? joinedAt = (!isRemoved &&
-                _currentUser != null &&
-                memberJoinedAtMap.containsKey(_currentUser!.uid))
+            _currentUser != null &&
+            memberJoinedAtMap.containsKey(_currentUser!.uid))
             ? (memberJoinedAtMap[_currentUser!.uid] as Timestamp?)
             : null;
 
@@ -206,7 +316,9 @@ class _GroupChatViewState extends State<GroupChatView> {
           body: Column(
             children: [
               // الشات يظهر للجميع — المطرود والأعضاء
-              Expanded(child: _buildMessagesList(joinedAt: joinedAt, removedAt: removedAt)),
+              Expanded(
+                  child: _buildMessagesList(
+                      joinedAt: joinedAt, removedAt: removedAt)),
               // المطرود: بانر مقفل — غيره: input عادي
               isRemoved ? _buildRemovedBanner() : _buildInputArea(),
             ],
@@ -229,7 +341,7 @@ class _GroupChatViewState extends State<GroupChatView> {
             radius: 20,
             backgroundColor: _purple,
             child:
-                const Icon(Icons.groups_rounded, color: Colors.white, size: 30),
+            const Icon(Icons.groups_rounded, color: Colors.white, size: 30),
           ),
           const SizedBox(width: 10),
           Column(
@@ -268,25 +380,25 @@ class _GroupChatViewState extends State<GroupChatView> {
                   );
                 },
                 child: Container(
-                  // التحكم في مساحة الزر الداخلية
-                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                  padding: const EdgeInsets.symmetric(
+                      horizontal: 12, vertical: 6),
                   decoration: BoxDecoration(
-                    color: Colors.white, // خلفية بيضاء للبتن
-                    borderRadius: BorderRadius.circular(20), // زوايا دائرية (شكل كبسولة)
+                    color: Colors.white,
+                    borderRadius: BorderRadius.circular(20),
                   ),
                   child: const Row(
                     mainAxisSize: MainAxisSize.min,
                     children: [
                       Icon(
                         Icons.videocam_rounded,
-                        color: _purple, // أيقونة الكاميرا باللون الموف
+                        color: _purple,
                         size: 18,
                       ),
                       SizedBox(width: 6),
                       Text(
                         'Video Call',
                         style: TextStyle(
-                          color: _purple, // نص الفيديو كول بالموف
+                          color: _purple,
                           fontSize: 12,
                           fontWeight: FontWeight.bold,
                         ),
@@ -386,7 +498,8 @@ class _GroupChatViewState extends State<GroupChatView> {
                 Text(
                   'No messages yet. Connect with your BuildMates and start building!',
                   textAlign: TextAlign.center,
-                  style: TextStyle(color: Colors.grey.shade500, fontSize: 14),
+                  style:
+                  TextStyle(color: Colors.grey.shade500, fontSize: 14),
                 ),
               ],
             ),
@@ -429,7 +542,8 @@ class _GroupChatViewState extends State<GroupChatView> {
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: 10),
             child: Text(label,
-                style: const TextStyle(fontSize: 11, color: Color(0xFF888780))),
+                style: const TextStyle(
+                    fontSize: 11, color: Color(0xFF888780))),
           ),
           const Expanded(child: Divider(thickness: 0.5)),
         ],
@@ -457,11 +571,17 @@ class _GroupChatViewState extends State<GroupChatView> {
     final List readBy = data['readBy'] ?? [];
     bool isRead = readBy.any((uid) => uid != senderId);
 
+    // ── بيانات الملف ──────────────────────────────────────────────────────
+    final String? fileUrl = data['fileUrl'] as String?;
+    final String? fileName = data['fileName'] as String?;
+    final String? fileType = data['fileType'] as String?;
+    final bool hasFile = fileUrl != null && fileUrl.isNotEmpty;
+
     return Padding(
       padding: const EdgeInsets.only(bottom: 8),
       child: Row(
         mainAxisAlignment:
-            isMe ? MainAxisAlignment.end : MainAxisAlignment.start,
+        isMe ? MainAxisAlignment.end : MainAxisAlignment.start,
         crossAxisAlignment: CrossAxisAlignment.end,
         children: [
           if (!isMe) ...[
@@ -477,43 +597,113 @@ class _GroupChatViewState extends State<GroupChatView> {
           ],
           Column(
             crossAxisAlignment:
-                isMe ? CrossAxisAlignment.end : CrossAxisAlignment.start,
+            isMe ? CrossAxisAlignment.end : CrossAxisAlignment.start,
             children: [
               if (!isMe)
                 Padding(
-                  padding: const EdgeInsets.only(bottom: 3, right: 2, left: 2),
+                  padding:
+                  const EdgeInsets.only(bottom: 3, right: 2, left: 2),
                   child: Text(senderName,
                       style: const TextStyle(
                           fontSize: 11,
                           color: Color(0xFF888780),
                           fontWeight: FontWeight.w500)),
                 ),
-              ConstrainedBox(
-                constraints: BoxConstraints(
-                    maxWidth: MediaQuery.of(context).size.width * 0.65),
-                child: Container(
-                  padding:
-                      const EdgeInsets.symmetric(horizontal: 12, vertical: 9),
-                  decoration: BoxDecoration(
-                    color: isMe ? _purple : Colors.white,
-                    borderRadius: BorderRadius.only(
-                      topLeft: const Radius.circular(14),
-                      topRight: const Radius.circular(14),
-                      bottomLeft: isMe
-                          ? const Radius.circular(14)
-                          : const Radius.circular(4),
-                      bottomRight: isMe
-                          ? const Radius.circular(4)
-                          : const Radius.circular(14),
+              // ── الفقاعة ────────────────────────────────────────────────
+              GestureDetector(
+                // فتح الملف عند الضغط (غير الصور)
+                onTap: hasFile && fileType != 'image'
+                    ? () => OpenFilex.open(fileUrl!)
+                    : null,
+                child: ConstrainedBox(
+                  constraints: BoxConstraints(
+                      maxWidth: MediaQuery.of(context).size.width * 0.65),
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(
+                        horizontal: 12, vertical: 9),
+                    decoration: BoxDecoration(
+                      color: isMe ? _purple : Colors.white,
+                      borderRadius: BorderRadius.only(
+                        topLeft: const Radius.circular(14),
+                        topRight: const Radius.circular(14),
+                        bottomLeft: isMe
+                            ? const Radius.circular(14)
+                            : const Radius.circular(4),
+                        bottomRight: isMe
+                            ? const Radius.circular(4)
+                            : const Radius.circular(14),
+                      ),
+                      border: isMe
+                          ? null
+                          : Border.all(color: Colors.grey.shade200),
                     ),
-                    border:
-                        isMe ? null : Border.all(color: Colors.grey.shade200),
+                    // ── محتوى الفقاعة ──────────────────────────────────
+                    child: hasFile
+                        ? (fileType == 'image'
+                        ? ClipRRect(
+                      borderRadius: BorderRadius.circular(10),
+                      child: Image.network(
+                        fileUrl!,
+                        width: 200,
+                        fit: BoxFit.cover,
+                        loadingBuilder: (ctx, child, progress) {
+                          if (progress == null) return child;
+                          return SizedBox(
+                            width: 200,
+                            height: 140,
+                            child: Center(
+                              child: CircularProgressIndicator(
+                                value: progress.expectedTotalBytes !=
+                                    null
+                                    ? progress.cumulativeBytesLoaded /
+                                    progress.expectedTotalBytes!
+                                    : null,
+                                color: isMe
+                                    ? Colors.white
+                                    : _purple,
+                                strokeWidth: 2,
+                              ),
+                            ),
+                          );
+                        },
+                      ),
+                    )
+                        : Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Icon(
+                          Icons.insert_drive_file_rounded,
+                          color: isMe
+                              ? Colors.white70
+                              : _purple,
+                          size: 20,
+                        ),
+                        const SizedBox(width: 8),
+                        Flexible(
+                          child: Text(
+                            fileName ?? 'File',
+                            style: TextStyle(
+                              fontSize: 13,
+                              color: isMe
+                                  ? Colors.white
+                                  : Colors.black87,
+                              decoration:
+                              TextDecoration.underline,
+                            ),
+                            maxLines: 2,
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                        ),
+                      ],
+                    ))
+                        : Text(text,
+                        style: TextStyle(
+                            fontSize: 13,
+                            color: isMe
+                                ? Colors.white
+                                : Colors.black87,
+                            height: 1.45)),
                   ),
-                  child: Text(text,
-                      style: TextStyle(
-                          fontSize: 13,
-                          color: isMe ? Colors.white : Colors.black87,
-                          height: 1.45)),
                 ),
               ),
               const SizedBox(height: 3),
@@ -527,7 +717,8 @@ class _GroupChatViewState extends State<GroupChatView> {
                             fontSize: 10, color: Color(0xFF888780))),
                     if (isMe) ...[
                       const SizedBox(width: 3),
-                      Icon(isRead ? Icons.done_all : Icons.done, size: 13),
+                      Icon(isRead ? Icons.done_all : Icons.done,
+                          size: 13),
                     ],
                     // 🗑️ زر حذف — لكل شخص على رسائله هو فقط
                     if (isMe) ...[
@@ -542,13 +733,16 @@ class _GroupChatViewState extends State<GroupChatView> {
                                   'This will delete the message for everyone. Are you sure?'),
                               actions: [
                                 TextButton(
-                                  onPressed: () => Navigator.pop(context, false),
+                                  onPressed: () =>
+                                      Navigator.pop(context, false),
                                   child: const Text('Cancel'),
                                 ),
                                 TextButton(
-                                  onPressed: () => Navigator.pop(context, true),
+                                  onPressed: () =>
+                                      Navigator.pop(context, true),
                                   child: const Text('Delete',
-                                      style: TextStyle(color: Colors.red)),
+                                      style:
+                                      TextStyle(color: Colors.red)),
                                 ),
                               ],
                             ),
@@ -644,7 +838,15 @@ class _GroupChatViewState extends State<GroupChatView> {
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.end,
         children: [
-          const SizedBox(width: 8),
+          // ── زر إرفاق ملف ─────────────────────────────────────────────
+          IconButton(
+            onPressed: _sendFile,
+            icon: const Icon(Icons.add_circle_outline_rounded,
+                color: _purple, size: 26),
+            padding: EdgeInsets.zero,
+            constraints: const BoxConstraints(),
+          ),
+          const SizedBox(width: 4),
           Expanded(
             child: TextField(
               controller: _messageController,
@@ -654,20 +856,24 @@ class _GroupChatViewState extends State<GroupChatView> {
               style: const TextStyle(fontSize: 13),
               decoration: InputDecoration(
                 hintText: 'Write a message...',
-                hintStyle: TextStyle(fontSize: 13, color: Colors.grey.shade400),
+                hintStyle:
+                TextStyle(fontSize: 13, color: Colors.grey.shade400),
                 filled: true,
                 fillColor: _pageBg,
-                contentPadding:
-                    const EdgeInsets.symmetric(horizontal: 14, vertical: 9),
+                contentPadding: const EdgeInsets.symmetric(
+                    horizontal: 14, vertical: 9),
                 border: OutlineInputBorder(
                     borderRadius: BorderRadius.circular(20),
-                    borderSide: BorderSide(color: Colors.grey.shade200)),
+                    borderSide:
+                    BorderSide(color: Colors.grey.shade200)),
                 enabledBorder: OutlineInputBorder(
                     borderRadius: BorderRadius.circular(20),
-                    borderSide: BorderSide(color: Colors.grey.shade200)),
+                    borderSide:
+                    BorderSide(color: Colors.grey.shade200)),
                 focusedBorder: OutlineInputBorder(
                     borderRadius: BorderRadius.circular(20),
-                    borderSide: const BorderSide(color: _purple, width: 1.2)),
+                    borderSide: const BorderSide(
+                        color: _purple, width: 1.2)),
               ),
               onSubmitted: (_) => _sendMessage(),
             ),
@@ -678,10 +884,10 @@ class _GroupChatViewState extends State<GroupChatView> {
             child: Container(
               width: 38,
               height: 38,
-              decoration:
-                  const BoxDecoration(color: _purple, shape: BoxShape.circle),
-              child:
-                  const Icon(Icons.send_rounded, color: Colors.white, size: 18),
+              decoration: const BoxDecoration(
+                  color: _purple, shape: BoxShape.circle),
+              child: const Icon(Icons.send_rounded,
+                  color: Colors.white, size: 18),
             ),
           ),
         ],
