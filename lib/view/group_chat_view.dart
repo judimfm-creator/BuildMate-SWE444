@@ -4,6 +4,7 @@ import 'package:intl/intl.dart';
 import '../model/user_model.dart';
 import '../services/chat_service.dart';
 import 'video_call_view.dart';
+import 'leader_vote_banner.dart'; // ← NEW
 import 'dart:io';
 import 'package:file_picker/file_picker.dart';
 import 'package:image_picker/image_picker.dart';
@@ -12,11 +13,13 @@ import 'package:open_filex/open_filex.dart';
 class GroupChatView extends StatefulWidget {
   final String teamPostId;
   final String teamName;
+  final bool isCompleted; // ← NEW
 
   const GroupChatView({
     super.key,
     required this.teamPostId,
     required this.teamName,
+    this.isCompleted = false,
   });
 
   @override
@@ -294,33 +297,67 @@ class _GroupChatViewState extends State<GroupChatView> {
 
         // removedAt: وقت الطرد أو الانسحاب — نخفي الرسائل بعده عن المطرود
         final removedAtMap =
-        Map<String, dynamic>.from(teamData['removedAt'] ?? {});
+            Map<String, dynamic>.from(teamData['removedAt'] ?? {});
         final Timestamp? removedAt = (isRemoved &&
-            _currentUser != null &&
-            removedAtMap.containsKey(_currentUser!.uid))
+                _currentUser != null &&
+                removedAtMap.containsKey(_currentUser!.uid))
             ? (removedAtMap[_currentUser!.uid] as Timestamp?)
             : null;
 
         // memberJoinedAt: للأعضاء الجدد — ما يشوفون رسائل قبل انضمامهم
         final memberJoinedAtMap =
-        Map<String, dynamic>.from(teamData['memberJoinedAt'] ?? {});
+            Map<String, dynamic>.from(teamData['memberJoinedAt'] ?? {});
         final Timestamp? joinedAt = (!isRemoved &&
-            _currentUser != null &&
-            memberJoinedAtMap.containsKey(_currentUser!.uid))
+                _currentUser != null &&
+                memberJoinedAtMap.containsKey(_currentUser!.uid))
             ? (memberJoinedAtMap[_currentUser!.uid] as Timestamp?)
             : null;
+
+        // ── NEW: vote state ────────────────────────────────────────────────
+        final Map<String, dynamic>? leaderVoteData =
+            teamData['leaderVote'] as Map<String, dynamic>?;
+        final bool hasActiveVote =
+            leaderVoteData != null && leaderVoteData['active'] == true;
+        final List<String> currentMembers = List<String>.from(
+            (teamData['members'] as List?)?.map((e) => e.toString()) ?? []);
+
+        // Auto-resolve expired vote (any member who opens the chat triggers this)
+        if (hasActiveVote) {
+          final expiresAt =
+              (leaderVoteData['expiresAt'] as Timestamp?)?.toDate();
+          if (expiresAt != null && DateTime.now().isAfter(expiresAt)) {
+            _chatService
+                .resolveLeaderVote(teamPostId: widget.teamPostId)
+                .ignore();
+          }
+        }
 
         return Scaffold(
           backgroundColor: _pageBg,
           appBar: _buildAppBar(isRemoved: isRemoved),
           body: Column(
             children: [
+              // ── NEW: sticky vote banner above messages ─────────────────
+              if (hasActiveVote && !isRemoved && _currentUser != null)
+                Padding(
+                  padding: const EdgeInsets.fromLTRB(12, 10, 12, 0),
+                  child: LeaderVoteBanner(
+                    teamPostId: widget.teamPostId,
+                    leaderVoteData: leaderVoteData!,
+                    currentMembers: currentMembers,
+                  ),
+                ),
+
               // الشات يظهر للجميع — المطرود والأعضاء
               Expanded(
                   child: _buildMessagesList(
                       joinedAt: joinedAt, removedAt: removedAt)),
               // المطرود: بانر مقفل — غيره: input عادي
-              isRemoved ? _buildRemovedBanner() : _buildInputArea(),
+              isRemoved
+                  ? _buildRemovedBanner()
+                  : widget.isCompleted
+                      ? _buildCompletedBanner()
+                      : _buildInputArea(),
             ],
           ),
         );
@@ -451,6 +488,46 @@ class _GroupChatViewState extends State<GroupChatView> {
     );
   }
 
+  // ── NEW: بانر الـ workspace المكتمل ──────────────────────────
+  Widget _buildCompletedBanner() {
+    return Container(
+      width: double.infinity,
+      color: Colors.white,
+      padding: EdgeInsets.only(
+        left: 16,
+        right: 16,
+        top: 12,
+        bottom: MediaQuery.of(context).padding.bottom + 12,
+      ),
+      child: Container(
+        padding:
+            const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+        decoration: BoxDecoration(
+          color: Colors.green.shade50,
+          borderRadius: BorderRadius.circular(14),
+          border: Border.all(color: Colors.green.shade200),
+        ),
+        child: Row(
+          children: [
+            Icon(Icons.lock_rounded,
+                color: Colors.green.shade600, size: 20),
+            const SizedBox(width: 10),
+            Expanded(
+              child: Text(
+                'This workspace is completed. Chat is read-only.',
+                style: TextStyle(
+                  fontSize: 12,
+                  color: Colors.green.shade700,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
   Widget _buildMessagesList({Timestamp? joinedAt, Timestamp? removedAt}) {
     return StreamBuilder<QuerySnapshot<Map<String, dynamic>>>(
       stream: _chatService.getMessagesStream(widget.teamPostId),
@@ -515,6 +592,8 @@ class _GroupChatViewState extends State<GroupChatView> {
           itemBuilder: (context, index) {
             final doc = docs[index];
             final data = doc.data();
+            final senderId = data['senderId'] as String? ?? '';
+            final bool isSystemMessage = senderId == 'system'; // ← NEW
             final isMe = data['senderId'] == _currentUser?.uid;
             final previous = index > 0 ? docs[index - 1] : null;
             final showDivider = _isNewDay(doc, previous);
@@ -524,7 +603,11 @@ class _GroupChatViewState extends State<GroupChatView> {
               children: [
                 if (showDivider && timestamp != null)
                   _buildDateDivider(_formatDateDivider(timestamp)),
-                _buildMessageBubble(data, isMe, doc.id),
+                // ── NEW: route system messages to special bubble ──────────
+                if (isSystemMessage)
+                  _buildSystemBubble(data)
+                else
+                  _buildMessageBubble(data, isMe, doc.id),
               ],
             );
           },
@@ -547,6 +630,60 @@ class _GroupChatViewState extends State<GroupChatView> {
           ),
           const Expanded(child: Divider(thickness: 0.5)),
         ],
+      ),
+    );
+  }
+
+  // ── NEW: System message bubble ──────────────────────────────────────────
+  // Centered pill for vote_prompt and vote_result messages.
+  Widget _buildSystemBubble(Map<String, dynamic> data) {
+    final text = data['text'] as String? ?? '';
+    final type = data['type'] as String? ?? 'system';
+
+    final bool isResult = type == 'vote_result';
+    final Color bgColor =
+        isResult ? const Color(0xFFE8F5E9) : const Color(0xFFF0EEFF);
+    final Color borderColor =
+        isResult ? const Color(0xFFA5D6A7) : _purple.withOpacity(0.25);
+    final Color textColor =
+        isResult ? const Color(0xFF2E7D32) : _purple;
+    final IconData icon =
+        isResult ? Icons.emoji_events_rounded : Icons.how_to_vote_rounded;
+
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 8),
+      child: Center(
+        child: Container(
+          constraints: BoxConstraints(
+            maxWidth: MediaQuery.of(context).size.width * 0.82,
+          ),
+          padding:
+              const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+          decoration: BoxDecoration(
+            color: bgColor,
+            borderRadius: BorderRadius.circular(20),
+            border: Border.all(color: borderColor, width: 1.2),
+          ),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Icon(icon, size: 16, color: textColor),
+              const SizedBox(width: 8),
+              Flexible(
+                child: Text(
+                  text,
+                  textAlign: TextAlign.center,
+                  style: TextStyle(
+                    fontSize: 12,
+                    color: textColor,
+                    fontWeight: FontWeight.w600,
+                    height: 1.4,
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
       ),
     );
   }

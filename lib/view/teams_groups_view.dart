@@ -33,9 +33,7 @@ class TeamsGroupsView extends StatelessWidget {
 
     if (currentUid == null) {
       return const Scaffold(
-        body: Center(
-          child: Text("Please sign in first."),
-        ),
+        body: Center(child: Text("Please sign in first.")),
       );
     }
 
@@ -52,21 +50,21 @@ class TeamsGroupsView extends StatelessWidget {
         elevation: 0,
       ),
       body: StreamBuilder<QuerySnapshot<Map<String, dynamic>>>(
-        stream: FirebaseFirestore.instance.collection('team_posts').snapshots(),
+        stream:
+            FirebaseFirestore.instance.collection('team_posts').snapshots(),
         builder: (context, snapshot) {
           if (snapshot.connectionState == ConnectionState.waiting) {
             return const Center(
-              child: CircularProgressIndicator(color: _purple),
-            );
+                child: CircularProgressIndicator(color: _purple));
           }
 
           if (snapshot.hasError) {
             return const Center(
-              child: Text("Something went wrong while loading teams."),
-            );
+                child:
+                    Text("Something went wrong while loading teams."));
           }
 
-          final docs = (snapshot.data?.docs ?? []).where((doc) {
+          var docs = (snapshot.data?.docs ?? []).where((doc) {
             final data = doc.data();
             final List members = data['members'] ?? [];
             final String createdBy = data['createdBy'] ?? '';
@@ -88,9 +86,27 @@ class TeamsGroupsView extends StatelessWidget {
 
           if (docs.isEmpty) {
             return const Center(
-              child: Text("You are not part of any team yet."),
-            );
+                child: Text("You are not part of any team yet."));
           }
+
+          // ── Sort: active teams first, completed teams at the bottom ──
+          docs.sort((a, b) {
+            final aCompleted = a.data()['isCompleted'] == true;
+            final bCompleted = b.data()['isCompleted'] == true;
+            if (aCompleted == bCompleted) return 0;
+            return aCompleted ? 1 : -1; // completed → bottom
+          });
+
+          // Brand colors for active teams
+          final List<Color> brandColors = [
+            const Color(0xFF6D56B3), // موف
+            const Color(0xFFFFA726), // برتقالي
+            const Color(0xFF26C6DA), // تركواز
+          ];
+
+          // Track active-team index separately so color cycling
+          // isn't broken by completed teams being interspersed
+          int activeIndex = 0;
 
           return ListView.builder(
             padding: const EdgeInsets.all(16),
@@ -101,26 +117,25 @@ class TeamsGroupsView extends StatelessWidget {
               final String teamName = data['teamName'] ?? 'Team';
               final String hackathonId = data['hackathonId'] ?? '';
               final List members = data['members'] ?? [];
+              final bool isCompleted = data['isCompleted'] == true;
 
-              // 1. تعريف الألوان الثلاثة (موف، برتقالي، تركواز)
-              final List<Color> brandColors = [
-                const Color(0xFF6D56B3), // الموف
-                const Color(0xFFFFA726), // البرتقالي
-                const Color(0xFF26C6DA), // التركواز
-              ];
+              // Completed teams get gray; active teams cycle brand colors
+              final Color currentColor = isCompleted
+                  ? Colors.grey.shade400
+                  : brandColors[activeIndex % brandColors.length];
 
-              // اختيار اللون بناءً على الترتيب
-              final Color currentColor =
-                  brandColors[index % brandColors.length];
+              if (!isCompleted) activeIndex++;
 
-              // 2. تصميم البوكس الملون (Container)
               return Container(
                 margin: const EdgeInsets.only(bottom: 16),
                 decoration: BoxDecoration(
-                  color: Colors.white,
+                  color: isCompleted
+                      ? Colors.grey.shade50
+                      : Colors.white,
                   borderRadius: BorderRadius.circular(20),
-                  // إطار نحيف جداً بلون الفريق يعطي فخامة
-                  border: Border.all(color: currentColor.withOpacity(0.15)),
+                  border: Border.all(
+                      color: currentColor.withOpacity(
+                          isCompleted ? 0.3 : 0.15)),
                   boxShadow: [
                     BoxShadow(
                       color: currentColor.withOpacity(0.05),
@@ -134,37 +149,69 @@ class TeamsGroupsView extends StatelessWidget {
                     horizontal: 16,
                     vertical: 12,
                   ),
-                  // 3. الأيقونة الجديدة بدلاً من الحرف (Leading)
                   leading: Container(
                     width: 52,
                     height: 52,
                     decoration: BoxDecoration(
-                      color: currentColor
-                          .withOpacity(0.1), // خلفية هادئة من لون الفريق
+                      color: currentColor.withOpacity(0.1),
                       shape: BoxShape.circle,
                     ),
                     child: Icon(
-                      Icons.diversity_3_rounded, // أيقونة "ترابط" احترافية
+                      isCompleted
+                          ? Icons.check_circle_rounded
+                          : Icons.diversity_3_rounded,
                       color: currentColor,
                       size: 26,
                     ),
                   ),
-                  title: Text(
-                    teamName,
-                    style: const TextStyle(
-                      fontWeight: FontWeight.bold,
-                      fontSize: 16,
-                    ),
+                  title: Row(
+                    children: [
+                      Expanded(
+                        child: Text(
+                          teamName,
+                          style: TextStyle(
+                            fontWeight: FontWeight.bold,
+                            fontSize: 16,
+                            color: isCompleted
+                                ? Colors.grey.shade500
+                                : Colors.black87,
+                          ),
+                        ),
+                      ),
+                      // ── Completed badge ──────────────────────
+                      if (isCompleted)
+                        Container(
+                          margin: const EdgeInsets.only(left: 8),
+                          padding: const EdgeInsets.symmetric(
+                              horizontal: 8, vertical: 3),
+                          decoration: BoxDecoration(
+                            color: Colors.green.withOpacity(0.12),
+                            borderRadius: BorderRadius.circular(20),
+                            border: Border.all(
+                                color: Colors.green.withOpacity(0.3)),
+                          ),
+                          child: const Text(
+                            '✅ Completed',
+                            style: TextStyle(
+                              fontSize: 10,
+                              fontWeight: FontWeight.bold,
+                              color: Colors.green,
+                            ),
+                          ),
+                        ),
+                    ],
                   ),
                   subtitle: FutureBuilder<String>(
                     future: _getHackathonName(hackathonId),
                     builder: (context, snapshot) {
-                      final hackathonName = snapshot.data ?? 'Loading...';
-
+                      final hackathonName =
+                          snapshot.data ?? 'Loading...';
                       return Text(
                         "$hackathonName • ${members.length} members",
                         style: TextStyle(
-                          color: Colors.grey.shade700,
+                          color: isCompleted
+                              ? Colors.grey.shade400
+                              : Colors.grey.shade700,
                           fontSize: 13,
                           fontWeight: FontWeight.w500,
                         ),
@@ -173,7 +220,6 @@ class TeamsGroupsView extends StatelessWidget {
                       );
                     },
                   ),
-                  // 4. تغيير لون السهم ليناسب لون الفريق
                   trailing: Icon(
                     Icons.arrow_forward_ios_rounded,
                     size: 16,

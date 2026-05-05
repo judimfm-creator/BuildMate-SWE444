@@ -5,6 +5,8 @@ import 'package:flutter/material.dart';
 import 'other_user_profile_page.dart';
 import 'team_registration_form_view.dart';
 import 'leader_join_requests_view.dart';
+import 'leader_vote_banner.dart';          // ← NEW
+import '../services/chat_service.dart';    // ← NEW (adjust path if needed)
 
 class MyTeamPostView extends StatelessWidget {
   // 👇 هنا مكانها الصحيح
@@ -40,20 +42,24 @@ class MyTeamPostView extends StatelessWidget {
   static const Color purple = Color(0xFF6D56B3);
   static const Color lightPurple = Color(0xFFF0EEFF);
 
+  // ← NEW: shared service instance
+  // ignore: prefer_const_constructors (ChatService has no const constructor)
+  ChatService get _chatService => ChatService();
+
   Future<List<Map<String, String>>> _getMemberDetails(
-      List<dynamic> memberIds,
-      String leaderId,
-      String leaderRole,
-      Map<String, dynamic> memberRoles,
-      ) async {
+    List<dynamic> memberIds,
+    String leaderId,
+    String leaderRole,
+    Map<String, dynamic> memberRoles,
+  ) async {
     List<Map<String, String>> members = [];
 
     for (var id in memberIds) {
       var doc =
-      await FirebaseFirestore.instance.collection('users').doc(id).get();
+          await FirebaseFirestore.instance.collection('users').doc(id).get();
 
       String displayRole =
-      (id == leaderId) ? leaderRole : (memberRoles[id] ?? "Member");
+          (id == leaderId) ? leaderRole : (memberRoles[id] ?? "Member");
 
       members.add({
         'uid': id.toString(),
@@ -153,9 +159,9 @@ class MyTeamPostView extends StatelessWidget {
           ),
           TextButton(
             onPressed: () => Navigator.pop(context, true),
-            child: Text(
+            child: const Text(
               'Delete',
-              style: TextStyle(color: Colors.deepOrange.shade400),
+              style: TextStyle(color: Colors.red),
             ),
           ),
         ],
@@ -167,35 +173,96 @@ class MyTeamPostView extends StatelessWidget {
     }
   }
 
-  // 👇 YOUR version — calls _EditTeamInfoDialog
-  Future<void> _editTeamInfo(
-      BuildContext context,
-      Map<String, dynamic> data,
-      ) async {
-    final result = await showDialog<bool>(
+  /*Future<void> _editTeamInfo(
+    BuildContext context,
+    Map<String, dynamic> data,
+  ) async {
+    final nameCtrl = TextEditingController(text: data['teamName'] ?? '');
+    final roleCtrl = TextEditingController(text: data['myRole'] ?? '');
+    String selectedGender = data['genderPreference'] ?? 'Any';
+    const genderOptions = ['Any', 'Male', 'Female', 'Mixed'];
+
+    final confirm = await showDialog<bool>(
       context: context,
-      builder: (_) => _EditTeamInfoDialog(
-        data: data,
-        teamPostId: teamPostId,
-        hackathonId: hackathonId,
+      builder: (ctx) => StatefulBuilder(
+        builder: (ctx, setS) => AlertDialog(
+          shape:
+              RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+          title: const Text('Edit Team Info',
+              style: TextStyle(fontWeight: FontWeight.bold)),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              TextField(
+                controller: nameCtrl,
+                decoration: const InputDecoration(labelText: 'Team Name'),
+              ),
+              const SizedBox(height: 12),
+              DropdownButtonFormField<String>(
+                value: selectedGender,
+                decoration: const InputDecoration(labelText: 'Teammate Gender'),
+                items: genderOptions
+                    .map((g) => DropdownMenuItem(value: g, child: Text(g)))
+                    .toList(),
+                onChanged: (v) => setS(() => selectedGender = v!),
+              ),
+              const SizedBox(height: 12),
+              TextField(
+                controller: roleCtrl,
+                decoration: const InputDecoration(labelText: 'Your Role'),
+              ),
+            ],
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(ctx, false),
+              child: const Text('Cancel'),
+            ),
+            ElevatedButton(
+              style: ElevatedButton.styleFrom(backgroundColor: purple),
+              onPressed: () => Navigator.pop(ctx, true),
+              child: const Text('Save', style: TextStyle(color: Colors.white)),
+            ),
+          ],
+        ),
       ),
     );
 
-    if (result == true && context.mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Team info updated successfully.'),
-          backgroundColor: Colors.green,
-        ),
-      );
+    if (confirm == true) {
+      try {
+        await FirebaseFirestore.instance
+            .collection('team_posts')
+            .doc(teamPostId)
+            .update({
+          'teamName': nameCtrl.text.trim(),
+          'genderPreference': selectedGender,
+          'myRole': roleCtrl.text.trim(),
+        });
+        if (context.mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('Team info updated.'),
+              backgroundColor: Colors.green,
+            ),
+          );
+        }
+      } catch (e) {
+        if (context.mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text('Error: $e'), backgroundColor: Colors.red),
+          );
+        }
+      }
     }
-  }
+    nameCtrl.dispose();
+    roleCtrl.dispose();
+  }*/
 
   Future<void> _removeMember(
-      BuildContext context,
-      String memberId,
-      String memberName,
-      ) async {
+    BuildContext context,
+    String memberId,
+    String memberName,
+  ) async {
     final confirm = await showDialog<bool>(
       context: context,
       builder: (_) => AlertDialog(
@@ -241,6 +308,12 @@ class MyTeamPostView extends StatelessWidget {
     }
   }
 
+  // ─────────────────────────────────────────────────────────────
+  // LEAVE TEAM — UPDATED
+  // Leader → triggers a vote poll instead of manual pick.
+  // Regular member → same original flow.
+  // ─────────────────────────────────────────────────────────────
+
   Future<void> _leaveTeam(BuildContext context) async {
     final String? uid = FirebaseAuth.instance.currentUser?.uid;
     if (uid == null) return;
@@ -254,128 +327,154 @@ class MyTeamPostView extends StatelessWidget {
     final data = teamDoc.data()!;
     final String leaderId = data['createdBy'] ?? '';
     final List<String> members =
-    List<String>.from(data['members'] ?? []);
+        List<String>.from(data['members'] ?? []);
     final bool isLeader = uid == leaderId;
 
-    String? newLeaderId;
+    if (!context.mounted) return;
+
     if (isLeader) {
+      // ── LEADER: initiate vote poll ─────────────────────────
       final otherMembers = members.where((m) => m != uid).toList();
 
       if (otherMembers.isEmpty) {
-        newLeaderId = null;
-      } else {
-        final List<Map<String, String>> memberDetails = [];
-        for (final memberId in otherMembers) {
-          final userDoc = await FirebaseFirestore.instance
-              .collection('users')
-              .doc(memberId)
-              .get();
-          final name = userDoc.data()?['fullName'] ?? 'Unknown';
-          memberDetails.add({'uid': memberId, 'name': name});
-        }
-
-        if (!context.mounted) return;
-
-        newLeaderId = await showDialog<String>(
+        // No other members → dissolve team
+        final confirm = await showDialog<bool>(
           context: context,
           builder: (_) => AlertDialog(
-            title: const Text('Choose New Leader'),
-            content: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                const Text(
-                  'Select a member to become the new team leader:',
-                  style: TextStyle(fontSize: 13, color: Colors.grey),
-                ),
-                const SizedBox(height: 12),
-                ...memberDetails.map(
-                      (m) => ListTile(
-                    leading: CircleAvatar(
-                      backgroundColor: const Color(0xFFF0EEFF),
-                      child: Text(
-                        m['name']!.isNotEmpty ? m['name']![0] : '?',
-                        style: const TextStyle(
-                            color: Color(0xFF6D56B3),
-                            fontWeight: FontWeight.bold),
-                      ),
-                    ),
-                    title: Text(m['name']!,
-                        style: const TextStyle(fontWeight: FontWeight.w600)),
-                    onTap: () => Navigator.pop(context, m['uid']),
-                  ),
-                ),
-              ],
+            title: const Text('Leave Team'),
+            content: const Text(
+              'You are the only member. Leaving will dissolve the team. Continue?',
             ),
             actions: [
               TextButton(
-                onPressed: () => Navigator.pop(context, null),
-                child: const Text('Cancel'),
+                  onPressed: () => Navigator.pop(context, false),
+                  child: const Text('Cancel')),
+              TextButton(
+                onPressed: () => Navigator.pop(context, true),
+                child: const Text('Leave',
+                    style: TextStyle(color: Colors.red)),
               ),
             ],
           ),
         );
-
-        if (newLeaderId == null) return;
+        if (confirm != true) return;
+        await _deleteTeamPost(context);
+        return;
       }
-    }
 
-    if (!context.mounted) return;
-
-    final confirm = await showDialog<bool>(
-      context: context,
-      builder: (_) => AlertDialog(
-        title: const Text('Leave Team'),
-        content: Text(
-          isLeader && newLeaderId != null
-              ? 'You will leave the team and transfer leadership. You will lose access to send messages.'
-              : 'Are you sure you want to leave this team?',
+      // Show vote-initiation confirmation dialog
+      if (!context.mounted) return;
+      final confirm = await showDialog<bool>(
+        context: context,
+        builder: (_) => AlertDialog(
+          shape:
+              RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+          title: Row(
+            children: [
+              const Icon(Icons.how_to_vote_rounded,
+                  color: purple, size: 22),
+              const SizedBox(width: 10),
+              const Text('Leave ',
+                  style: TextStyle(fontSize: 16)),
+            ],
+          ),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              const Text(
+                'Are you sure you want to leave this team?',
+                style: TextStyle(fontSize: 13, height: 1.5),
+              ),
+              const SizedBox(height: 12),
+            
+            ],
+          ),
+          actions: [
+            TextButton(
+                onPressed: () => Navigator.pop(context, false),
+                child: const Text('Cancel')),
+            ElevatedButton(
+              style: ElevatedButton.styleFrom(
+                backgroundColor: Colors.red,
+                foregroundColor: Colors.white,
+                shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(10)),
+              ),
+              onPressed: () => Navigator.pop(context, true),
+              child: const Text('Yes,leave the team'),
+            ),
+          ],
         ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context, false),
-            child: const Text('Cancel'),
-          ),
-          TextButton(
-            onPressed: () => Navigator.pop(context, true),
-            child: const Text('Leave', style: TextStyle(color: Colors.red)),
-          ),
-        ],
-      ),
-    );
+      );
 
-    if (confirm != true) return;
+      if (confirm != true) return;
 
-    try {
-      final Map<String, dynamic> updates = {
-        'members': FieldValue.arrayRemove([uid]),
-        'memberRoles.$uid': FieldValue.delete(),
-        'removedMembers': FieldValue.arrayUnion([uid]),
-        'removedAt.$uid': FieldValue.serverTimestamp(),
-      };
-
-      if (isLeader && newLeaderId != null) {
-        updates['createdBy'] = newLeaderId;
-        updates['leaderId'] = newLeaderId;
-      }
-
-      await FirebaseFirestore.instance
-          .collection('team_posts')
-          .doc(teamPostId)
-          .update(updates);
-
-      if (context.mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-              content: Text('You have left the team.'),
-              backgroundColor: Colors.green),
+      try {
+        await ChatService().initiateLeaderVote(
+          teamPostId: teamPostId,
+          leavingLeaderId: uid,
+          eligibleVoters: otherMembers,
         );
-        Navigator.pop(context);
+       
+      } catch (e) {
+        if (context.mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+                content: Text('Error: $e'), backgroundColor: Colors.red),
+          );
+        }
       }
-    } catch (e) {
-      if (context.mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Error: $e'), backgroundColor: Colors.red),
-        );
+    } else {
+      // ── REGULAR MEMBER: original leave flow (unchanged) ────
+      final confirm = await showDialog<bool>(
+        context: context,
+        builder: (_) => AlertDialog(
+          title: const Text('Leave Team'),
+          content: const Text('Are you sure you want to leave this team?'),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context, false),
+              child: const Text('Cancel'),
+            ),
+            TextButton(
+              onPressed: () => Navigator.pop(context, true),
+              child: const Text('Leave', style: TextStyle(color: Colors.red)),
+            ),
+          ],
+        ),
+      );
+
+      if (confirm != true) return;
+
+      try {
+        final Map<String, dynamic> updates = {
+          'members': FieldValue.arrayRemove([uid]),
+          'memberRoles.$uid': FieldValue.delete(),
+          'removedMembers': FieldValue.arrayUnion([uid]),
+          'removedAt.$uid': FieldValue.serverTimestamp(),
+        };
+
+        await FirebaseFirestore.instance
+            .collection('team_posts')
+            .doc(teamPostId)
+            .update(updates);
+
+        if (context.mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+                content: Text('You have left the team.'),
+                backgroundColor: Colors.green),
+          );
+          Navigator.pop(context);
+        }
+      } catch (e) {
+        if (context.mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+                content: Text('Error: $e'), backgroundColor: Colors.red),
+          );
+        }
       }
     }
   }
@@ -421,9 +520,27 @@ class MyTeamPostView extends StatelessWidget {
           final Map<String, dynamic> memberRoles = data['memberRoles'] ?? {};
           final String leaderRole = data['myRole'] ?? 'Leader';
           final List<String> removedMembers =
-          List<String>.from(data['removedMembers'] ?? []);
+              List<String>.from(data['removedMembers'] ?? []);
           final bool isRemovedUser =
-          removedMembers.contains(currentUserId);
+              removedMembers.contains(currentUserId);
+
+          // ── NEW: active vote state ─────────────────────────
+          final Map<String, dynamic>? leaderVoteData =
+              data['leaderVote'] as Map<String, dynamic>?;
+          final bool hasActiveVote =
+              leaderVoteData != null && leaderVoteData['active'] == true;
+
+          // Auto-resolve if timer expired (any member triggers this)
+          if (hasActiveVote) {
+            final expiresAt =
+                (leaderVoteData['expiresAt'] as Timestamp?)?.toDate();
+            if (expiresAt != null &&
+                DateTime.now().isAfter(expiresAt)) {
+              _chatService
+                  .resolveLeaderVote(teamPostId: teamPostId)
+                  .ignore();
+            }
+          }
 
           return FutureBuilder<DocumentSnapshot<Map<String, dynamic>>>(
             future: FirebaseFirestore.instance
@@ -441,21 +558,21 @@ class MyTeamPostView extends StatelessWidget {
               final hackathonData = hackathonSnapshot.data?.data() ?? {};
 
               final DateTime? openDate =
-              _parseFirestoreDate(hackathonData['applicationOpenDate']);
+                  _parseFirestoreDate(hackathonData['applicationOpenDate']);
               final DateTime? deadline =
-              _parseFirestoreDate(hackathonData['applicationDeadline']);
+                  _parseFirestoreDate(hackathonData['applicationDeadline']);
 
               final now = DateTime.now();
 
               final DateTime? effectiveDeadline = deadline != null
                   ? DateTime(
-                deadline.year,
-                deadline.month,
-                deadline.day,
-                23,
-                59,
-                59,
-              )
+                      deadline.year,
+                      deadline.month,
+                      deadline.day,
+                      23,
+                      59,
+                      59,
+                    )
                   : null;
 
               final bool isRegistrationOpen = openDate != null &&
@@ -473,6 +590,20 @@ class MyTeamPostView extends StatelessWidget {
                   children: [
                     _buildStatusHeader(
                         isSubmitted, currentMembers, data['status']),
+
+                    // ── NEW: vote banner (shown above everything when active) ──
+                    if (hasActiveVote &&
+                        currentUserId != null &&
+                        !isRemovedUser) ...[
+                      const SizedBox(height: 16),
+                      LeaderVoteBanner(
+                        teamPostId: teamPostId,
+                        leaderVoteData: leaderVoteData!,
+                        currentMembers: List<String>.from(
+                            memberIds.map((e) => e.toString())),
+                      ),
+                    ],
+
                     const SizedBox(height: 24),
                     _sectionTitle("Team Overview"),
                     _infoBox([
@@ -489,15 +620,15 @@ class MyTeamPostView extends StatelessWidget {
                     _infoBox([
                       Text(
                         (data['projectIdea'] != null &&
-                            data['projectIdea']
-                                .toString()
-                                .trim()
-                                .isNotEmpty)
+                                data['projectIdea']
+                                    .toString()
+                                    .trim()
+                                    .isNotEmpty)
                             ? data['projectIdea']
                             : (data['idea'] != null &&
-                            data['idea'].toString().trim().isNotEmpty)
-                            ? data['idea']
-                            : "No project idea added yet.",
+                                    data['idea'].toString().trim().isNotEmpty)
+                                ? data['idea']
+                                : "No project idea added yet.",
                         style: const TextStyle(
                           color: purple,
                           fontWeight: FontWeight.bold,
@@ -526,27 +657,28 @@ class MyTeamPostView extends StatelessWidget {
                           children: nameSnapshot.data!
                               .map(
                                 (member) => _memberTile(
-                              context: context,
-                              uid: member['uid']!,
-                              name: member['name']!,
-                              isLeader: member['isLeader'] == 'true',
-                              role: member['role']!,
-                              onRemove: (isLeader &&
-                                  !isSubmitted &&
-                                  member['isLeader'] != 'true')
-                                  ? () => _removeMember(
-                                context,
-                                member['uid']!,
-                                member['name']!,
+                                  context: context,
+                                  uid: member['uid']!,
+                                  name: member['name']!,
+                                  isLeader: member['isLeader'] == 'true',
+                                  role: member['role']!,
+                                  onRemove: (isLeader &&
+                                          !isSubmitted &&
+                                          member['isLeader'] != 'true')
+                                      ? () => _removeMember(
+                                            context,
+                                            member['uid']!,
+                                            member['name']!,
+                                          )
+                                      : null,
+                                ),
                               )
-                                  : null,
-                            ),
-                          )
                               .toList(),
                         );
                       },
                     ),
                     const SizedBox(height: 32),
+
                     if (isLeader) ...[
                       if (!isSubmitted && currentMembers < 2)
                         Container(
@@ -578,145 +710,98 @@ class MyTeamPostView extends StatelessWidget {
                             ],
                           ),
                         ),
-                      // 👇 HER layout — Edit + Join Requests side by side
-                      if (!isSubmitted) ...[
-                        Row(
-                          children: [
-                            Expanded(
-                              child: _actionButton(
-                                label: 'Edit Team Info',
-                                icon: Icons.edit_outlined,
-                                color: purple,
-                                onPressed: () => _editTeamInfo(context, data),
-                              ),
-                            ),
-                            const SizedBox(width: 10),
-                            Expanded(
-                              child: StreamBuilder<int>(
-                                stream: _pendingRequestsCountStream(),
-                                builder: (context, snapshot) {
-                                  final int count = snapshot.data ?? 0;
-                                  return _actionButton(
-                                    label: 'Join Requests',
-                                    icon: Icons.group_add_outlined,
-                                    color: purple,
-                                    badgeCount: count,
-                                    onPressed: () {
-                                      Navigator.push(
-                                        context,
-                                        MaterialPageRoute(
-                                          builder: (_) =>
-                                              LeaderJoinRequestsView(
-                                                teamPostId: teamPostId,
-                                              ),
-                                        ),
-                                      );
-                                    },
-                                  );
-                                },
-                              ),
-                            ),
-                          ],
+                      /*if (!isSubmitted) ...[
+                        _actionButton(
+                          label: 'Edit Team Info',
+                          icon: Icons.edit_outlined,
+                          color: purple,
+                          onPressed: () => _editTeamInfo(context, data),
                         ),
                         const SizedBox(height: 12),
-                      ] else ...[
-                        StreamBuilder<int>(
-                          stream: _pendingRequestsCountStream(),
-                          builder: (context, snapshot) {
-                            final int count = snapshot.data ?? 0;
-                            return _actionButton(
-                              label: 'View Join Requests',
-                              icon: Icons.group_add_outlined,
-                              color: purple,
-                              badgeCount: count,
-                              onPressed: () {
-                                Navigator.push(
-                                  context,
-                                  MaterialPageRoute(
-                                    builder: (_) => LeaderJoinRequestsView(
-                                      teamPostId: teamPostId,
-                                    ),
+                      ],*/
+                      StreamBuilder<int>(
+                        stream: _pendingRequestsCountStream(),
+                        builder: (context, snapshot) {
+                          final int count = snapshot.data ?? 0;
+
+                          return _actionButton(
+                            label: 'View Join Requests',
+                            icon: Icons.group_add_outlined,
+                            color: purple,
+                            badgeCount: count,
+                            onPressed: () {
+                              Navigator.push(
+                                context,
+                                MaterialPageRoute(
+                                  builder: (_) => LeaderJoinRequestsView(
+                                    teamPostId: teamPostId,
                                   ),
-                                );
-                              },
-                            );
-                          },
-                        ),
-                        const SizedBox(height: 12),
-                      ],
-                      // 👇 HER finalize button color
+                                ),
+                              );
+                            },
+                          );
+                        },
+                      ),
+                      const SizedBox(height: 12),
                       _actionButton(
                         label: isSubmitted
                             ? 'Registration Submitted'
                             : (isRegistrationOpen
-                            ? 'Finalize & Register Team'
-                            : 'Registration Closed'),
+                                ? 'Finalize & Register Team'
+                                : 'Registration Closed'),
                         icon: isSubmitted
                             ? Icons.verified_user
                             : Icons.rocket_launch,
                         color: isSubmitted
                             ? Colors.grey
                             : (canFinalize
-                            ? const Color(0xFF6D56B3)
-                            : Colors.grey.shade400),
+                                ? Colors.green
+                                : Colors.grey.shade400),
                         onPressed: canFinalize
                             ? () {
-                          Navigator.push(
-                            context,
-                            MaterialPageRoute(
-                              builder: (_) => TeamRegistrationFormView(
-                                hackathonId: hackathonId,
-                                teamPostId: teamPostId,
-                                teamName:
-                                data['teamName'] ?? 'Unnamed Team',
-                                members: List<String>.from(memberIds),
-                                hackathonTeamSize: hackathonTeamSize,
-                              ),
-                            ),
-                          );
-                        }
+                                Navigator.push(
+                                  context,
+                                  MaterialPageRoute(
+                                    builder: (_) => TeamRegistrationFormView(
+                                      hackathonId: hackathonId,
+                                      teamPostId: teamPostId,
+                                      teamName:
+                                          data['teamName'] ?? 'Unnamed Team',
+                                      members: List<String>.from(memberIds),
+                                      hackathonTeamSize: hackathonTeamSize,
+                                    ),
+                                  ),
+                                );
+                              }
                             : null,
                       ),
-                      // 👇 HER delete button style
                       if (!isSubmitted) ...[
-                        const SizedBox(height: 16),
-                        Divider(color: Colors.grey.shade200, height: 1),
                         const SizedBox(height: 12),
-                        SizedBox(
-                          width: double.infinity,
-                          height: 46,
-                          child: OutlinedButton.icon(
-                            style: OutlinedButton.styleFrom(
-                              foregroundColor: Colors.deepOrange.shade400,
-                              side: BorderSide(
-                                  color: Colors.deepOrange.shade300,
-                                  width: 1.2),
-                              shape: RoundedRectangleBorder(
-                                  borderRadius: BorderRadius.circular(12)),
-                            ),
-                            onPressed: () => _showDeleteConfirmation(context),
-                            icon: Icon(Icons.delete_outline,
-                                size: 18,
-                                color: Colors.deepOrange.shade400),
-                            label: Text('Delete Team',
-                                style: TextStyle(
-                                    fontWeight: FontWeight.bold,
-                                    fontSize: 14,
-                                    color: Colors.deepOrange.shade400)),
-                          ),
+                        _actionButton(
+                          label: 'Delete Team',
+                          icon: Icons.delete_outline,
+                          color: Colors.red,
+                          onPressed: () => _showDeleteConfirmation(context),
+                        ),
+                        // ── NEW: leader leave button ──────────
+                        const SizedBox(height: 12),
+                        _actionButton(
+                          label: 'Leave Team',
+                          icon: Icons.exit_to_app_rounded,
+                          color: Colors.orange.shade700,
+                          onPressed: () => _leaveTeam(context),
                         ),
                       ],
                       if (!isSubmitted)
                         Padding(
-                          padding: const EdgeInsets.only(
-                              top: 12, left: 4, right: 4),
+                          padding:
+                              const EdgeInsets.only(top: 12, left: 4, right: 4),
                           child: Container(
                             padding: const EdgeInsets.all(12),
                             decoration: BoxDecoration(
                               color: Colors.amber.shade50.withOpacity(0.5),
                               borderRadius: BorderRadius.circular(12),
-                              border:
-                              Border.all(color: Colors.amber.shade200),
+                              border: Border.all(color: Colors.amber.shade200),
                             ),
                             child: Row(
                               crossAxisAlignment: CrossAxisAlignment.start,
@@ -798,8 +883,8 @@ class MyTeamPostView extends StatelessWidget {
               radius: 18,
               child: Text(
                 name.isNotEmpty ? name[0] : '?',
-                style: const TextStyle(
-                    color: purple, fontWeight: FontWeight.bold),
+                style:
+                    const TextStyle(color: purple, fontWeight: FontWeight.bold),
               ),
             ),
           ),
@@ -886,12 +971,12 @@ class MyTeamPostView extends StatelessWidget {
       icon = Icons.verified;
     } else if (currentMembers >= hackathonTeamSize) {
       noticeText =
-      "Team is full! We're just waiting for the leader to finalize registration.";
+          "Team is full! We're just waiting for the leader to finalize registration.";
       color = Colors.orange.shade800;
       icon = Icons.pending_actions;
     } else {
       noticeText =
-      "Welcome to the team! We are currently looking for more teammates.";
+          "Welcome to the team! We are currently looking for more teammates.";
       icon = Icons.celebration_outlined;
       color = purple;
     }
@@ -924,10 +1009,10 @@ class MyTeamPostView extends StatelessWidget {
   }
 
   Widget _buildStatusHeader(
-      bool isSubmitted,
-      int currentMembers,
-      String? adminStatus,
-      ) {
+    bool isSubmitted,
+    int currentMembers,
+    String? adminStatus,
+  ) {
     String statusText;
     Color statusColor;
     IconData icon;
@@ -1144,280 +1229,6 @@ class MyTeamPostView extends StatelessWidget {
             ),
         ],
       ),
-    );
-  }
-}
-
-// ─── Edit Team Info Dialog ────────────────────────────────────────────────────
-
-class _EditTeamInfoDialog extends StatefulWidget {
-  final Map<String, dynamic> data;
-  final String teamPostId;
-  final String hackathonId;
-
-  const _EditTeamInfoDialog({
-    required this.data,
-    required this.teamPostId,
-    required this.hackathonId,
-  });
-
-  @override
-  State<_EditTeamInfoDialog> createState() => _EditTeamInfoDialogState();
-}
-
-class _EditTeamInfoDialogState extends State<_EditTeamInfoDialog> {
-  final _formKey = GlobalKey<FormState>();
-  late final TextEditingController _teamNameController;
-  late final TextEditingController _customRoleController;
-  late String _selectedGender;
-  String? _selectedRole;
-  bool _isLoading = false;
-  bool _isFetchingRoles = true;
-  List<String> _availableRoles = [];
-  bool _allowCustomRole = false;
-
-  static const Color purple = Color(0xFF6D56B3);
-
-  @override
-  void initState() {
-    super.initState();
-    _teamNameController =
-        TextEditingController(text: widget.data['teamName'] ?? '');
-    _customRoleController =
-        TextEditingController(text: widget.data['myRole'] ?? '');
-    _selectedGender = widget.data['genderPreference'] ?? 'Any';
-    _loadRoles();
-  }
-
-  Future<void> _loadRoles() async {
-    try {
-      final doc = await FirebaseFirestore.instance
-          .collection('hackathons')
-          .doc(widget.hackathonId)
-          .get();
-
-      if (doc.exists) {
-        final List<dynamic>? roles = doc.data()?['rolesNeeded'];
-        if (roles != null) {
-          setState(() {
-            _availableRoles = roles.map((e) => e.toString()).toList();
-            _allowCustomRole =
-                _availableRoles.any((r) => r.toLowerCase() == 'any');
-
-            final currentRole = widget.data['myRole'] ?? '';
-            if (_availableRoles.contains(currentRole)) {
-              _selectedRole = currentRole;
-            } else if (_allowCustomRole) {
-              _selectedRole = 'Any';
-              _customRoleController.text = currentRole;
-            } else {
-              _selectedRole =
-              _availableRoles.isNotEmpty ? _availableRoles.first : null;
-            }
-          });
-        }
-      }
-    } finally {
-      setState(() => _isFetchingRoles = false);
-    }
-  }
-
-  @override
-  void dispose() {
-    _teamNameController.dispose();
-    _customRoleController.dispose();
-    super.dispose();
-  }
-
-  InputDecoration _fieldDecoration({
-    required String label,
-    required IconData icon,
-    required String helper,
-  }) {
-    return InputDecoration(
-      labelText: label,
-      helperText: helper,
-      helperStyle: const TextStyle(color: Colors.grey, fontSize: 12),
-      errorMaxLines: 2,
-      prefixIcon: Icon(icon, color: purple),
-      contentPadding:
-      const EdgeInsets.symmetric(horizontal: 14, vertical: 14),
-      border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
-      enabledBorder: OutlineInputBorder(
-        borderRadius: BorderRadius.circular(12),
-        borderSide: BorderSide(color: Colors.grey.shade400, width: 1),
-      ),
-      focusedBorder: OutlineInputBorder(
-        borderRadius: BorderRadius.circular(12),
-        borderSide: const BorderSide(color: purple, width: 1.6),
-      ),
-      errorBorder: OutlineInputBorder(
-        borderRadius: BorderRadius.circular(12),
-        borderSide: const BorderSide(color: Colors.red, width: 1),
-      ),
-      focusedErrorBorder: OutlineInputBorder(
-        borderRadius: BorderRadius.circular(12),
-        borderSide: const BorderSide(color: Colors.red, width: 1.6),
-      ),
-    );
-  }
-
-  Future<void> _save() async {
-    if (!_formKey.currentState!.validate()) return;
-    setState(() => _isLoading = true);
-
-    try {
-      final String newName = _teamNameController.text.trim();
-      final String finalRole =
-      (_allowCustomRole && _selectedRole == 'Any')
-          ? _customRoleController.text.trim()
-          : _selectedRole ?? 'Leader';
-
-      final List<String> updatedNeeded =
-      List<String>.from(_availableRoles)..remove(finalRole);
-
-      await FirebaseFirestore.instance
-          .collection('team_posts')
-          .doc(widget.teamPostId)
-          .update({
-        'teamName': newName,
-        'myRole': finalRole,
-        'genderPreference': _selectedGender,
-        'neededRoles': updatedNeeded,
-      });
-
-      if (mounted) Navigator.pop(context, true);
-    } catch (e) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-              content: Text('Error updating team: $e'),
-              backgroundColor: Colors.red),
-        );
-      }
-    } finally {
-      if (mounted) setState(() => _isLoading = false);
-    }
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return AlertDialog(
-      shape:
-      RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-      title: const Text(
-        'Edit Team Info',
-        style: TextStyle(fontWeight: FontWeight.bold, color: purple),
-      ),
-      content: _isFetchingRoles
-          ? const SizedBox(
-        height: 100,
-        child: Center(
-          child: CircularProgressIndicator(color: purple),
-        ),
-      )
-          : SingleChildScrollView(
-        child: Form(
-          key: _formKey,
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              TextFormField(
-                controller: _teamNameController,
-                maxLength: 25,
-                decoration: _fieldDecoration(
-                  label: 'Team Name',
-                  icon: Icons.groups_rounded,
-                  helper: 'Letters & numbers only',
-                ),
-                validator: (v) {
-                  if (v == null || v.trim().isEmpty) {
-                    return 'Team name cannot be empty';
-                  }
-                  if (!RegExp(r'^[a-zA-Z0-9 ]+$').hasMatch(v.trim())) {
-                    return 'Letters & numbers only';
-                  }
-                  return null;
-                },
-              ),
-              const SizedBox(height: 12),
-              DropdownButtonFormField<String>(
-                value: _selectedGender,
-                decoration: _fieldDecoration(
-                  label: 'Gender Preference',
-                  icon: Icons.wc_rounded,
-                  helper: 'Select Preference',
-                ),
-                items: ['Male', 'Female', 'Any']
-                    .map((s) =>
-                    DropdownMenuItem(value: s, child: Text(s)))
-                    .toList(),
-                onChanged: (v) => setState(() => _selectedGender = v!),
-                validator: (v) =>
-                v == null ? 'Select Preference' : null,
-              ),
-              const SizedBox(height: 12),
-              DropdownButtonFormField<String>(
-                value: _selectedRole,
-                isExpanded: true,
-                decoration: _fieldDecoration(
-                  label: 'My role in the team',
-                  icon: Icons.person_search_rounded,
-                  helper: 'Specify Your Role',
-                ),
-                items: _availableRoles
-                    .map((r) =>
-                    DropdownMenuItem(value: r, child: Text(r)))
-                    .toList(),
-                onChanged: (v) => setState(() => _selectedRole = v),
-                validator: (v) =>
-                v == null ? 'Specify Your Role' : null,
-              ),
-              if (_allowCustomRole && _selectedRole == 'Any') ...[
-                const SizedBox(height: 12),
-                TextFormField(
-                  controller: _customRoleController,
-                  decoration: _fieldDecoration(
-                    label: 'Specify Your Role',
-                    icon: Icons.edit_note_rounded,
-                    helper: 'Specify Your Role',
-                  ),
-                  validator: (v) =>
-                  (v == null || v.trim().isEmpty)
-                      ? 'Specify Your Role'
-                      : null,
-                ),
-              ],
-            ],
-          ),
-        ),
-      ),
-      actions: [
-        TextButton(
-          onPressed:
-          _isLoading ? null : () => Navigator.pop(context, false),
-          child: const Text('Cancel'),
-        ),
-        ElevatedButton.icon(
-          style: ElevatedButton.styleFrom(
-            backgroundColor: purple,
-            foregroundColor: Colors.white,
-            shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(10)),
-            elevation: 0,
-          ),
-          onPressed: _isLoading ? null : _save,
-          icon: _isLoading
-              ? const SizedBox(
-            width: 16,
-            height: 16,
-            child: CircularProgressIndicator(
-                strokeWidth: 2, color: Colors.white),
-          )
-              : const Icon(Icons.check_circle_outline, size: 16),
-          label: Text(_isLoading ? 'Saving...' : 'Save'),
-        ),
-      ],
     );
   }
 }

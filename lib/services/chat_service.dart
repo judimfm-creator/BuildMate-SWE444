@@ -3,6 +3,7 @@ import 'package:firebase_auth/firebase_auth.dart';
 import '../model/user_model.dart';
 import 'package:firebase_storage/firebase_storage.dart';
 import 'dart:io';
+import 'dart:math';
 
 
 class ChatService {
@@ -23,7 +24,7 @@ class ChatService {
     required String senderName,
     required File file,
     required String fileName,
-    required String fileType, // 'image' | 'file'
+    required String fileType,
   }) async {
     final teamDoc = await _firestore.collection('team_posts').doc(teamPostId).get();
     final members = List<String>.from(teamDoc.data()?['members'] ?? []);
@@ -54,6 +55,7 @@ class ChatService {
       'readBy': [],
     });
   }
+
   Future<void> sendMessage({
     required String teamPostId,
     required String text,
@@ -106,7 +108,6 @@ class ChatService {
       'members': FieldValue.arrayUnion([memberId]),
       'memberRoles.$memberId': desiredRole,
       'removedMembers': FieldValue.arrayRemove([memberId]),
-      // وقت الانضمام الجديد — نفلتر الرسائل القديمة للعضو الراجع
       'memberJoinedAt.$memberId': FieldValue.serverTimestamp(),
     });
   }
@@ -122,5 +123,183 @@ class ChatService {
         .collection('messages')
         .doc(messageId)
         .delete();
+  }
+
+  // ─────────────────────────────────────────────────────────────
+  // LEADER VOTE — INITIATE
+  // timeout = 60 دقيقة خفي كـ safety net فقط، ما يظهر للمستخدم.
+  // يتحدد فوراً لما الجميع يصوّت.
+  // ─────────────────────────────────────────────────────────────
+
+  Future<void> initiateLeaderVote({
+    required String teamPostId,
+    required String leavingLeaderId,
+    required List<String> eligibleVoters,
+  }) async {
+    // Timeout خفي = ساعة كاملة — safety net فقط
+    final expiresAt = DateTime.now().add(const Duration(hours: 1));
+
+    final teamRef = _firestore.collection('team_posts').doc(teamPostId);
+    final batch = _firestore.batch();
+
+    batch.update(teamRef, {
+      'members': FieldValue.arrayRemove([leavingLeaderId]),
+      'memberRoles.$leavingLeaderId': FieldValue.delete(),
+      'removedMembers': FieldValue.arrayUnion([leavingLeaderId]),
+      'removedAt.$leavingLeaderId': FieldValue.serverTimestamp(),
+      'createdBy': '',
+      'leaderId': '',
+      'leaderVote': {
+        'active': true,
+        'expiresAt': Timestamp.fromDate(expiresAt),
+        'votes': <String, String>{},
+        'eligibleVoters': eligibleVoters,
+        'leavingLeaderId': leavingLeaderId,
+      },
+    });
+
+    // رسالة النظام — بدون ذكر وقت
+    final msgRef = teamRef.collection('messages').doc();
+    batch.set(msgRef, {
+      'text': 'The team leader has left. Please vote for a new leader. ',
+      'senderId': 'system',
+      'senderName': 'System',
+      'type': 'vote_prompt',
+      'createdAt': FieldValue.serverTimestamp(),
+      'readBy': [],
+    });
+
+    await batch.commit();
+  }
+
+  // ─────────────────────────────────────────────────────────────
+  // LEADER VOTE — CAST / CHANGE VOTE
+  // يقدر العضو يغيّر صوته في أي وقت قبل الإغلاق.
+  // يتحدد فوراً لما الجميع يصوّت.
+  // ─────────────────────────────────────────────────────────────
+
+  Future<void> castLeaderVote({
+    required String teamPostId,
+    required String voterId,
+    required String votedForId,
+  }) async {
+    // يكتب الصوت — لو موجود يستبدله (تعديل الصوت)
+    await _firestore.collection('team_posts').doc(teamPostId).update({
+      'leaderVote.votes.$voterId': votedForId,
+    });
+
+    // تحقق: لو الجميع صوّت → يُحسم فوراً
+    final doc =
+        await _firestore.collection('team_posts').doc(teamPostId).get();
+    final voteData =
+        doc.data()?['leaderVote'] as Map<String, dynamic>?;
+    if (voteData == null || voteData['active'] != true) return;
+
+    final eligibleVoters =
+        List<String>.from(voteData['eligibleVoters'] ?? []);
+    final votes = Map<String, dynamic>.from(voteData['votes'] ?? {});
+
+    final allVoted = eligibleVoters.isNotEmpty &&
+        eligibleVoters.every((v) => votes.containsKey(v));
+
+    if (allVoted) {
+      await resolveLeaderVote(teamPostId: teamPostId);
+    }
+  }
+
+  // ─────────────────────────────────────────────────────────────
+  // LEADER VOTE — RESOLVE
+  // Transaction يضمن ما ينحسم إلا مرة وحدة.
+  // ─────────────────────────────────────────────────────────────
+
+  Future<void> resolveLeaderVote({required String teamPostId}) async {
+    await _firestore.runTransaction((transaction) async {
+      final teamRef =
+          _firestore.collection('team_posts').doc(teamPostId);
+      final snap = await transaction.get(teamRef);
+      if (!snap.exists) return;
+
+      final data = snap.data() ?? {};
+      final voteData = data['leaderVote'] as Map<String, dynamic>?;
+
+      if (voteData == null || voteData['active'] != true) return;
+
+      final votes =
+          Map<String, dynamic>.from(voteData['votes'] ?? {});
+      final currentMembers = List<String>.from(data['members'] ?? []);
+
+      // حساب الأصوات
+      final Map<String, int> tally = {};
+      for (final votedFor in votes.values) {
+        final key = votedFor.toString();
+        if (currentMembers.contains(key)) {
+          tally[key] = (tally[key] ?? 0) + 1;
+        }
+      }
+
+      String? newLeaderId;
+
+      if (tally.isEmpty) {
+        newLeaderId = currentMembers.isNotEmpty ? currentMembers.first : null;
+      } else {
+        final maxVotes = tally.values.reduce((a, b) => a > b ? a : b);
+        final topCandidates = tally.entries
+            .where((e) => e.value == maxVotes)
+            .map((e) => e.key)
+            .toList();
+
+        if (topCandidates.length == 1) {
+          newLeaderId = topCandidates.first;
+        } else {
+          // تعادل → عشوائي
+          topCandidates.shuffle(Random());
+          newLeaderId = topCandidates.first;
+        }
+      }
+
+      if (newLeaderId == null) return;
+
+      transaction.update(teamRef, {
+        'createdBy': newLeaderId,
+        'leaderId': newLeaderId,
+        'leaderVote.active': false,
+        'leaderVote.resolvedAt': FieldValue.serverTimestamp(),
+        'leaderVote.winner': newLeaderId,
+      });
+    });
+
+    // رسالة إعلان الفائز
+    final snap =
+        await _firestore.collection('team_posts').doc(teamPostId).get();
+    final winner = snap.data()?['leaderVote']?['winner'] as String?;
+    if (winner == null) return;
+
+    final userDoc =
+        await _firestore.collection('users').doc(winner).get();
+    final winnerName = userDoc.data()?['fullName'] ?? 'leader';
+
+    final existing = await _firestore
+        .collection('team_posts')
+        .doc(teamPostId)
+        .collection('messages')
+        .where('type', isEqualTo: 'vote_result')
+        .limit(1)
+        .get();
+
+    if (existing.docs.isEmpty) {
+      await _firestore
+          .collection('team_posts')
+          .doc(teamPostId)
+          .collection('messages')
+          .add({
+        'text': '🎉 The new leader is $winnerName ! ',
+        'senderId': 'system',
+        'senderName': 'System',
+        'type': 'vote_result',
+        'winnerId': winner,
+        'createdAt': FieldValue.serverTimestamp(),
+        'readBy': [],
+      });
+    }
   }
 }
