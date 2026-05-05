@@ -38,20 +38,17 @@ exports.sendRequestStatusNotification = onDocumentCreated(
 );
 
 exports.sendTaskDeadlineReminder = onSchedule(
-    {schedule: "0 5 * * *", timeZone: "Asia/Riyadh"},
+    {schedule: "0 * * * *", timeZone: "Asia/Riyadh"},
     async () => {
-      // "tomorrow" in Riyadh time
       const now = new Date();
-      const tomorrow = new Date(now);
-      tomorrow.setDate(tomorrow.getDate() + 1);
-
-      const startOfTomorrow = new Date(tomorrow.getFullYear(), tomorrow.getMonth(), tomorrow.getDate(), 0, 0, 0);
-      const endOfTomorrow = new Date(tomorrow.getFullYear(), tomorrow.getMonth(), tomorrow.getDate(), 23, 59, 59);
+      // window: tasks due between 24h and 25h from now
+      const windowStart = new Date(now.getTime() + 24 * 60 * 60 * 1000);
+      const windowEnd = new Date(now.getTime() + 25 * 60 * 60 * 1000);
 
       const snapshot = await admin.firestore()
           .collectionGroup("tasks")
-          .where("deadline", ">=", admin.firestore.Timestamp.fromDate(startOfTomorrow))
-          .where("deadline", "<=", admin.firestore.Timestamp.fromDate(endOfTomorrow))
+          .where("deadline", ">=", admin.firestore.Timestamp.fromDate(windowStart))
+          .where("deadline", "<=", admin.firestore.Timestamp.fromDate(windowEnd))
           .get();
 
       if (snapshot.empty) return;
@@ -61,11 +58,15 @@ exports.sendTaskDeadlineReminder = onSchedule(
       for (const doc of snapshot.docs) {
         const task = doc.data();
         if (task.status === "done" || task.status === "completed") continue;
+        if (task.reminderSent === true) continue;
 
         const assignedTo = task.assignedTo || [];
         if (assignedTo.length === 0) continue;
 
         const title = task.title || "Task";
+
+        // mark as reminded so it doesn't fire again next hour
+        sends.push(doc.ref.update({reminderSent: true}));
 
         for (const uid of assignedTo) {
           sends.push(
@@ -75,8 +76,8 @@ exports.sendTaskDeadlineReminder = onSchedule(
                 return admin.messaging().send({
                   token,
                   notification: {
-                    title: "Task Deadline Tomorrow ⏰",
-                    body: `"${title}" is due tomorrow. Don't forget to complete it!`,
+                    title: "Task Deadline in 24 Hours ⏰",
+                    body: `"${title}" is due in 24 hours. Don't forget to complete it!`,
                   },
                   android: {
                     priority: "high",
