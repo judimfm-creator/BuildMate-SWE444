@@ -298,10 +298,25 @@ class TeamWorkspaceView extends StatelessWidget {
                                   ),
                                   builder: (context, nameSnap) {
                                     final names = nameSnap.data ?? [];
+                                    final bool isDone = d['isDone'] ?? false;
+                                    final String currentUserUid = FirebaseAuth.instance.currentUser?.uid ?? '';
+                                    final bool isAssigned = assignedUids.contains(currentUserUid);
+                                    final bool isOverdue = d['deadline'] != null && DateTime.now().isAfter((d['deadline'] as Timestamp).toDate()) && !isDone;
                                     return _TaskRow(
                                       title: d['title'] ?? '',
                                       deadline: label,
                                       assigneeNames: names,
+                                      isDone: isDone,
+                                      isAssigned: isAssigned,
+                                      isOverdue: isOverdue,
+                                      onToggle: () async {
+                                        await FirebaseFirestore.instance
+                                            .collection('team_posts')
+                                            .doc(teamPostId)
+                                            .collection('tasks')
+                                            .doc(doc.id)
+                                            .update({'isDone': !isDone});
+                                      },
                                       onDelete: () async {
                                         final confirm = await showDialog<bool>(
                                           context: context,
@@ -481,10 +496,25 @@ class TeamWorkspaceView extends StatelessWidget {
                                 ),
                                 builder: (context, nameSnap) {
                                   final names = nameSnap.data ?? [];
+                                  final bool isDone = d['isDone'] ?? false;
+                                  final String currentUserUid = FirebaseAuth.instance.currentUser?.uid ?? '';
+                                  final bool isAssigned = assignedUids.contains(currentUserUid);
+                                  final bool isOverdue = d['deadline'] != null && DateTime.now().isAfter((d['deadline'] as Timestamp).toDate()) && !isDone;
                                   return _TaskRow(
                                     title: d['title'] ?? '',
                                     deadline: label,
                                     assigneeNames: names,
+                                    isDone: isDone,
+                                    isAssigned: isAssigned,
+                                    isOverdue: isOverdue,
+                                    onToggle: () async {
+                                      await FirebaseFirestore.instance
+                                          .collection('team_posts')
+                                          .doc(teamPostId)
+                                          .collection('tasks')
+                                          .doc(doc.id)
+                                          .update({'isDone': !isDone});
+                                    },
                                   );
                                 },
                               ),
@@ -728,6 +758,11 @@ class _TaskRow extends StatelessWidget {
   final String deadline;
   final List<String> assigneeNames; // 👈 جديد
 
+  final bool isDone;
+  final bool isAssigned;
+  final bool isOverdue;
+  final VoidCallback? onToggle;
+
   final VoidCallback? onEdit;
   final VoidCallback? onDelete;
 
@@ -737,6 +772,10 @@ class _TaskRow extends StatelessWidget {
     this.assigneeNames = const [],
     this.onEdit,
     this.onDelete,
+    this.isDone = false,
+    this.isAssigned = false,
+    this.isOverdue = false,
+    this.onToggle,
   });
 
 
@@ -752,13 +791,23 @@ class _TaskRow extends StatelessWidget {
         children: [
           Row(
             children: [
-              const Icon(Icons.radio_button_unchecked,
-                  size: 18, color: Color(0xFF6D56B3)),
+              GestureDetector(
+                onTap: isAssigned ? onToggle : null,
+                child: Icon(
+                  isDone ? Icons.check_circle_rounded : Icons.radio_button_unchecked,
+                  size: 18,
+                  color: isDone ? Colors.green : (isOverdue ? Colors.red : const Color(0xFF6D56B3)),
+                ),
+              ),
               const SizedBox(width: 12),
               Expanded(
                   child: Text(title,
-                      style: const TextStyle(
-                          fontWeight: FontWeight.w600, fontSize: 14))),
+                      style: TextStyle(
+                        fontWeight: FontWeight.w600,
+                        fontSize: 14,
+                        decoration: isDone ? TextDecoration.lineThrough : null,
+                        color: isOverdue && !isDone ? Colors.red : (isDone ? Colors.grey : Colors.black),
+                      ))),
               Container(
                 padding: const EdgeInsets.symmetric(
                     horizontal: 8, vertical: 4),
