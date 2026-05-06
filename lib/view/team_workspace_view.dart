@@ -1543,15 +1543,23 @@ class _CreateTaskDialogState extends State<_CreateTaskDialog> {
         : '${_deadline!.year}-${_deadline!.month.toString().padLeft(2, '0')}-${_deadline!.day.toString().padLeft(2, '0')}';
 
     return Dialog(
-      shape:
-          RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
-      insetPadding:
-          const EdgeInsets.symmetric(horizontal: 20, vertical: 40),
-      child: Padding(
-        padding: const EdgeInsets.all(24),
-        child: Form(
-          key: _formKey,
-          child: Column(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
+        insetPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 24),
+        child: ConstrainedBox(
+          constraints: BoxConstraints(
+            maxHeight: MediaQuery.of(context).size.height * 0.85,
+          ),
+          child: SingleChildScrollView(
+            keyboardDismissBehavior: ScrollViewKeyboardDismissBehavior.onDrag,
+            padding: EdgeInsets.only(
+              left: 24,
+              right: 24,
+              top: 24,
+              bottom: MediaQuery.of(context).viewInsets.bottom + 24,
+            ),
+            child: Form(
+              key: _formKey,
+              child: Column(
             mainAxisSize: MainAxisSize.min,
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
@@ -1578,6 +1586,8 @@ class _CreateTaskDialogState extends State<_CreateTaskDialog> {
               TextFormField(
                 controller: _titleController,
                 maxLength: 20,
+                maxLines: 1,
+                textInputAction: TextInputAction.done,
                 decoration: InputDecoration(
                   labelText: 'Task Name',
                   hintText: 'Max 20 characters',
@@ -1749,6 +1759,8 @@ class _CreateTaskDialogState extends State<_CreateTaskDialog> {
           ),
         ),
       ),
+        ),
+
     );
   }
 }
