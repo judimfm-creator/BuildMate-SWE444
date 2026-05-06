@@ -9,6 +9,8 @@ import 'dart:io';
 import 'package:file_picker/file_picker.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:open_filex/open_filex.dart';
+import 'package:http/http.dart' as http;
+import 'package:path_provider/path_provider.dart';
 
 class GroupChatView extends StatefulWidget {
   final String teamPostId;
@@ -174,10 +176,18 @@ class _GroupChatViewState extends State<GroupChatView> {
       file = File(picked.path);
       fileName = picked.name;
     } else {
-      final result = await FilePicker.platform.pickFiles();
-      if (result == null || result.files.single.path == null) return;
-      file = File(result.files.single.path!);
-      fileName = result.files.single.name;
+      final result = await FilePicker.platform.pickFiles(withData: true);
+      if (result == null) return;
+      final picked = result.files.single;
+      fileName = picked.name;
+      if (picked.path != null) {
+        file = File(picked.path!);
+      } else if (picked.bytes != null) {
+        final tmp = await File('${Directory.systemTemp.path}/${picked.name}').create();
+        file = await tmp.writeAsBytes(picked.bytes!);
+      } else {
+        return;
+      }
     }
 
     if (!context.mounted) return;
@@ -214,6 +224,24 @@ class _GroupChatViewState extends State<GroupChatView> {
               content: Text('Failed: $e'), backgroundColor: Colors.red),
         );
       }
+    }
+  }
+
+  Future<void> _openFile(String url, String fileName) async {
+    final snack = ScaffoldMessenger.of(context);
+    snack.showSnackBar(
+      const SnackBar(content: Text('Opening file...'), duration: Duration(seconds: 30)),
+    );
+    try {
+      final response = await http.get(Uri.parse(url));
+      final dir = await getTemporaryDirectory();
+      final file = File('${dir.path}/$fileName');
+      await file.writeAsBytes(response.bodyBytes);
+      snack.hideCurrentSnackBar();
+      await OpenFilex.open(file.path);
+    } catch (e) {
+      snack.hideCurrentSnackBar();
+      snack.showSnackBar(SnackBar(content: Text('Could not open file: $e'), backgroundColor: Colors.red));
     }
   }
 
@@ -750,7 +778,7 @@ class _GroupChatViewState extends State<GroupChatView> {
               GestureDetector(
                 // فتح الملف عند الضغط (غير الصور)
                 onTap: hasFile && fileType != 'image'
-                    ? () => OpenFilex.open(fileUrl!)
+                    ? () => _openFile(fileUrl, fileName ?? 'file')
                     : null,
                 child: ConstrainedBox(
                   constraints: BoxConstraints(
