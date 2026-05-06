@@ -1594,8 +1594,13 @@ class _CreateTaskDialogState extends State<_CreateTaskDialog> {
                   if (v == null || v.trim().isEmpty) {
                     return 'Task name cannot be empty.';
                   }
+                  final valid = RegExp(r'^[a-zA-Z0-9\u0600-\u06FF\s]+$');
+                  if (!valid.hasMatch(v.trim())) {
+                    return 'Task name can only contain letters and numbers.';
+                  }
                   return null;
                 },
+
               ),
               const SizedBox(height: 16),
               const Text('Assign to',
