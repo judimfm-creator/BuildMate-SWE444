@@ -8,6 +8,7 @@ import 'package:file_picker/file_picker.dart';
 import 'package:firebase_storage/firebase_storage.dart';
 import 'package:open_filex/open_filex.dart';
 import 'package:gal/gal.dart';
+import 'media_viewer.dart';
 
 class TeamWorkspaceView extends StatelessWidget {
   final String teamPostId;
@@ -1347,11 +1348,14 @@ class _SmartFileDialogState extends State<_SmartFileDialog> {
             ),
           ),
           if (widget.isImage)
-            ConstrainedBox(
-              constraints: BoxConstraints(
-                maxHeight: MediaQuery.of(context).size.height * 0.35,
+            GestureDetector(
+              onTap: () => MediaViewer.open(context, url: widget.fileUrl, fileName: widget.fileName),
+              child: ConstrainedBox(
+                constraints: BoxConstraints(
+                  maxHeight: MediaQuery.of(context).size.height * 0.35,
+                ),
+                child: Image.network(widget.fileUrl, fit: BoxFit.contain),
               ),
-              child: Image.network(widget.fileUrl, fit: BoxFit.contain),
             )
           else
             const Padding(

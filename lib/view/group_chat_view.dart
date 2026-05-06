@@ -11,6 +11,7 @@ import 'package:image_picker/image_picker.dart';
 import 'package:open_filex/open_filex.dart';
 import 'package:http/http.dart' as http;
 import 'package:path_provider/path_provider.dart';
+import 'media_viewer.dart';
 
 class GroupChatView extends StatefulWidget {
   final String teamPostId;
@@ -176,18 +177,10 @@ class _GroupChatViewState extends State<GroupChatView> {
       file = File(picked.path);
       fileName = picked.name;
     } else {
-      final result = await FilePicker.platform.pickFiles(withData: true);
-      if (result == null) return;
-      final picked = result.files.single;
-      fileName = picked.name;
-      if (picked.path != null) {
-        file = File(picked.path!);
-      } else if (picked.bytes != null) {
-        final tmp = await File('${Directory.systemTemp.path}/${picked.name}').create();
-        file = await tmp.writeAsBytes(picked.bytes!);
-      } else {
-        return;
-      }
+      final result = await FilePicker.platform.pickFiles();
+      if (result == null || result.files.single.path == null) return;
+      file = File(result.files.single.path!);
+      fileName = result.files.single.name;
     }
 
     if (!context.mounted) return;
@@ -805,32 +798,35 @@ class _GroupChatViewState extends State<GroupChatView> {
                     // ── محتوى الفقاعة ──────────────────────────────────
                     child: hasFile
                         ? (fileType == 'image'
-                        ? ClipRRect(
-                      borderRadius: BorderRadius.circular(10),
-                      child: Image.network(
-                        fileUrl!,
-                        width: 200,
-                        fit: BoxFit.cover,
-                        loadingBuilder: (ctx, child, progress) {
-                          if (progress == null) return child;
-                          return SizedBox(
-                            width: 200,
-                            height: 140,
-                            child: Center(
-                              child: CircularProgressIndicator(
-                                value: progress.expectedTotalBytes !=
-                                    null
-                                    ? progress.cumulativeBytesLoaded /
-                                    progress.expectedTotalBytes!
-                                    : null,
-                                color: isMe
-                                    ? Colors.white
-                                    : _purple,
-                                strokeWidth: 2,
+                        ? GestureDetector(
+                      onTap: () => MediaViewer.open(context, url: fileUrl, fileName: fileName ?? 'image'),
+                      child: ClipRRect(
+                        borderRadius: BorderRadius.circular(10),
+                        child: Image.network(
+                          fileUrl!,
+                          width: 200,
+                          fit: BoxFit.cover,
+                          loadingBuilder: (ctx, child, progress) {
+                            if (progress == null) return child;
+                            return SizedBox(
+                              width: 200,
+                              height: 140,
+                              child: Center(
+                                child: CircularProgressIndicator(
+                                  value: progress.expectedTotalBytes !=
+                                      null
+                                      ? progress.cumulativeBytesLoaded /
+                                      progress.expectedTotalBytes!
+                                      : null,
+                                  color: isMe
+                                      ? Colors.white
+                                      : _purple,
+                                  strokeWidth: 2,
+                                ),
                               ),
-                            ),
-                          );
-                        },
+                            );
+                          },
+                        ),
                       ),
                     )
                         : Row(
