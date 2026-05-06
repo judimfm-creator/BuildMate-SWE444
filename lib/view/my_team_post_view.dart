@@ -184,6 +184,8 @@ class MyTeamPostView extends StatelessWidget {
           'memberRoles.$memberId': FieldValue.delete(),
           'removedMembers': FieldValue.arrayUnion([memberId]),
           'removedAt.$memberId': FieldValue.serverTimestamp(),
+          'hiddenFor': FieldValue.arrayUnion([memberId]),
+
         });
         if (context.mounted) {
           ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
@@ -330,6 +332,9 @@ class MyTeamPostView extends StatelessWidget {
           'memberRoles.$uid': FieldValue.delete(),
           'removedMembers': FieldValue.arrayUnion([uid]),
           'removedAt.$uid': FieldValue.serverTimestamp(),
+          'hiddenFor': FieldValue.arrayUnion([uid]),
+
+
         });
         if (context.mounted) {
           ScaffoldMessenger.of(context).showSnackBar(const SnackBar(

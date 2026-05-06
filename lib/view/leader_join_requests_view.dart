@@ -122,6 +122,8 @@ class _LeaderJoinRequestsViewState extends State<LeaderJoinRequestsView> {
         'memberJoinedAt.$requesterId': FieldValue.serverTimestamp(),
         // نظف removedAt لو كان مطروداً ورجع
         'removedAt.$requesterId': FieldValue.delete(),
+        'hiddenFor': FieldValue.arrayRemove([requesterId]),
+
       });
 
       await batch.commit();
