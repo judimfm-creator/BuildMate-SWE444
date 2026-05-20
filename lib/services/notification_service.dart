@@ -77,7 +77,7 @@ class NotificationService {
     });
   }
 
-  // Called from main.dart foreground FCM listener
+
   Future<void> showNotification({
     required String title,
     required String body,
@@ -85,7 +85,6 @@ class NotificationService {
     showInAppBanner(title: title, body: body);
   }
 
-  // Snapchat/Instagram-style in-app banner overlay
   void showInAppBanner({required String title, required String body}) {
     final overlay = navigatorKey?.currentState?.overlay;
     if (overlay == null) return;
@@ -108,8 +107,6 @@ class NotificationService {
 
   bool _initialLoadDone = false;
 
-  // Listens to the notifications collection for real-time in-app banners.
-  // First snapshot silently seeds seen IDs — only additions AFTER login show a banner.
   void startJoinRequestListener() {
     final User? user = FirebaseAuth.instance.currentUser;
     if (user == null) return;
@@ -125,7 +122,6 @@ class NotificationService {
         .snapshots()
         .listen((snapshot) {
       if (!_initialLoadDone) {
-        // Seed all existing IDs silently — these are old, don't banner them
         for (final doc in snapshot.docs) {
           _shownNotificationIds.add(doc.id);
         }
@@ -157,7 +153,6 @@ class NotificationService {
   }
 }
 
-// ─── In-App Banner Widget ────────────────────────────────────────────────────
 
 class _InAppBannerWidget extends StatefulWidget {
   final String title;

@@ -7,10 +7,10 @@ class TeamPostModel {
   final String teamName;
   final String genderPreference;
   final String myRole;
-  final String idea; // ✅ أضفنا فكرة المشروع
-  final List<String> members; // ✅ أضفنا قائمة الأعضاء
+  final String idea;
+  final List<String> members;
   final DateTime createdAt;
-  final String status; // ✅ أضفنا حالة الفريق هنا
+  final String status;
 
   TeamPostModel({
     this.id,
@@ -19,10 +19,10 @@ class TeamPostModel {
     required this.teamName,
     required this.genderPreference,
     required this.myRole,
-    required this.idea, // ✅
-    required this.members, // ✅
+    required this.idea,
+    required this.members,
     required this.createdAt,
-    required this.status, // ✅
+    required this.status,
   });
 
   Map<String, dynamic> toMap() {
@@ -33,9 +33,9 @@ class TeamPostModel {
       'genderPreference': genderPreference,
       'myRole': myRole,
       'projectIdea': idea,
-      'members': members, // ✅
-      'createdAt': FieldValue.serverTimestamp(), // ✅ تعديل مهم
-      'status': status, // ✅
+      'members': members,
+      'createdAt': FieldValue.serverTimestamp(),
+      'status': status,
     };
   }
 
@@ -47,11 +47,11 @@ class TeamPostModel {
       teamName: map['teamName'] ?? '',
       genderPreference: map['genderPreference'] ?? '',
       myRole: map['myRole'] ?? '',
-      idea: map['projectIdea'] ?? map['idea'] ?? '',     members: List<String>.from(map['members'] ?? []), // ✅ تحويل آمن لقائمة الأعضاء
+      idea: map['projectIdea'] ?? map['idea'] ?? '',     members: List<String>.from(map['members'] ?? []),
       createdAt: map['createdAt'] != null
           ? (map['createdAt'] as Timestamp).toDate()
-          : DateTime.now(), // fallback
-      status: map['status'] ?? 'open', // ✅
+          : DateTime.now(),
+      status: map['status'] ?? 'open',
     );
   }
 }

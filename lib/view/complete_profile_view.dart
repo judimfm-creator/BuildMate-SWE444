@@ -247,7 +247,6 @@ class _CompleteProfileViewState extends State<CompleteProfileView> {
     String? Function(String?)? validator,
     String? exampleText,
   }) {
-    // تحديد ما إذا كان الحقل هو Biography لتطبيق العداد و100 حرف
     bool isBio = label == "Biography";
 
     return Column(
@@ -263,7 +262,7 @@ class _CompleteProfileViewState extends State<CompleteProfileView> {
           ),
           child: Row(
             crossAxisAlignment: CrossAxisAlignment
-                .start, // جعل الأيقونة في الأعلى عند النزول لسطر جديد
+                .start,
             children: [
               Padding(
                 padding: const EdgeInsets.only(top: 12),
@@ -273,11 +272,11 @@ class _CompleteProfileViewState extends State<CompleteProfileView> {
               Expanded(
                 child: TextFormField(
                   controller: ctrl,
-                  maxLength: isBio ? 100 : 40, // 100 للبيو و 40 للبقية
-                  maxLines: null, // يسمح بالنزول لسطر جديد تلقائياً (Wrap)
+                  maxLength: isBio ? 100 : 40,
+                  maxLines: null,
                   keyboardType: isBio ? TextInputType.multiline : type,
                   validator: validator,
-                  onChanged: (val) => setState(() {}), // لتحديث العداد فوراً
+                  onChanged: (val) => setState(() {}),
                   style: const TextStyle(
                       fontSize: 14,
                       fontWeight: FontWeight.bold,
@@ -286,7 +285,7 @@ class _CompleteProfileViewState extends State<CompleteProfileView> {
                     labelText: label,
                     counterText: isBio
                         ? null
-                        : "", // إظهار العداد فقط للبيو وإخفائه للبقية
+                        : "",
                     labelStyle:
                         TextStyle(color: Colors.grey.shade500, fontSize: 12),
                     hintText: helper,

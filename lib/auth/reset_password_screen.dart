@@ -9,11 +9,11 @@ class ResetPasswordScreen extends StatefulWidget {
 }
 
 class _ResetPasswordScreenState extends State<ResetPasswordScreen> {
-  // تعريف الكونترولر واللون المعتمد
+
   final TextEditingController _emailController = TextEditingController();
   static const Color purple = Color(0xFF6D56B3);
 
-  // حالة التحميل
+
   bool _loading = false;
 
   @override
@@ -50,17 +50,17 @@ class _ResetPasswordScreenState extends State<ResetPasswordScreen> {
     setState(() => _loading = true);
 
     try {
-      // إرسال رابط إعادة التعيين عبر فايربيز
+
       await FirebaseAuth.instance.sendPasswordResetEmail(email: email);
 
       _toast("Reset link sent ✅ Check your inbox + Spam");
 
-      // العودة لصفحة تسجيل الدخول بعد النجاح
+
       if (mounted) Navigator.pop(context);
     } on FirebaseAuthException catch (e) {
       String msg = "Failed to send reset email";
 
-      // معالجة شاملة لكل أنواع الأخطاء المحتملة
+
       if (e.code == 'invalid-email') msg = "Invalid email format";
       if (e.code == 'user-not-found') msg = "No user found for this email";
       if (e.code == 'too-many-requests') msg = "Too many attempts, try later";
@@ -113,14 +113,14 @@ class _ResetPasswordScreenState extends State<ResetPasswordScreen> {
 
               TextField(
                 controller: _emailController,
-               keyboardType: TextInputType.emailAddress, // ✅ تطلع لوحة مفاتيح الإيميل (@)
+               keyboardType: TextInputType.emailAddress,
   maxLines: 2,
   minLines: 1,
   maxLength: 40, //
                 enabled: !_loading,
                 decoration: InputDecoration(
                   labelText: "Email",
-                  counterText: "", // ✅ إخفاء العداد 0/40 عشان التصميم يبقى نظيف
+                  counterText: "",
                   prefixIcon: const Icon(Icons.email_outlined, color: purple),
                   border: OutlineInputBorder(
                     borderRadius: BorderRadius.circular(12),

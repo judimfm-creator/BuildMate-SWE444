@@ -8,7 +8,7 @@ class UserModel {
   final String? bio;
   final String? city;
   final String? gender;
-  final dynamic skills; //  يدعم المصفوفة والنص
+  final dynamic skills;
   final String? linkedin; 
   final String? github;
 
@@ -38,7 +38,7 @@ class UserModel {
       bio: map['bio'],
       city: map['city'],
       gender: map['gender'],
-      skills: map['skills'], // ✅ يقرأ المصفوفة مباشرة
+      skills: map['skills'],
       linkedin: map['linkedin'], 
       github: map['github'],
     );

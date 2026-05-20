@@ -82,7 +82,6 @@ class _HackathonDetailsViewState extends State<HackathonDetailsView> {
         ),
       );
     } catch (e) {
-      // keep silent to avoid breaking UI
     }
   }
 

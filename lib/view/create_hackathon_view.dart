@@ -5,7 +5,7 @@ import '../widgets/buildmate_app_bar.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 
 class CreateHackathonView extends StatefulWidget {
-  // ✅ أضفنا hackathonToEdit — لو موجود = Edit mode، لو null = Create mode
+
   final Hackathon? hackathonToEdit;
 
   const CreateHackathonView({super.key, this.hackathonToEdit});
@@ -18,7 +18,7 @@ class _CreateHackathonViewState extends State<CreateHackathonView> {
   final _formKey = GlobalKey<FormState>();
   final CreateHackathonController _controller = CreateHackathonController();
 
-  // Text fields
+
   final TextEditingController nameController = TextEditingController();
   final TextEditingController descriptionController = TextEditingController();
   final TextEditingController teamSizeController = TextEditingController();
@@ -28,27 +28,27 @@ class _CreateHackathonViewState extends State<CreateHackathonView> {
   List<TextEditingController> otherRoleControllers = [TextEditingController()];
   List<bool> markedForRemoval = [false];
 
-  // Dropdown values
+
   String? selectedMode;
   String? selectedDomain;
   String? selectedEducation;
 
-  // Dates
+
   DateTime? applicationOpenDate;
   DateTime? applicationDeadline;
   DateTime? startDate;
   DateTime? endDate;
 
-  // Date errors
+
   String? applicationOpenDateError;
   String? applicationDeadlineError;
   String? startDateError;
   String? endDateError;
 
-  // Roles error
+
   String? rolesError;
 
-  // UI state
+
   bool isSubmitting = false;
 
   final List<String> domains = const [
@@ -88,7 +88,7 @@ class _CreateHackathonViewState extends State<CreateHackathonView> {
 
   static const Color purple = Color(0xFF6D56B3);
 
-  // ✅ هل نحن في وضع التعديل؟
+
   bool get _isEditMode => widget.hackathonToEdit != null;
 
   int get _maxRoles {
@@ -100,13 +100,13 @@ class _CreateHackathonViewState extends State<CreateHackathonView> {
   @override
   void initState() {
     super.initState();
-    // ✅ لو Edit mode، نعبّي الفورم بالبيانات الموجودة
+
     if (_isEditMode) {
       _prefillForm(widget.hackathonToEdit!);
     }
   }
 
-  // ✅ دالة تعبئة الفورم بالبيانات القديمة
+
   void _prefillForm(Hackathon h) {
     nameController.text = h.name;
     descriptionController.text = h.description;
@@ -120,7 +120,7 @@ class _CreateHackathonViewState extends State<CreateHackathonView> {
     startDate = h.startDate;
     endDate = h.endDate;
 
-    // Domain: لو موجود في القائمة نختاره، لو لا = Other
+
     if (domains.contains(h.domain)) {
       selectedDomain = h.domain;
     } else {
@@ -128,7 +128,7 @@ class _CreateHackathonViewState extends State<CreateHackathonView> {
       otherDomainController.text = h.domain;
     }
 
-    // Roles: نفرز بين الأدوار المعروفة والـ Other
+
     final knownRoles = availableRoles.where((r) => r != 'Other').toList();
     final List<String> known = [];
     final List<String> others = [];
@@ -351,7 +351,7 @@ class _CreateHackathonViewState extends State<CreateHackathonView> {
         .length;
     final totalRoles = selectedRoles.where((r) => r != "Other").length + filledOtherRoles;
 
-// تحقق من الـ other roles الفاضية
+
     final hasEmptyOtherRole = selectedRoles.contains("Other") &&
         otherRoleControllers.any((c) => c.text.trim().isEmpty);
 
@@ -389,7 +389,7 @@ class _CreateHackathonViewState extends State<CreateHackathonView> {
         .toList();
 
     final hackathon = Hackathon(
-      // ✅ في Edit mode نحتفظ بنفس الـ id والـ organizationId
+
       id: _isEditMode ? widget.hackathonToEdit!.id : null,
       organizationId: _isEditMode
           ? widget.hackathonToEdit!.organizationId
@@ -416,7 +416,7 @@ class _CreateHackathonViewState extends State<CreateHackathonView> {
 
     try {
       if (_isEditMode) {
-        // ✅ استدعاء دالة التعديل بدل الإنشاء
+
         await _controller.update(hackathon);
       } else {
         await _controller.submit(hackathon);
@@ -433,10 +433,10 @@ class _CreateHackathonViewState extends State<CreateHackathonView> {
       );
 
       if (_isEditMode) {
-        // في Edit mode نرجع للصفحة السابقة بعد الحفظ
+
         Navigator.pop(context);
       } else {
-        // في Create mode نعيد تهيئة الفورم
+
         _formKey.currentState!.reset();
         nameController.clear();
         descriptionController.clear();
@@ -485,7 +485,7 @@ class _CreateHackathonViewState extends State<CreateHackathonView> {
     return Scaffold(
       backgroundColor: Colors.white,
       appBar: BuildMateAppBar(
-        // ✅ عنوان الـ AppBar يتغير حسب الوضع
+
         titleText: _isEditMode ? "Edit Hackathon" : "Create Hackathon",
         showBack: true,
         onBack: () => Navigator.pop(context),
@@ -858,7 +858,7 @@ class _CreateHackathonViewState extends State<CreateHackathonView> {
                           strokeWidth: 2, color: Colors.white),
                     )
                         : const Icon(Icons.check_circle_outline),
-                    // ✅ النص يتغير حسب الوضع
+
                     label: Text(isSubmitting
                         ? "Saving..."
                         : _isEditMode

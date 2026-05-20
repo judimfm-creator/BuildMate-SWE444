@@ -12,7 +12,7 @@ class HackathonService {
         ...hackathon.toJson(),
         'createdAt': FieldValue.serverTimestamp(),
       })
-          .timeout(const Duration(seconds: 12)); // test save
+          .timeout(const Duration(seconds: 12));
 
       return docRef;
     } catch (e) {

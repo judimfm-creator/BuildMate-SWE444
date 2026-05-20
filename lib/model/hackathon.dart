@@ -18,7 +18,7 @@ class Hackathon {
   final DateTime startDate;
   final DateTime endDate;
   
-  // ✅ الحقل اللي بنخزن فيه اسم المنشأة للعرض
+
   String? organizationName;
   String? organizationPhotoUrl;
 
@@ -62,14 +62,14 @@ class Hackathon {
   }
 
 
-  // ميثود مساعدة لتحويل التاريخ بأمان من أي نوع (String أو Timestamp)
+
   static DateTime _parseDate(dynamic date) {
     if (date is Timestamp) {
       return date.toDate();
     } else if (date is String) {
       return DateTime.parse(date);
     }
-    return DateTime.now(); // قيمة افتراضية في حال الخطأ
+    return DateTime.now();
   }
 factory Hackathon.fromFirestore(DocumentSnapshot doc) {
     final data = doc.data() as Map<String, dynamic>? ?? {};
@@ -87,8 +87,8 @@ factory Hackathon.fromFirestore(DocumentSnapshot doc) {
       rolesNeeded: List<String>.from(data['rolesNeeded'] ?? []),
       educationCriteria: data['educationCriteria'] ?? '',
       
-      // ✅ السطرين اللي كانوا ناقصين لسحب بيانات المنظمة
-// استبدلي السطر القديم بهذا السطر بالضبط
+
+
 organizationName: data['orgName'] ?? data['organizationName'] ?? 'Organizer',
       organizationPhotoUrl: data['organizationPhotoUrl'],
 

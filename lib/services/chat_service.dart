@@ -67,7 +67,7 @@ class ChatService {
 
     final members = List<String>.from(teamDoc.data()?['members'] ?? []);
 
-    // حماية: المطرود لا يقدر يرسل
+
     final removedList =
         List<String>.from(teamDoc.data()?['removedMembers'] ?? []);
     if (removedList.contains(senderId)) return;
@@ -98,7 +98,7 @@ class ChatService {
         .snapshots();
   }
 
-  // إعادة عضو مطرود — يُحذف من removedMembers ويُضاف لـ memberJoinedAt
+
   Future<void> restoreMember({
     required String teamPostId,
     required String memberId,
@@ -112,7 +112,7 @@ class ChatService {
     });
   }
 
-  // حذف رسالة واحدة — للمرسل فقط
+
   Future<void> deleteMessage({
     required String teamPostId,
     required String messageId,
@@ -125,18 +125,13 @@ class ChatService {
         .delete();
   }
 
-  // ─────────────────────────────────────────────────────────────
-  // LEADER VOTE — INITIATE
-  // timeout = 60 دقيقة خفي كـ safety net فقط، ما يظهر للمستخدم.
-  // يتحدد فوراً لما الجميع يصوّت.
-  // ─────────────────────────────────────────────────────────────
 
   Future<void> initiateLeaderVote({
     required String teamPostId,
     required String leavingLeaderId,
     required List<String> eligibleVoters,
   }) async {
-    // Timeout خفي = ساعة كاملة — safety net فقط
+
     final expiresAt = DateTime.now().add(const Duration(hours: 1));
 
     final teamRef = _firestore.collection('team_posts').doc(teamPostId);
@@ -158,7 +153,7 @@ class ChatService {
       },
     });
 
-    // رسالة النظام — بدون ذكر وقت
+
     final msgRef = teamRef.collection('messages').doc();
     batch.set(msgRef, {
       'text': 'The team leader has left. Please vote for a new leader. ',
@@ -172,23 +167,18 @@ class ChatService {
     await batch.commit();
   }
 
-  // ─────────────────────────────────────────────────────────────
-  // LEADER VOTE — CAST / CHANGE VOTE
-  // يقدر العضو يغيّر صوته في أي وقت قبل الإغلاق.
-  // يتحدد فوراً لما الجميع يصوّت.
-  // ─────────────────────────────────────────────────────────────
 
   Future<void> castLeaderVote({
     required String teamPostId,
     required String voterId,
     required String votedForId,
   }) async {
-    // يكتب الصوت — لو موجود يستبدله (تعديل الصوت)
+
     await _firestore.collection('team_posts').doc(teamPostId).update({
       'leaderVote.votes.$voterId': votedForId,
     });
 
-    // تحقق: لو الجميع صوّت → يُحسم فوراً
+
     final doc =
         await _firestore.collection('team_posts').doc(teamPostId).get();
     final voteData =
@@ -207,10 +197,6 @@ class ChatService {
     }
   }
 
-  // ─────────────────────────────────────────────────────────────
-  // LEADER VOTE — RESOLVE
-  // Transaction يضمن ما ينحسم إلا مرة وحدة.
-  // ─────────────────────────────────────────────────────────────
 
   Future<void> resolveLeaderVote({required String teamPostId}) async {
     await _firestore.runTransaction((transaction) async {
@@ -228,7 +214,6 @@ class ChatService {
           Map<String, dynamic>.from(voteData['votes'] ?? {});
       final currentMembers = List<String>.from(data['members'] ?? []);
 
-      // حساب الأصوات
       final Map<String, int> tally = {};
       for (final votedFor in votes.values) {
         final key = votedFor.toString();
@@ -251,7 +236,7 @@ class ChatService {
         if (topCandidates.length == 1) {
           newLeaderId = topCandidates.first;
         } else {
-          // تعادل → عشوائي
+
           topCandidates.shuffle(Random());
           newLeaderId = topCandidates.first;
         }
@@ -268,7 +253,7 @@ class ChatService {
       });
     });
 
-    // رسالة إعلان الفائز
+
     final snap =
         await _firestore.collection('team_posts').doc(teamPostId).get();
     final winner = snap.data()?['leaderVote']?['winner'] as String?;

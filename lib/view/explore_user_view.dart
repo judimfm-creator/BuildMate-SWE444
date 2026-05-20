@@ -97,8 +97,8 @@ class _ExploreUserViewState extends State<ExploreUserView> with SingleTickerProv
       appBar: AppBar(
         backgroundColor: Colors.white,
         elevation: 0,
-        automaticallyImplyLeading: true, // للسماح بظهور السهم
-        iconTheme: const IconThemeData(color: _purple), // 👈 تغيير لون السهم للموف
+        automaticallyImplyLeading: true,
+        iconTheme: const IconThemeData(color: _purple),
         titleSpacing: 0,
         toolbarHeight: 80,
         title: Padding(
@@ -146,7 +146,7 @@ class _ExploreUserViewState extends State<ExploreUserView> with SingleTickerProv
     );
   }
 
-  // دالة مساعدة لرسالة التأكيد
+
   Future<void> _confirmWithdraw(String requestId) async {
     bool? confirm = await showDialog(
       context: context,
@@ -438,11 +438,11 @@ Future<List<Map<String, dynamic>>> _buildFilteredTeams(
       final data = doc.data();
       final team = TeamPostModel.fromMap(doc.id, data);
 
-      // 1. إذا أنا منضم لفريق بهذا الهاكاثون أو أنا مؤسسه، أخفيه
+
       if (joinedIds.contains(team.hackathonId)) return null;
       if (team.createdBy == currentUid) return null;
 
-      // 2. إذا عندي طلب معلق، لا تظهر إلا الفريق اللي طلبت الانضمام له
+
       if (pendingHackathonToTeam.containsKey(team.hackathonId)) {
         if (team.id != pendingHackathonToTeam[team.hackathonId]) {
           return null;
@@ -454,8 +454,7 @@ Future<List<Map<String, dynamic>>> _buildFilteredTeams(
 
       final h = Hackathon.fromFirestore(hDoc);
 
-      // 🔴 التعديل الجديد (إخفاء المسجلين والمكتملين):
-      // إذا الفريق مكتمل العدد أو حالته مسجل "registered"
+
       if (team.members.length >= h.teamSize || data['status'] == 'registered') {
         return null;
       }

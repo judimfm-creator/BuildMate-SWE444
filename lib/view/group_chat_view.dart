@@ -4,7 +4,7 @@ import 'package:intl/intl.dart';
 import '../model/user_model.dart';
 import '../services/chat_service.dart';
 import 'video_call_view.dart';
-import 'leader_vote_banner.dart'; // ← NEW
+import 'leader_vote_banner.dart';
 import 'dart:io';
 import 'package:file_picker/file_picker.dart';
 import 'package:image_picker/image_picker.dart';
@@ -16,7 +16,7 @@ import 'media_viewer.dart';
 class GroupChatView extends StatefulWidget {
   final String teamPostId;
   final String teamName;
-  final bool isCompleted; // ← NEW
+  final bool isCompleted;
 
   const GroupChatView({
     super.key,
@@ -114,7 +114,6 @@ class _GroupChatViewState extends State<GroupChatView> {
     _scrollToBottom();
   }
 
-  // ── دالة إرسال الملف ─────────────────────────────────────────────────────
   Future<void> _sendFile() async {
     if (_currentUser == null) return;
 
@@ -311,12 +310,10 @@ class _GroupChatViewState extends State<GroupChatView> {
       builder: (context, teamSnap) {
         final teamData = teamSnap.data?.data() ?? {};
 
-        // removedMembers = array of UIDs
         final removedList = List<String>.from(teamData['removedMembers'] ?? []);
         final bool isRemoved =
             _currentUser != null && removedList.contains(_currentUser!.uid);
 
-        // removedAt: وقت الطرد أو الانسحاب — نخفي الرسائل بعده عن المطرود
         final removedAtMap =
             Map<String, dynamic>.from(teamData['removedAt'] ?? {});
         final Timestamp? removedAt = (isRemoved &&
@@ -325,7 +322,6 @@ class _GroupChatViewState extends State<GroupChatView> {
             ? (removedAtMap[_currentUser!.uid] as Timestamp?)
             : null;
 
-        // memberJoinedAt: للأعضاء الجدد — ما يشوفون رسائل قبل انضمامهم
         final memberJoinedAtMap =
             Map<String, dynamic>.from(teamData['memberJoinedAt'] ?? {});
         final Timestamp? joinedAt = (!isRemoved &&
@@ -334,7 +330,6 @@ class _GroupChatViewState extends State<GroupChatView> {
             ? (memberJoinedAtMap[_currentUser!.uid] as Timestamp?)
             : null;
 
-        // ── NEW: vote state ────────────────────────────────────────────────
         final Map<String, dynamic>? leaderVoteData =
             teamData['leaderVote'] as Map<String, dynamic>?;
         final bool hasActiveVote =
@@ -342,7 +337,6 @@ class _GroupChatViewState extends State<GroupChatView> {
         final List<String> currentMembers = List<String>.from(
             (teamData['members'] as List?)?.map((e) => e.toString()) ?? []);
 
-        // Auto-resolve expired vote (any member who opens the chat triggers this)
         if (hasActiveVote) {
           final expiresAt =
               (leaderVoteData['expiresAt'] as Timestamp?)?.toDate();
@@ -358,7 +352,6 @@ class _GroupChatViewState extends State<GroupChatView> {
           appBar: _buildAppBar(isRemoved: isRemoved),
           body: Column(
             children: [
-              // ── NEW: sticky vote banner above messages ─────────────────
               if (hasActiveVote && !isRemoved && _currentUser != null)
                 Padding(
                   padding: const EdgeInsets.fromLTRB(12, 10, 12, 0),
@@ -369,11 +362,9 @@ class _GroupChatViewState extends State<GroupChatView> {
                   ),
                 ),
 
-              // الشات يظهر للجميع — المطرود والأعضاء
               Expanded(
                   child: _buildMessagesList(
                       joinedAt: joinedAt, removedAt: removedAt)),
-              // المطرود: بانر مقفل — غيره: input عادي
               isRemoved
                   ? _buildRemovedBanner()
                   : widget.isCompleted
@@ -471,7 +462,6 @@ class _GroupChatViewState extends State<GroupChatView> {
     );
   }
 
-  // بانر المطرود في الأسفل بدل input
   Widget _buildRemovedBanner() {
     return Container(
       width: double.infinity,
@@ -509,7 +499,6 @@ class _GroupChatViewState extends State<GroupChatView> {
     );
   }
 
-  // ── NEW: بانر الـ workspace المكتمل ──────────────────────────
   Widget _buildCompletedBanner() {
     return Container(
       width: double.infinity,
@@ -563,7 +552,6 @@ class _GroupChatViewState extends State<GroupChatView> {
 
         var docs = snapshot.data?.docs ?? [];
 
-        // المطرود أو المنسحب: ما يشوف رسائل بعد وقت طرده
         if (removedAt != null) {
           docs = docs.where((doc) {
             final msgTs = doc.data()['createdAt'] as Timestamp?;
@@ -572,7 +560,6 @@ class _GroupChatViewState extends State<GroupChatView> {
           }).toList();
         }
 
-        // اليوزر الجديد: ما يشوف رسائل قبل تاريخ انضمامه
         if (joinedAt != null) {
           docs = docs.where((doc) {
             final msgTs = doc.data()['createdAt'] as Timestamp?;
@@ -624,7 +611,6 @@ class _GroupChatViewState extends State<GroupChatView> {
               children: [
                 if (showDivider && timestamp != null)
                   _buildDateDivider(_formatDateDivider(timestamp)),
-                // ── NEW: route system messages to special bubble ──────────
                 if (isSystemMessage)
                   _buildSystemBubble(data)
                 else
@@ -655,8 +641,7 @@ class _GroupChatViewState extends State<GroupChatView> {
     );
   }
 
-  // ── NEW: System message bubble ──────────────────────────────────────────
-  // Centered pill for vote_prompt and vote_result messages.
+
   Widget _buildSystemBubble(Map<String, dynamic> data) {
     final text = data['text'] as String? ?? '';
     final type = data['type'] as String? ?? 'system';
@@ -729,7 +714,6 @@ class _GroupChatViewState extends State<GroupChatView> {
     final List readBy = data['readBy'] ?? [];
     bool isRead = readBy.any((uid) => uid != senderId);
 
-    // ── بيانات الملف ──────────────────────────────────────────────────────
     final String? fileUrl = data['fileUrl'] as String?;
     final String? fileName = data['fileName'] as String?;
     final String? fileType = data['fileType'] as String?;
@@ -767,9 +751,7 @@ class _GroupChatViewState extends State<GroupChatView> {
                           color: Color(0xFF888780),
                           fontWeight: FontWeight.w500)),
                 ),
-              // ── الفقاعة ────────────────────────────────────────────────
               GestureDetector(
-                // فتح الملف عند الضغط (غير الصور)
                 onTap: hasFile && fileType != 'image'
                     ? () => _openFile(fileUrl, fileName ?? 'file')
                     : null,
@@ -795,7 +777,6 @@ class _GroupChatViewState extends State<GroupChatView> {
                           ? null
                           : Border.all(color: Colors.grey.shade200),
                     ),
-                    // ── محتوى الفقاعة ──────────────────────────────────
                     child: hasFile
                         ? (fileType == 'image'
                         ? GestureDetector(
@@ -881,7 +862,6 @@ class _GroupChatViewState extends State<GroupChatView> {
                       Icon(isRead ? Icons.done_all : Icons.done,
                           size: 13),
                     ],
-                    // 🗑️ زر حذف — لكل شخص على رسائله هو فقط
                     if (isMe) ...[
                       const SizedBox(width: 4),
                       GestureDetector(
@@ -999,7 +979,6 @@ class _GroupChatViewState extends State<GroupChatView> {
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.end,
         children: [
-          // ── زر إرفاق ملف ─────────────────────────────────────────────
           IconButton(
             onPressed: _sendFile,
             icon: const Icon(Icons.add_circle_outline_rounded,

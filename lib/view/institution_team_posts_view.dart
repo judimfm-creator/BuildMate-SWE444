@@ -56,9 +56,8 @@ class InstitutionTeamPostsView extends StatelessWidget {
               final int currentMembers = members.length; 
               final int maxMembers = data['maxMembers'] ?? 0;
               
-              // التعديل هنا: نأخذ الحالة ونخلي أول حرف كبير فقط (بدل الكابيتال الكامل)
               String status = data['status'] ?? 'pending_approval';
-              status = status.replaceAll('_', ' '); // استبدال الـ underscore بمسافة
+              status = status.replaceAll('_', ' ');
 
               return Container(
                 decoration: BoxDecoration(
@@ -96,7 +95,7 @@ class InstitutionTeamPostsView extends StatelessWidget {
                                   overflow: TextOverflow.ellipsis,
                                 ),
                               ),
-                              // استدعاء الـ Badge المعدل
+
                               _statusBadge(status),
                             ],
                           ),
@@ -139,13 +138,13 @@ class InstitutionTeamPostsView extends StatelessWidget {
     );
   }
 
-  // --- UI Helpers ---
+
 
   Widget _statusBadge(String status) {
     Color color = _purple;
     String displayStatus = status;
 
-    // تغيير الألوان بناءً على الكلمات
+
     if (status.toLowerCase().contains('approve')) {
       color = Colors.green;
       displayStatus = "Approved";
@@ -164,11 +163,11 @@ class InstitutionTeamPostsView extends StatelessWidget {
         borderRadius: BorderRadius.circular(8),
       ),
       child: Text(
-        displayStatus, // تظهر الحين بشكل طبيعي (Approved, Pending Approval)
+        displayStatus,
         style: TextStyle(
           color: color, 
-          fontSize: 11, // كبرنا الخط شوي عشان يوضح
-          fontWeight: FontWeight.w600 // خليناه أنحف شوي من الـ Bold الكامل
+          fontSize: 11,
+          fontWeight: FontWeight.w600
         ),
       ),
     );

@@ -697,12 +697,10 @@ class InstitutionTeamPostDetailsView extends StatelessWidget {
             ),
           ),
           const SizedBox(height: 12),
-          // زر التعديل للسماح بتغيير القرار
           SizedBox(
             width: double.infinity,
             child: OutlinedButton.icon(
-              // ابحثي عن OutlinedButton الخاص بـ Edit Decision وغيري الـ onPressed إلى:
-onPressed: () => _showEditDecisionDialog(context, status), // تمرير الحالة الحالية هنا,
+onPressed: () => _showEditDecisionDialog(context, status),
               icon: const Icon(Icons.edit_note, size: 20),
               label: const Text("Edit Decision"),
               style: OutlinedButton.styleFrom(
@@ -719,7 +717,6 @@ onPressed: () => _showEditDecisionDialog(context, status), // تمرير الح�
       );
     }
 
-    // الحالة لو كان الوقت لم ينتهِ بعد
     if (!isDeadlinePassed) {
       return Container(
         width: double.infinity,
@@ -748,7 +745,6 @@ onPressed: () => _showEditDecisionDialog(context, status), // تمرير الح�
       );
     }
 
-    // الحالة لو انتهى الوقت وبانتظار القرار الأول (Pending)
     return Row(
       children: [
         Expanded(
@@ -771,7 +767,6 @@ onPressed: () => _showEditDecisionDialog(context, status), // تمرير الح�
   }
 
 Future<void> _showEditDecisionDialog(BuildContext context, String currentStatus) async {
-    // نحدد الحالة المعاكسة للحالة الحالية
     final String targetStatus = currentStatus == 'accepted' ? 'rejected' : 'accepted';
     final bool isAccepting = targetStatus == 'accepted';
 
@@ -824,7 +819,6 @@ Future<void> _showEditDecisionDialog(BuildContext context, String currentStatus)
   }
 Future<void> _updateStatus(BuildContext context, String newStatus) async {
     try {
-      // 1. Show loading indicator
       showDialog(
         context: context,
         barrierDismissible: false,
@@ -833,13 +827,11 @@ Future<void> _updateStatus(BuildContext context, String newStatus) async {
 
       final batch = FirebaseFirestore.instance.batch();
 
-      // 2. Prepare Team Post update
       DocumentReference teamPostRef = FirebaseFirestore.instance
           .collection('team_posts')
           .doc(teamPostId);
       batch.update(teamPostRef, {'status': newStatus});
 
-      // 3. Prepare Registration update (finding it by teamPostId)
       final regQuery = await FirebaseFirestore.instance
           .collection('registrations')
           .where('teamPostId', isEqualTo: teamPostId)
@@ -850,11 +842,10 @@ Future<void> _updateStatus(BuildContext context, String newStatus) async {
         batch.update(regQuery.docs.first.reference, {'status': newStatus});
       }
 
-      // 4. Commit to Backend
       await batch.commit();
 
       if (context.mounted) {
-        Navigator.pop(context); // Remove loading indicator
+        Navigator.pop(context);
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             backgroundColor: newStatus == 'accepted' ? Colors.green : Colors.redAccent,
@@ -864,7 +855,7 @@ Future<void> _updateStatus(BuildContext context, String newStatus) async {
       }
     } catch (e) {
       if (context.mounted) {
-        Navigator.pop(context); // Remove loading
+        Navigator.pop(context);
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(content: Text("Backend Error: $e")),
         );

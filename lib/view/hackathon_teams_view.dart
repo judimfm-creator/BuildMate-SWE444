@@ -665,27 +665,26 @@ class ExploreTeamsView extends StatelessWidget {
                             .where('requesterId', isEqualTo: uid)
                             .get();
 
-// 2. التحقق من الحالة
                         if (existingRequest.docs.isNotEmpty) {
                           final doc = existingRequest.docs.first;
                           final status = doc.data()['status'];
 
                           if (status == 'pending') {
-                            // الحالة: ما زال الطلب قيد الانتظار
+
                             if (ctx.mounted) Navigator.pop(ctx);
                             messenger.showSnackBar(
                               const SnackBar(content: Text("You already have a pending request.")),
                             );
                             return;
                           } else if (status == 'rejected') {
-                            // الحالة: مرفوض؟ إذاً نقوم بتحديثه ليصبح 'pending' مرة أخرى
+
                             await doc.reference.update({
                               'status': 'pending',
-                              'desiredRole': selected, // تحديث الدور إذا غيره المستخدم
+                              'desiredRole': selected,
                               'createdAt': FieldValue.serverTimestamp(),
                             });
 
-                            // يمكنك هنا إضافة كود إرسال إشعار جديد للقائد مرة أخرى (اختياري)
+
 
                             if (ctx.mounted) Navigator.pop(ctx, true);
                             messenger.showSnackBar(

@@ -114,7 +114,7 @@ class _CreateTeamPostScreenState extends State<CreateTeamPostScreen> {
                     children: [
                       const SizedBox(height: 8),
 
-                      // 1. TEAM NAME
+
                       Padding(
                         padding: const EdgeInsets.only(bottom: 12),
                         child: TextFormField(
@@ -137,7 +137,7 @@ class _CreateTeamPostScreenState extends State<CreateTeamPostScreen> {
                         ),
                       ),
 
-                      // 2. GENDER PREFERENCE
+
                       Padding(
                         padding: const EdgeInsets.only(bottom: 12),
                         child: DropdownButtonFormField<String>(
@@ -157,7 +157,6 @@ class _CreateTeamPostScreenState extends State<CreateTeamPostScreen> {
                         ),
                       ),
 
-                      // 3. ROLE DROPDOWN
                       Padding(
                         padding: const EdgeInsets.only(bottom: 12),
                         child: DropdownButtonFormField<String>(
@@ -178,7 +177,7 @@ class _CreateTeamPostScreenState extends State<CreateTeamPostScreen> {
                         ),
                       ),
 
-                      // 4. DYNAMIC TEXT FIELD (Only for "Any")
+
                       if (_allowCustomRole && _selectedRole == 'Any') ...[
                         Padding(
                           padding: const EdgeInsets.only(bottom: 12),
@@ -196,7 +195,7 @@ class _CreateTeamPostScreenState extends State<CreateTeamPostScreen> {
                         ),
                       ],
 
-                      // 5. PROJECT IDEA (LAST FIELD - OPTIONAL)
+
                       Padding(
                         padding: const EdgeInsets.only(bottom: 12),
                         child: TextFormField(
@@ -213,7 +212,7 @@ class _CreateTeamPostScreenState extends State<CreateTeamPostScreen> {
 
                       const SizedBox(height: 24),
 
-                      // SUBMIT BUTTON
+
                       SizedBox(
                         width: double.infinity,
                         height: 48,
@@ -255,8 +254,7 @@ class _CreateTeamPostScreenState extends State<CreateTeamPostScreen> {
       final user = FirebaseAuth.instance.currentUser;
       if (user == null) return;
 
-      // We fetch the leader's name to show it in the list later
-      // ✅ Fixed:
+
       final userDoc = await FirebaseFirestore.instance
           .collection('users')
           .doc(user.uid)
@@ -267,22 +265,21 @@ class _CreateTeamPostScreenState extends State<CreateTeamPostScreen> {
           ? _customRoleController.text.trim()
           : _selectedRole;
 
-      // --- LOGIC FIX: CALCULATE NEEDED ROLES ---
-      // We take the hackathon roles and remove the one the leader took
+
       List<String> needed = List<String>.from(_availableRoles);
       needed.remove(finalRole);
 
       await FirebaseFirestore.instance.collection('team_posts').add({
         'hackathonId': widget.hackathonId,
         'createdBy': user.uid,
-        'leaderId': user.uid, // Important for filtering
+        'leaderId': user.uid,
         'leaderName':
-            leaderName, // Save name so we don't have to fetch it every time
+            leaderName,
         'teamName': _teamNameController.text.trim(),
         'myRole': finalRole,
-        'neededRoles': needed, // THIS WAS MISSING!
+        'neededRoles': needed,
         'genderPreference': _selectedGender,
-        'idea': _ideaController.text.trim(), // 🔴 صلحنا الكلمة صارت idea نفس الموديل        'currentMembers': 1,
+        'idea': _ideaController.text.trim(),
         'maxMembers': widget.hackathonTeamSize,
         'createdAt': FieldValue.serverTimestamp(),
         'status': 'open',
